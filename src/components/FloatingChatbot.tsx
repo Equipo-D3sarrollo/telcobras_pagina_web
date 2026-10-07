@@ -1,0 +1,304 @@
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { Bot, Send, X } from "lucide-react";
+
+type ChatMessage = {
+  id: number;
+  sender: "bot" | "user";
+  text: string;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+export function FloatingChatbot() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [welcomeVisible, setWelcomeVisible] = useState(true);
+  const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [sessionId, setSessionId] = useState("");
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    {
+      id: 0,
+      sender: "bot",
+      text: "¡Hola! Soy el asistente de Telcobras. ¿En qué puedo ayudarte?",
+    },
+  ]);
+  const [nextMessageId, setNextMessageId] = useState(1);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let currentSessionId: string;
+    try {
+      currentSessionId = window.localStorage.getItem("telcobras_session_id") ?? "";
+      if (!currentSessionId) {
+        currentSessionId = window.crypto.randomUUID();
+        window.localStorage.setItem("telcobras_session_id", currentSessionId);
+      }
+    } catch (error) {
+      console.error("No se pudo persistir la sesión del chatbot.", error);
+      currentSessionId = window.crypto.randomUUID();
+    }
+    setSessionId(currentSessionId);
+  }, []);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [isLoading, messages]);
+
+  async function handleSendMessage(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const userText = input.trim();
+    if (!userText || !sessionId || isLoading) return;
+
+    setMessages((currentMessages) => [
+      ...currentMessages,
+      { id: nextMessageId, sender: "user", text: userText },
+    ]);
+    setNextMessageId((currentId) => currentId + 1);
+    setInput("");
+    setIsLoading(true);
+
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ session_id: sessionId, mensaje: userText }),
+      });
+
+      let payload: unknown;
+      try {
+        payload = await response.json();
+      } catch {
+        throw new Error("El servidor devolvió una respuesta que no se pudo interpretar.");
+      }
+
+      if (!response.ok) {
+        const errorCode = isRecord(payload) ? payload["error"] : undefined;
+        const errorMessages: Record<string, string> = {
+          chat_unavailable: "El chat no está disponible por el momento. Intenta más tarde.",
+          invalid_request: "No se pudo enviar el mensaje. Revisa el texto e inténtalo de nuevo.",
+          invalid_upstream_response:
+            "El asistente recibió una respuesta inesperada. Intenta de nuevo más tarde.",
+          upstream_error: "No logramos conectar con el asistente. Intenta de nuevo en un momento.",
+          upstream_timeout: "El asistente está tardando en responder. Intenta de nuevo.",
+          agent_response_unavailable:
+            "Make recibió tu mensaje, pero el escenario todavía no devuelve la respuesta del asistente. Revisa el módulo Webhook response.",
+        };
+        const message =
+          typeof errorCode === "string"
+            ? (errorMessages[errorCode] ?? "No se pudo enviar el mensaje. Intenta de nuevo.")
+            : "No se pudo enviar el mensaje. Intenta de nuevo.";
+        throw new Error(message);
+      }
+
+      if (!isRecord(payload) || typeof payload["respuesta_bot"] !== "string") {
+        throw new Error("El asistente devolvió una respuesta con un formato no válido.");
+      }
+
+      setMessages((currentMessages) => [
+        ...currentMessages,
+        { id: nextMessageId + 1, sender: "bot", text: payload["respuesta_bot"] },
+      ]);
+      setNextMessageId((currentId) => currentId + 1);
+    } catch (error) {
+      console.error("Falló el envío del mensaje al asistente.", error);
+      const errorText =
+        error instanceof Error ? error.message : "No se pudo enviar el mensaje. Intenta de nuevo.";
+      setMessages((currentMessages) => [
+        ...currentMessages,
+        { id: nextMessageId + 1, sender: "bot", text: errorText },
+      ]);
+      setNextMessageId((currentId) => currentId + 1);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  return (
+    <>
+      {isOpen && (
+        <section
+          aria-label="Chat con el asistente Telcobras"
+          aria-modal="false"
+          className="fixed inset-x-3 bottom-20 top-16 z-50 flex flex-col overflow-hidden rounded-2xl bg-white text-slate-900 shadow-2xl shadow-slate-950/25 sm:inset-auto sm:bottom-[10.5rem] sm:right-5 sm:h-[min(600px,calc(100vh-12rem))] sm:w-[380px]"
+          role="dialog"
+        >
+          <header className="flex shrink-0 items-center justify-between bg-[#2491CC] px-5 py-4 text-white">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20">
+                <Bot aria-hidden="true" className="h-6 w-6" />
+              </span>
+              <div>
+                <h2 className="font-bold leading-tight">Asistente Telcobras</h2>
+                <p className="text-xs text-white/85">Estamos aquí para ayudarte</p>
+              </div>
+            </div>
+            <button
+              aria-label="Cerrar chat"
+              className="rounded-full p-2 transition-colors hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              onClick={() => setIsOpen(false)}
+              type="button"
+            >
+              <X aria-hidden="true" className="h-5 w-5" />
+            </button>
+          </header>
+
+          <div
+            aria-live="polite"
+            className="flex-1 space-y-4 overflow-y-auto bg-white p-4"
+            role="log"
+          >
+            {messages.map((message) => {
+              const isBotMessage = message.sender === "bot";
+
+              return (
+                <div
+                  key={message.id}
+                  className={`flex ${isBotMessage ? "justify-start" : "justify-end"}`}
+                >
+                  <p
+                    className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                      isBotMessage
+                        ? "rounded-bl-md bg-[#F3F4F6] text-slate-800"
+                        : "rounded-br-md bg-[#2491CC] text-white"
+                    }`}
+                  >
+                    {message.text}
+                  </p>
+                </div>
+              );
+            })}
+            {isLoading && (
+              <div
+                aria-label="El asistente está respondiendo"
+                className="flex items-center gap-1 rounded-2xl rounded-bl-md bg-[#F3F4F6] px-4 py-3 text-slate-500"
+                role="status"
+              >
+                <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400" />
+                <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400 [animation-delay:120ms]" />
+                <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400 [animation-delay:240ms]" />
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          <form
+            className="flex shrink-0 items-center gap-2 border-t border-slate-200 bg-white p-3"
+            onSubmit={handleSendMessage}
+          >
+            <label className="sr-only" htmlFor="telcobras-chat-message">
+              Escribe tu mensaje
+            </label>
+            <input
+              autoComplete="off"
+              className="min-w-0 flex-1 rounded-full border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#2491CC] focus:ring-2 focus:ring-[#2491CC]/20"
+              disabled={isLoading || !sessionId}
+              id="telcobras-chat-message"
+              name="message"
+              onChange={(event) => setInput(event.currentTarget.value)}
+              placeholder="Escribe tu mensaje..."
+              value={input}
+              type="text"
+            />
+            <button
+              aria-label="Enviar mensaje"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#2491CC] text-white transition-colors hover:bg-[#1d7ead] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2491CC]"
+              disabled={isLoading || !sessionId || !input.trim()}
+              type="submit"
+            >
+              <Send aria-hidden="true" className="h-5 w-5" />
+            </button>
+          </form>
+        </section>
+      )}
+
+      {welcomeVisible && !isOpen && (
+        <div
+          className="fixed bottom-36 right-[7.5rem] z-50 flex w-[min(16rem,calc(100vw-9rem))] items-start gap-3 rounded-2xl border border-[#2491CC]/20 bg-white p-4 pr-9 text-slate-900 shadow-xl shadow-slate-950/15"
+          role="status"
+        >
+          <span
+            aria-hidden="true"
+            className="absolute -right-1.5 bottom-4 h-3 w-3 rotate-45 border-r border-t border-[#2491CC]/20 bg-white"
+          />
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#2491CC]/10 text-[#2491CC]">
+            <Bot aria-hidden="true" className="h-5 w-5" />
+          </span>
+          <button
+            className="text-left"
+            onClick={() => {
+              setWelcomeVisible(false);
+              setIsOpen(true);
+            }}
+            type="button"
+          >
+            <span className="block text-sm font-extrabold">¡Hola! ¿Necesitas ayuda?</span>
+            <span className="mt-0.5 block text-xs leading-relaxed text-slate-600">
+              Estoy aquí para ayudarte con lo que necesites.
+            </span>
+            <span className="mt-2 inline-block text-xs font-extrabold text-[#0087C3]">
+              Hablemos →
+            </span>
+          </button>
+          <button
+            aria-label="Cerrar saludo"
+            className="absolute right-2 top-2 rounded-full p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#2491CC]"
+            onClick={() => setWelcomeVisible(false)}
+            type="button"
+          >
+            <X aria-hidden="true" className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
+      <button
+        aria-expanded={isOpen}
+        aria-label={isOpen ? "Cerrar asistente Telcobras" : "Abrir asistente Telcobras"}
+        className={`fixed right-0 z-50 flex items-center justify-center rounded-2xl transition-transform duration-300 hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2491CC] ${
+          isOpen
+            ? "bottom-24 h-[60px] w-[60px] bg-[#2491CC] text-white shadow-xl shadow-[#2491CC]/40"
+            : "bottom-32 h-[128px] w-[116px]"
+        }`}
+        onClick={() => {
+          setWelcomeVisible(false);
+          setIsOpen((open) => !open);
+        }}
+        type="button"
+      >
+        {isOpen ? (
+          <X aria-hidden="true" className="h-7 w-7" />
+        ) : (
+          <span
+            aria-hidden="true"
+            className="relative flex h-[124px] w-[112px] scale-[1.15] flex-col items-center justify-end motion-safe:animate-bounce [animation-duration:3s] drop-shadow-lg"
+          >
+            <span className="z-10 -mb-0.5 flex flex-col items-center">
+              <span className="h-2 w-2 rounded-full bg-[#88BD4C] ring-2 ring-emerald-200/70 shadow-[0_0_8px_#88BD4C]" />
+              <span className="h-2 w-0.5 bg-[#0087C3]" />
+            </span>
+            <span className="relative z-10 flex h-8 w-10 items-center justify-center rounded-xl border-2 border-white bg-gradient-to-b from-[#0087C3] to-[#1a6f9c] shadow-md">
+              <span className="absolute -left-1 top-2 h-3 w-1 rounded-l-sm bg-[#88BD4C]" />
+              <span className="absolute -right-1 top-2 h-3 w-1 rounded-r-sm bg-[#88BD4C]" />
+              <span className="flex h-5 w-8 flex-col items-center justify-center rounded-md bg-[#0A192F]">
+                <span className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_5px_#7dd3fc]" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_5px_#7dd3fc]" />
+                </span>
+                <span className="mt-0.5 h-1 w-2 rounded-b-full border-b border-sky-300" />
+              </span>
+            </span>
+            <span className="relative z-10 -mt-0.5 flex h-5 w-7 items-center justify-center rounded-lg border border-white bg-gradient-to-b from-[#0087C3] to-[#124b6e] shadow-sm">
+              <span className="flex w-4 items-center gap-0.5">
+                <span className="h-1 w-1 shrink-0 rounded-full bg-[#88BD4C] shadow-[0_0_4px_#88BD4C]" />
+                <span className="h-px flex-1 bg-sky-300/80" />
+                <span className="h-1 w-1 shrink-0 rounded-full bg-[#F3CB35]" />
+              </span>
+            </span>
+            <span className="absolute bottom-0 h-1 w-10 rounded-full bg-gradient-to-r from-transparent via-[#88BD4C] to-transparent opacity-90 blur-[1px]" />
+          </span>
+        )}
+      </button>
+    </>
+  );
+}

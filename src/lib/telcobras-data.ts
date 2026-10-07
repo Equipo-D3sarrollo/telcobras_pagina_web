@@ -1,0 +1,190 @@
+export const LOGO_URL =
+  "https://vibe.filesafe.space/1790689453956353174/attachments/147fd1a2-7658-455c-8a62-124542d73285.png";
+
+export const HERO_PHOTO =
+  "https://vibe.filesafe.space/1790689453956353174/assets/6e489a04-f7b9-4071-8066-bde523d61662.png";
+export const TECHNICIAN_PHOTO =
+  "https://vibe.filesafe.space/1790689453956353174/assets/4a99b0ac-ad84-4bc8-a4de-3988548bdbc0.png";
+export const CALI_PHOTO =
+  "https://vibe.filesafe.space/1790689453956353174/assets/55766fcc-873a-42d0-9cce-be44aaaba6e8.png";
+
+export const BRAND_COLORS = {
+  blue: "#0087C3",
+  green: "#88BD4C",
+  yellow: "#F3CB35",
+  gray: "#888D91",
+  navy: "#0A192F",
+};
+
+export const CONTACT = {
+  phoneDisplay: "+57 321 740 4511",
+  phoneHref: "tel:+573217404511",
+  whatsappHref:
+    "https://wa.me/573217404511?text=Hola%20TELCOBRAS,%20quisiera%20solicitar%20información%20sobre%20sus%20servicios%20tecnológicos%20para%20mi%20empresa.",
+  emailDisplay: "marketing@telcobras.com",
+  emailHref: "mailto:marketing@telcobras.com",
+  address: "Carrera 83A # 20 - 20, Cali, Valle del Cauca, Colombia",
+};
+
+export const CHATBOT_PHONE = {
+  display: "+57 310 677 7412",
+  href: "tel:+573106777412",
+};
+
+export interface ServiceItem {
+  id: string;
+  title: string;
+  tagline: string;
+  description: string;
+  features: string[];
+  color: string;
+  badge: string;
+}
+
+export const SERVICIOS_DATA: ServiceItem[] = [
+  {
+    id: "conectividad",
+    title: "Conectividad de Alta Disponibilidad",
+    tagline:
+      "Internet Dedicado y Banda Ancha sobre fibra óptica propia y radioenlace de microondas.",
+    description:
+      "Diseñamos e implementamos redes robustas para garantizar que las operaciones de tu empresa nunca se detengan, respaldadas por disponibilidad de red del 99,6 %.",
+    features: [
+      "Internet Dedicado corporativo",
+      "Red SD-WAN para optimización inteligente de tráfico",
+      "Enlaces de datos punto a punto y multipunto corporativos",
+      "Infraestructura Wi-Fi administrada",
+      "Redundancia automática",
+    ],
+    color: "#0087C3",
+    badge: "Infraestructura Propia",
+  },
+  {
+    id: "seguridad",
+    title: "Seguridad Integral y Ciberdefensa",
+    tagline: "Protección perimetral y digital sincronizada contra amenazas emergentes.",
+    description:
+      "Resguardamos la información sensible y la continuidad operacional de tu negocio mediante arquitecturas avanzadas de Next-Gen Firewall y monitoreo continuo.",
+    features: [
+      "Seguridad Sincronizada y monitoreo inteligente de red",
+      "Control unificado desde un único dispositivo centralizado",
+      "Análisis predictivo de ciberamenazas e intromisiones",
+      "Protección anti-DDoS avanzada de mitigación en tiempo real",
+      "Auditoría y cumplimiento de estándares internacionales",
+    ],
+    color: "#88BD4C",
+    badge: "Protección Sincronizada",
+  },
+  {
+    id: "colaboracion",
+    title: "Colaboración y Comunicaciones Unificadas",
+    tagline: "Conecta a tus equipos sin importar dónde se encuentren con movilidad total.",
+    description:
+      "Soluciones que impulsan el trabajo híbrido con telefonía IP corporativa, videoconferencia en alta definición y plataformas integradas de mensajería.",
+    features: [
+      "Plataforma integral para teletrabajo y movilidad corporativa",
+      "Salas virtuales e integración de audioconferencias HD",
+      "Centrales telefónicas IP administradas en la nube",
+      "Mensajería unificada con presencia y estado en tiempo real",
+      "Integración transparente con plataformas Microsoft y CRM",
+    ],
+    color: "#F3CB35",
+    badge: "Trabajo Híbrido",
+  },
+  {
+    id: "nube",
+    title: "Nube Híbrida",
+    tagline: "Infraestructura flexible, escalable y segura disponible 24/7/365.",
+    description:
+      "Aceleramos tu migración digital combinando la agilidad de la nube con el control de tu propia infraestructura, respaldada por ingeniería especializada.",
+    features: [
+      "Nube híbrida personalizada para cargas de trabajo críticas",
+      "Almacenamiento y respaldos automatizados (Backup & Disaster Recovery)",
+      "Disponibilidad de red del 99,6 %",
+      "Soporte 24/7 con ingeniería especializada",
+      "Optimización de costos operativos de TI",
+    ],
+    color: "#0087C3",
+    badge: "Escalabilidad Total",
+  },
+  {
+    id: "agentes-ia",
+    title: "Agentes con Inteligencia Artificial",
+    tagline: "Soluciones de IA para automatizar procesos y potenciar tu operación.",
+    description:
+      "Implementamos soluciones de Inteligencia Artificial para automatizar procesos, fortalecer la atención al cliente y generar nuevas oportunidades comerciales.",
+    features: [
+      "Automatización de procesos operativos y de negocio",
+      "Atención inteligente y automatizada al cliente",
+      "Generación y gestión de oportunidades comerciales",
+      "Integración con tus sistemas y canales actuales",
+      "Análisis de datos para la toma de decisiones",
+    ],
+    color: "#0087C3",
+    badge: "Inteligencia Artificial",
+  },
+];
+
+export interface ProyectoItem {
+  id: string;
+  titulo: string;
+  descripcion: string;
+  imagen: string;
+  alt: string;
+}
+
+export const PROYECTOS_DATA: ProyectoItem[] = [
+  {
+    id: "vigilancia-risaralda",
+    titulo: "Vigilancia y mitigación de amenazas y riesgos en el municipio de Risaralda",
+    descripcion:
+      "Vigilancia y mitigación de amenazas y riesgos en el municipio de Risaralda, con despliegue de monitoreo sobre infraestructura de telecomunicaciones.",
+    imagen:
+      "https://vibe.filesafe.space/1790689453956353174/assets/1a6aea77-be1e-458d-aa3c-4ae83e2fc5da.png",
+    alt: "Técnicos trabajando en una torre de telecomunicaciones en Risaralda",
+  },
+  {
+    id: "chatbot-espy",
+    titulo: "Chatbot para la ESPY",
+    descripcion:
+      "Solución de atención automatizada para las necesidades de la entidad, mediante un asistente conversacional integrado.",
+    imagen:
+      "https://vibe.filesafe.space/1790689453956353174/assets/2f97bb56-1ff4-4480-bca9-686f0d3c2116.png",
+    alt: "Ilustración de un asistente virtual para la ESPY",
+  },
+  {
+    id: "automatizacion-agua-cali",
+    titulo: "Automatización de plantas de tratamiento de agua en Cali",
+    descripcion:
+      "Automatización, control e instalación de controladores y sensores de variables de agua integrados por telemetría, para mejorar el servicio de agua potable a la comunidad.",
+    imagen:
+      "https://vibe.filesafe.space/1790689453956353174/assets/ad8085cb-07e6-4591-b2df-757a45ef5cbd.png",
+    alt: "Planta industrial de tratamiento de agua en Cali",
+  },
+  {
+    id: "zonas-wifi-corregimientos",
+    titulo: "Zonas Wi-Fi gratis en parques principales de corregimientos a nivel nacional",
+    descripcion:
+      "Instalación y puesta en marcha del proyecto insignia de gobierno de internet para todos.",
+    imagen:
+      "https://vibe.filesafe.space/1790689453956353174/assets/93272a4c-e38b-405c-9909-020e4723858c.png",
+    alt: "Persona usando su celular en un parque con zona Wi-Fi gratis",
+  },
+  {
+    id: "nodos-telemetria-cali",
+    titulo: "Nodos de telemetría en Santiago de Cali",
+    descripcion:
+      "Instalación de sensores LoRaWAN para la automatización y gestión de la energía en luminarias de alumbrado público.",
+    imagen:
+      "https://vibe.filesafe.space/1790689453956353174/assets/61394b6f-242d-4577-9d11-52de82f6af69.png",
+    alt: "Alumbrado público nocturno en Santiago de Cali",
+  },
+  {
+    id: "centros-digitales-claro",
+    titulo: "Centros Digitales Claro",
+    descripcion: "Instalación de zonas Wi-Fi en escuelas de zonas rurales.",
+    imagen:
+      "https://vibe.filesafe.space/1790689453956353174/assets/ed66df52-8cb3-4397-b286-b2d51d2b280a.png",
+    alt: "Estudiantes con dispositivos en una escuela rural",
+  },
+];
