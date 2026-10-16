@@ -27,7 +27,7 @@ export function ScrollToTopButton() {
         "bg-[#F3CB35] text-slate-950 hover:bg-[#e2bb2d]",
         "w-12 h-12 sm:w-12 sm:h-12 max-[768px]:w-11 max-[768px]:h-11",
         "transition-all duration-300 ease-out",
-        "bottom-72",
+        "bottom-[24rem]",
         visible
           ? "opacity-100 translate-y-0 pointer-events-auto"
           : "opacity-0 translate-y-3 pointer-events-none",

@@ -11,6 +11,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+// Solo para mostrar: unifica saltos de línea, evita huecos grandes y quita saltos en los extremos.
+function formatBotText(text: string): string {
+  return text
+    .replace(/\r\n?/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 export function FloatingChatbot() {
   const [isOpen, setIsOpen] = useState(false);
   const [welcomeVisible, setWelcomeVisible] = useState(true);
@@ -25,6 +33,7 @@ export function FloatingChatbot() {
     },
   ]);
   const [nextMessageId, setNextMessageId] = useState(1);
+  const messageInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -45,6 +54,12 @@ export function FloatingChatbot() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [isLoading, messages]);
+
+  useEffect(() => {
+    if (isOpen && !isLoading && sessionId) {
+      messageInputRef.current?.focus();
+    }
+  }, [isOpen, isLoading, sessionId]);
 
   async function handleSendMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -121,7 +136,7 @@ export function FloatingChatbot() {
         <section
           aria-label="Chat con el asistente Telcobras"
           aria-modal="false"
-          className="fixed inset-x-3 bottom-20 top-16 z-50 flex flex-col overflow-hidden rounded-2xl bg-white text-slate-900 shadow-2xl shadow-slate-950/25 sm:inset-auto sm:bottom-[10.5rem] sm:right-5 sm:h-[min(600px,calc(100vh-12rem))] sm:w-[380px]"
+          className="fixed inset-x-3 bottom-16 top-12 z-50 flex flex-col overflow-hidden rounded-2xl bg-white text-slate-900 shadow-2xl shadow-slate-950/25 sm:inset-auto sm:bottom-36 sm:right-5 sm:h-[min(720px,calc(100vh-10rem))] sm:w-[380px]"
           role="dialog"
         >
           <header className="flex shrink-0 items-center justify-between bg-[#2491CC] px-5 py-4 text-white">
@@ -160,11 +175,11 @@ export function FloatingChatbot() {
                   <p
                     className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                       isBotMessage
-                        ? "rounded-bl-md bg-[#F3F4F6] text-slate-800"
+                        ? "whitespace-pre-line break-words rounded-bl-md bg-[#F3F4F6] text-slate-800"
                         : "rounded-br-md bg-[#2491CC] text-white"
                     }`}
                   >
-                    {message.text}
+                    {isBotMessage ? formatBotText(message.text) : message.text}
                   </p>
                 </div>
               );
@@ -198,6 +213,7 @@ export function FloatingChatbot() {
               name="message"
               onChange={(event) => setInput(event.currentTarget.value)}
               placeholder="Escribe tu mensaje..."
+              ref={messageInputRef}
               value={input}
               type="text"
             />
@@ -215,29 +231,26 @@ export function FloatingChatbot() {
 
       {welcomeVisible && !isOpen && (
         <div
-          className="fixed bottom-36 right-[7.5rem] z-50 flex w-[min(16rem,calc(100vw-9rem))] items-start gap-3 rounded-2xl border border-[#2491CC]/20 bg-white p-4 pr-9 text-slate-900 shadow-xl shadow-slate-950/15"
+          className="chatbot-invite-animation fixed bottom-[17rem] right-4 z-50 w-[min(12rem,calc(100vw-2rem))] rounded-2xl border border-[#2491CC]/25 bg-white/70 p-2.5 pr-8 text-slate-900 shadow-xl shadow-slate-950/15 backdrop-blur-sm"
           role="status"
         >
           <span
             aria-hidden="true"
-            className="absolute -right-1.5 bottom-4 h-3 w-3 rotate-45 border-r border-t border-[#2491CC]/20 bg-white"
+            className="absolute -bottom-1.5 right-10 h-3 w-3 rotate-45 border-b border-r border-[#2491CC]/25 bg-white/70"
           />
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#2491CC]/10 text-[#2491CC]">
-            <Bot aria-hidden="true" className="h-5 w-5" />
-          </span>
           <button
-            className="text-left"
+            className="block text-left"
             onClick={() => {
               setWelcomeVisible(false);
               setIsOpen(true);
             }}
             type="button"
           >
-            <span className="block text-sm font-extrabold">¡Hola! ¿Necesitas ayuda?</span>
-            <span className="mt-0.5 block text-xs leading-relaxed text-slate-600">
-              Estoy aquí para ayudarte con lo que necesites.
+            <span className="block text-xs font-extrabold">¡Hola! ¿Necesitas ayuda?</span>
+            <span className="mt-0.5 block text-[11px] leading-relaxed text-slate-600">
+              Estoy aquí para ayudarte.
             </span>
-            <span className="mt-2 inline-block text-xs font-extrabold text-[#0087C3]">
+            <span className="mt-1 inline-block text-[11px] font-extrabold text-[#0087C3]">
               Hablemos →
             </span>
           </button>
@@ -271,13 +284,13 @@ export function FloatingChatbot() {
         ) : (
           <span
             aria-hidden="true"
-            className="relative flex h-[124px] w-[112px] scale-[1.15] flex-col items-center justify-end motion-safe:animate-bounce [animation-duration:3s] drop-shadow-lg"
+            className="relative flex h-[124px] w-[112px] scale-[1.15] flex-col items-center justify-end animate-bounce [animation-duration:3s] drop-shadow-lg"
           >
             <span className="z-10 -mb-0.5 flex flex-col items-center">
               <span className="h-2 w-2 rounded-full bg-[#88BD4C] ring-2 ring-emerald-200/70 shadow-[0_0_8px_#88BD4C]" />
               <span className="h-2 w-0.5 bg-[#0087C3]" />
             </span>
-            <span className="relative z-10 flex h-8 w-10 items-center justify-center rounded-xl border-2 border-white bg-gradient-to-b from-[#0087C3] to-[#1a6f9c] shadow-md">
+            <span className="chatbot-robot-vibrate relative z-10 flex h-8 w-10 items-center justify-center rounded-xl border-2 border-white bg-gradient-to-b from-[#0087C3] to-[#1a6f9c] shadow-md">
               <span className="absolute -left-1 top-2 h-3 w-1 rounded-l-sm bg-[#88BD4C]" />
               <span className="absolute -right-1 top-2 h-3 w-1 rounded-r-sm bg-[#88BD4C]" />
               <span className="flex h-5 w-8 flex-col items-center justify-center rounded-md bg-[#0A192F]">

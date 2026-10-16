@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { CALI_PHOTO, LOGO_URL, CONTACT } from "@/lib/telcobras-data";
 import {
@@ -10,44 +10,227 @@ import {
   Building2,
   Briefcase,
   CheckCircle2,
+  ChevronDown,
   Navigation,
+  Loader2,
+  ShieldAlert,
 } from "lucide-react";
 import { Facebook, Instagram, Linkedin } from "lucide-react";
+import { BrandGlowBorder } from "./BrandGlowBorder";
+
+const INITIAL_FORM_DATA = {
+  nombre: "",
+  empresa: "",
+  cargo: "",
+  correo: "",
+  telefono: "",
+  servicio: "Conectividad (Fibra & Radioenlace)",
+  mensaje: "",
+  consentimiento: false,
+};
 
 export function ContactAndFooter() {
-  const [formData, setFormData] = useState({
-    nombre: "",
-    empresa: "",
-    cargo: "",
-    correo: "",
-    telefono: "",
-    servicio: "Conectividad (Fibra & Radioenlace)",
-    mensaje: "",
-  });
+  const [formData, setFormData] = useState(INITIAL_FORM_DATA);
 
   const [formSubmitted, setFormSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Cada intento de envío sin autorización incrementa el contador: sirve de
+  // `key` para reiniciar la animación de alerta aunque ya esté visible.
+  const [consentAttempts, setConsentAttempts] = useState(0);
+  const consentCheckboxRef = useRef<HTMLInputElement>(null);
+  const showConsentAlert = consentAttempts > 0 && !formData.consentimiento;
+
+  // Tras un intento fallido, lleva la casilla al centro de la pantalla y le da
+  // foco (después del render, porque el `key` remonta el input).
+  useEffect(() => {
+    if (consentAttempts === 0) return;
+    const checkbox = consentCheckboxRef.current;
+    if (!checkbox) return;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    checkbox.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
+    checkbox.focus({ preventScroll: true });
+  }, [consentAttempts]);
+
+  // Solo decorativo: pausa la animación de la red de fondo cuando la sección sale
+  // del viewport. Arranca visible y solo se pausa cuando el observer lo confirma
+  // (mismo criterio que WhyUsSection; SSR seguro, sin depender de window).
+  const sectionRef = useRef<HTMLElement>(null);
+  const [isInView, setIsInView] = useState(true);
+
+  useEffect(() => {
+    const section = sectionRef.current;
+    if (!section || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry) setIsInView(entry.isIntersecting);
+      },
+      { rootMargin: "120px 0px" },
+    );
+    observer.observe(section);
+    return () => observer.disconnect();
+  }, []);
+
+  const labelClass = "mb-2 block text-sm font-semibold text-slate-200";
+  const fieldIconClass =
+    "pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-[#0087C3]";
+  const fieldClass =
+    "h-12 w-full rounded-xl border border-white/15 bg-white/5 pl-10 pr-3 text-sm text-white placeholder:text-slate-400 transition-colors focus:border-[#0087C3] focus:bg-white/10 focus:outline-none focus:ring-2 focus:ring-[#0087C3]/70 focus:shadow-[0_0_0_4px_rgba(0,135,195,0.18)]";
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     if (!formData.nombre || !formData.correo || !formData.telefono) {
       toast.error("Por favor completa los campos obligatorios.");
       return;
     }
-    setFormSubmitted(true);
-    toast.success(
-      "¡Gracias! Tu solicitud ha sido enviada con éxito. Un consultor se comunicará en menos de 24 horas.",
-    );
+    if (!formData.consentimiento) {
+      setConsentAttempts((n) => n + 1);
+      toast.warning("¡Casi listo! Falta un paso", {
+        description:
+          "Marca la casilla de autorización de tratamiento de datos para enviar tu solicitud.",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch("/api/contacto", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) {
+        throw new Error(`El servidor respondió con estado ${response.status}.`);
+      }
+
+      setFormData(INITIAL_FORM_DATA);
+      setConsentAttempts(0);
+      setFormSubmitted(true);
+      toast.success(
+        "¡Gracias! Tu solicitud ha sido enviada con éxito. Un consultor se comunicará en menos de 24 horas.",
+      );
+    } catch (error) {
+      console.error("Falló el envío de la solicitud de contacto.", error);
+      toast.error(
+        `No pudimos enviar tu solicitud. Intenta de nuevo o escríbenos a ${CONTACT.emailDisplay} o por WhatsApp.`,
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <>
       {/* 9. CONTACTO Y FORMULARIO */}
       <section
+        ref={sectionRef}
         id="contacto"
+        data-animations-paused={!isInView}
         className="py-20 md:py-28 bg-slate-900 text-white relative overflow-hidden"
       >
         <div className="absolute inset-0 z-0 opacity-15">
           <img src={CALI_PHOTO} alt="Sede TELCOBRAS Cali" className="w-full h-full object-cover" />
+        </div>
+
+        {/* Red decorativa de fondo: nodos y enlaces de marca con pulso lento. */}
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0">
+          <svg
+            aria-hidden="true"
+            focusable="false"
+            viewBox="0 0 1200 800"
+            preserveAspectRatio="xMidYMid slice"
+            className="h-full w-full opacity-60"
+          >
+            <defs>
+              <linearGradient id="contact-network-line" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#0087C3" stopOpacity="0.55" />
+                <stop offset="55%" stopColor="#88BD4C" stopOpacity="0.45" />
+                <stop offset="100%" stopColor="#F3CB35" stopOpacity="0.4" />
+              </linearGradient>
+            </defs>
+            <g stroke="url(#contact-network-line)" strokeWidth="1.25" fill="none">
+              <path d="M120 140 L360 90 L600 170 L900 110 L1080 260" />
+              <path d="M120 140 L200 520 L520 600 L860 540 L1120 640" />
+              <path d="M360 90 L200 520" />
+              <path d="M600 170 L520 600" />
+              <path d="M900 110 L860 540" />
+              <path d="M1080 260 L1120 640" />
+              <path d="M600 170 L700 360 L900 110" />
+            </g>
+            <g
+              className="network-flow"
+              stroke="#ffffff"
+              strokeOpacity="0.5"
+              strokeWidth="2"
+              strokeLinecap="round"
+              fill="none"
+            >
+              <path pathLength={100} d="M120 140 L360 90 L600 170 L900 110 L1080 260" />
+              <path
+                pathLength={100}
+                className="network-flow--delayed"
+                d="M200 520 L520 600 L860 540 L1120 640"
+              />
+            </g>
+            <g fill="#0087C3">
+              <circle className="contact-node-pulse" cx="360" cy="90" r="4" />
+              <circle
+                className="contact-node-pulse"
+                cx="900"
+                cy="110"
+                r="4"
+                style={{ animationDelay: "1.2s" }}
+              />
+              <circle
+                className="contact-node-pulse"
+                cx="520"
+                cy="600"
+                r="4"
+                style={{ animationDelay: "2.4s" }}
+              />
+              <circle
+                className="contact-node-pulse"
+                cx="1120"
+                cy="640"
+                r="4"
+                style={{ animationDelay: "3.6s" }}
+              />
+            </g>
+            <g fill="#88BD4C">
+              <circle
+                className="contact-node-pulse"
+                cx="600"
+                cy="170"
+                r="3.5"
+                style={{ animationDelay: "0.6s" }}
+              />
+              <circle
+                className="contact-node-pulse"
+                cx="200"
+                cy="520"
+                r="3.5"
+                style={{ animationDelay: "1.8s" }}
+              />
+              <circle
+                className="contact-node-pulse"
+                cx="860"
+                cy="540"
+                r="3.5"
+                style={{ animationDelay: "3s" }}
+              />
+            </g>
+            <g fill="#F3CB35">
+              <circle
+                className="contact-node-pulse"
+                cx="1080"
+                cy="260"
+                r="3.5"
+                style={{ animationDelay: "2s" }}
+              />
+            </g>
+          </svg>
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
@@ -59,7 +242,10 @@ export function ContactAndFooter() {
                   Atención Inmediata B2B
                 </span>
                 <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight mt-3">
-                  Hablemos de las necesidades tecnológicas de tu empresa
+                  Hablemos de las necesidades{" "}
+                  <span className="bg-gradient-to-r from-[#0087C3] via-[#88BD4C] to-[#F3CB35] bg-clip-text text-transparent">
+                    tecnológicas de tu empresa
+                  </span>
                 </h2>
                 <p className="text-slate-300 text-sm sm:text-base mt-3 leading-relaxed">
                   Completa el formulario y un asesor técnico especializado se pondrá en contacto
@@ -68,45 +254,48 @@ export function ContactAndFooter() {
               </div>
 
               <div className="space-y-4">
-                <div className="flex items-start gap-4 p-4 rounded-2xl bg-white/5 border border-white/10">
-                  <div className="p-3 rounded-xl bg-[#0087C3] text-white">
-                    <Phone className="w-5 h-5" />
+                <div className="brand-glow-hover relative flex items-start gap-4 rounded-2xl border border-white/10 bg-white/5 p-4 transition-colors hover:border-white/20 focus-within:border-white/20">
+                  <BrandGlowBorder light={false} />
+                  <div className="relative p-3 rounded-xl bg-[#0087C3] text-white shadow-lg shadow-[#0087C3]/30">
+                    <Phone aria-hidden="true" className="w-5 h-5" />
                   </div>
-                  <div>
+                  <div className="relative">
                     <p className="text-xs font-bold text-slate-400 uppercase">
                       Línea de Atención Comercial
                     </p>
                     <a
                       href={CONTACT.phoneHref}
-                      className="text-base font-bold text-white hover:text-[#88BD4C] transition-colors"
+                      className="rounded text-base font-bold text-white transition-colors hover:text-[#88BD4C] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#88BD4C] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A192F]"
                     >
                       {CONTACT.phoneDisplay}
                     </a>
                   </div>
                 </div>
 
-                <div className="flex items-start gap-4 p-4 rounded-2xl bg-white/5 border border-white/10">
-                  <div className="p-3 rounded-xl bg-[#88BD4C] text-slate-950">
-                    <Mail className="w-5 h-5" />
+                <div className="brand-glow-hover relative flex items-start gap-4 rounded-2xl border border-white/10 bg-white/5 p-4 transition-colors hover:border-white/20 focus-within:border-white/20">
+                  <BrandGlowBorder light={false} />
+                  <div className="relative p-3 rounded-xl bg-[#88BD4C] text-slate-950 shadow-lg shadow-[#88BD4C]/30">
+                    <Mail aria-hidden="true" className="w-5 h-5" />
                   </div>
-                  <div>
+                  <div className="relative">
                     <p className="text-xs font-bold text-slate-400 uppercase">
                       Correo Electrónico Directo
                     </p>
                     <a
                       href={CONTACT.emailHref}
-                      className="text-base font-bold text-white hover:text-[#88BD4C] transition-colors"
+                      className="rounded text-base font-bold text-white transition-colors hover:text-[#88BD4C] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#88BD4C] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A192F]"
                     >
                       {CONTACT.emailDisplay}
                     </a>
                   </div>
                 </div>
 
-                <div className="flex items-start gap-4 p-4 rounded-2xl bg-white/5 border border-white/10">
-                  <div className="p-3 rounded-xl bg-[#F3CB35] text-slate-950">
-                    <MapPin className="w-5 h-5" />
+                <div className="brand-glow-hover relative flex items-start gap-4 rounded-2xl border border-white/10 bg-white/5 p-4 transition-colors hover:border-white/20">
+                  <BrandGlowBorder light={false} />
+                  <div className="relative p-3 rounded-xl bg-[#F3CB35] text-slate-950 shadow-lg shadow-[#F3CB35]/30">
+                    <MapPin aria-hidden="true" className="w-5 h-5" />
                   </div>
-                  <div>
+                  <div className="relative">
                     <p className="text-xs font-bold text-slate-400 uppercase">
                       Sede Principal Corporativa
                     </p>
@@ -125,27 +314,27 @@ export function ContactAndFooter() {
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label="Facebook"
-                    className="p-2.5 rounded-xl bg-white/10 border border-white/15 text-white hover:bg-[#0087C3] hover:border-[#0087C3] transition-colors"
+                    className="rounded-xl border border-white/15 bg-white/10 p-2.5 text-white transition-all hover:border-[#0087C3] hover:bg-[#0087C3] hover:shadow-lg hover:shadow-[#0087C3]/30 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#0087C3]/40 motion-safe:hover:-translate-y-0.5"
                   >
-                    <Facebook className="w-5 h-5" />
+                    <Facebook aria-hidden="true" className="w-5 h-5" />
                   </a>
                   <a
                     href="https://www.instagram.com/"
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label="Instagram"
-                    className="p-2.5 rounded-xl bg-white/10 border border-white/15 text-white hover:bg-[#0087C3] hover:border-[#0087C3] transition-colors"
+                    className="rounded-xl border border-white/15 bg-white/10 p-2.5 text-white transition-all hover:border-[#0087C3] hover:bg-[#0087C3] hover:shadow-lg hover:shadow-[#0087C3]/30 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#0087C3]/40 motion-safe:hover:-translate-y-0.5"
                   >
-                    <Instagram className="w-5 h-5" />
+                    <Instagram aria-hidden="true" className="w-5 h-5" />
                   </a>
                   <a
                     href="https://www.linkedin.com/"
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label="LinkedIn"
-                    className="p-2.5 rounded-xl bg-white/10 border border-white/15 text-white hover:bg-[#0087C3] hover:border-[#0087C3] transition-colors"
+                    className="rounded-xl border border-white/15 bg-white/10 p-2.5 text-white transition-all hover:border-[#0087C3] hover:bg-[#0087C3] hover:shadow-lg hover:shadow-[#0087C3]/30 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#0087C3]/40 motion-safe:hover:-translate-y-0.5"
                   >
-                    <Linkedin className="w-5 h-5" />
+                    <Linkedin aria-hidden="true" className="w-5 h-5" />
                   </a>
                 </div>
               </div>
@@ -153,14 +342,15 @@ export function ContactAndFooter() {
 
             {/* Form */}
             <div className="lg:col-span-7">
-              <div className="bg-white text-slate-900 rounded-3xl p-6 sm:p-10 shadow-2xl border border-slate-100">
+              <div className="brand-glow-always relative rounded-3xl border border-white/10 bg-[#0A192F]/60 p-6 text-white shadow-2xl shadow-black/40 backdrop-blur-xl sm:p-10">
+                <BrandGlowBorder light={false} />
                 {formSubmitted ? (
-                  <div className="text-center py-12 space-y-4">
-                    <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
-                      <CheckCircle2 className="w-10 h-10" />
+                  <div className="relative text-center py-12 space-y-4">
+                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-emerald-400/40 bg-emerald-500/15 text-emerald-300">
+                      <CheckCircle2 aria-hidden="true" className="w-10 h-10" />
                     </div>
-                    <h3 className="text-2xl font-black text-slate-900">¡Solicitud Recibida!</h3>
-                    <p className="text-slate-600 text-sm max-w-md mx-auto">
+                    <h3 className="text-2xl font-black text-white">¡Solicitud Recibida!</h3>
+                    <p className="mx-auto max-w-md text-sm text-slate-300">
                       Hemos asignado tu requerimiento a nuestro equipo de ingeniería comercial. Te
                       contactaremos al teléfono indicado o a tu correo corporativo en menos de 24
                       horas.
@@ -168,50 +358,48 @@ export function ContactAndFooter() {
                     <button
                       type="button"
                       onClick={() => setFormSubmitted(false)}
-                      className="px-6 py-2.5 rounded-full text-xs font-bold text-white bg-[#0087C3]"
+                      className="rounded-full bg-gradient-to-r from-[#0087C3] to-[#88BD4C] px-6 py-2.5 text-xs font-extrabold text-[#04121f] shadow-lg shadow-[#0087C3]/25 transition-all hover:brightness-110 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#0087C3]/40"
                     >
                       Enviar otra consulta
                     </button>
                   </div>
                 ) : (
-                  <form onSubmit={handleSubmit} className="space-y-4">
-                    <h3 className="text-xl sm:text-2xl font-black text-slate-900 mb-1">
-                      Solicitud de Cotización o Diagnóstico
-                    </h3>
-                    <p className="text-xs sm:text-sm text-slate-500 mb-4">
-                      Ingresa tus datos corporativos para entregarte una propuesta a la medida.
-                    </p>
+                  <form onSubmit={handleSubmit} className="relative space-y-5">
+                    <div>
+                      <h3 className="text-xl font-black text-white sm:text-2xl">
+                        Solicitud de Cotización o Diagnóstico
+                      </h3>
+                      <p className="mt-1 text-xs text-slate-300 sm:text-sm">
+                        Ingresa tus datos corporativos para entregarte una propuesta a la medida.
+                      </p>
+                    </div>
 
                     <div className="grid sm:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">
-                          Nombre Completo *
-                        </label>
-                        <div className="relative">
-                          <User className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                        <label className={labelClass}>Nombre Completo *</label>
+                        <div className="group relative">
+                          <User aria-hidden="true" className={fieldIconClass} />
                           <input
                             type="text"
                             required
                             placeholder="Ej. Carlos Mendoza"
                             value={formData.nombre}
                             onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                            className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#0087C3]"
+                            className={fieldClass}
                           />
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">
-                          Nombre de la Empresa
-                        </label>
-                        <div className="relative">
-                          <Building2 className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                        <label className={labelClass}>Nombre de la Empresa</label>
+                        <div className="group relative">
+                          <Building2 aria-hidden="true" className={fieldIconClass} />
                           <input
                             type="text"
                             placeholder="Ej. Grupo Industrial S.A."
                             value={formData.empresa}
                             onChange={(e) => setFormData({ ...formData, empresa: e.target.value })}
-                            className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#0087C3]"
+                            className={fieldClass}
                           />
                         </div>
                       </div>
@@ -219,34 +407,30 @@ export function ContactAndFooter() {
 
                     <div className="grid sm:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">
-                          Cargo en la empresa
-                        </label>
-                        <div className="relative">
-                          <Briefcase className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                        <label className={labelClass}>Cargo en la empresa</label>
+                        <div className="group relative">
+                          <Briefcase aria-hidden="true" className={fieldIconClass} />
                           <input
                             type="text"
                             placeholder="Ej. Director de TI / Gerente Operaciones"
                             value={formData.cargo}
                             onChange={(e) => setFormData({ ...formData, cargo: e.target.value })}
-                            className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#0087C3]"
+                            className={fieldClass}
                           />
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">
-                          Correo Electrónico *
-                        </label>
-                        <div className="relative">
-                          <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                        <label className={labelClass}>Correo Electrónico *</label>
+                        <div className="group relative">
+                          <Mail aria-hidden="true" className={fieldIconClass} />
                           <input
                             type="email"
                             required
                             placeholder="carlos@tuempresa.com"
                             value={formData.correo}
                             onChange={(e) => setFormData({ ...formData, correo: e.target.value })}
-                            className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#0087C3]"
+                            className={fieldClass}
                           />
                         </div>
                       </div>
@@ -254,61 +438,141 @@ export function ContactAndFooter() {
 
                     <div className="grid sm:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">
-                          Teléfono / WhatsApp *
-                        </label>
-                        <div className="relative">
-                          <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                        <label className={labelClass}>Teléfono / WhatsApp *</label>
+                        <div className="group relative">
+                          <Phone aria-hidden="true" className={fieldIconClass} />
                           <input
                             type="tel"
                             required
                             placeholder="+57 300 000 0000"
                             value={formData.telefono}
                             onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
-                            className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#0087C3]"
+                            className={fieldClass}
                           />
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">
-                          Servicio de Interés
-                        </label>
-                        <select
-                          value={formData.servicio}
-                          onChange={(e) => setFormData({ ...formData, servicio: e.target.value })}
-                          className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#0087C3]"
-                        >
-                          <option>Conectividad (Fibra & Radioenlace)</option>
-                          <option>Seguridad Sincronizada & Ciberdefensa</option>
-                          <option>Colaboración & Trabajo Híbrido</option>
-                          <option>Nube Híbrida & Almacenamiento</option>
-                          <option>Inteligencia Artificial integrada</option>
-                          <option>Agentes con Inteligencia Artificial</option>
-                          <option>Solución Integral a la Medida</option>
-                        </select>
+                        <label className={labelClass}>Servicio de Interés</label>
+                        <div className="relative">
+                          <select
+                            value={formData.servicio}
+                            onChange={(e) => setFormData({ ...formData, servicio: e.target.value })}
+                            className="h-12 w-full appearance-none rounded-xl border border-white/15 bg-white/5 pl-3 pr-10 text-sm text-white transition-colors focus:border-[#0087C3] focus:bg-white/10 focus:outline-none focus:ring-2 focus:ring-[#0087C3]/70 focus:shadow-[0_0_0_4px_rgba(0,135,195,0.18)] [&>option]:bg-[#0A192F] [&>option]:text-white"
+                          >
+                            <option>Conectividad (Fibra & Radioenlace)</option>
+                            <option>Seguridad Sincronizada & Ciberdefensa</option>
+                            <option>Colaboración & Trabajo Híbrido</option>
+                            <option>Nube Híbrida & Almacenamiento</option>
+                            <option>Inteligencia Artificial integrada</option>
+                            <option>Agentes con Inteligencia Artificial</option>
+                            <option>Solución Integral a la Medida</option>
+                          </select>
+                          <ChevronDown
+                            aria-hidden="true"
+                            className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                          />
+                        </div>
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
-                        Detalles de tu requerimiento
-                      </label>
+                      <label className={labelClass}>Detalles de tu requerimiento</label>
                       <textarea
                         rows={3}
                         placeholder="Cuéntanos brevemente la ubicación, sedes o necesidades técnicas de tu empresa..."
                         value={formData.mensaje}
                         onChange={(e) => setFormData({ ...formData, mensaje: e.target.value })}
-                        className="w-full p-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#0087C3]"
+                        className="min-h-[96px] w-full rounded-xl border border-white/15 bg-white/5 p-3.5 text-sm text-white placeholder:text-slate-400 transition-colors focus:border-[#0087C3] focus:bg-white/10 focus:outline-none focus:ring-2 focus:ring-[#0087C3]/70 focus:shadow-[0_0_0_4px_rgba(0,135,195,0.18)]"
                       />
+                    </div>
+
+                    <div>
+                      <label
+                        key={consentAttempts}
+                        className={`relative flex cursor-pointer items-start gap-3 rounded-xl border p-3 text-xs leading-relaxed transition-colors duration-300 ${
+                          showConsentAlert
+                            ? "consent-alert border-[#F3CB35] bg-[#F3CB35]/10 text-white"
+                            : formData.consentimiento && consentAttempts > 0
+                              ? "border-[#88BD4C]/60 bg-[#88BD4C]/10 text-slate-200"
+                              : "border-transparent text-slate-300"
+                        }`}
+                      >
+                        {showConsentAlert && (
+                          <span
+                            aria-hidden="true"
+                            className="consent-pointer absolute -top-3 left-1 rounded-full bg-[#F3CB35] px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-[#04121f] shadow-lg shadow-[#F3CB35]/40"
+                          >
+                            Marca aquí ↓
+                          </span>
+                        )}
+                        <input
+                          ref={consentCheckboxRef}
+                          type="checkbox"
+                          checked={formData.consentimiento}
+                          aria-invalid={showConsentAlert}
+                          aria-describedby={showConsentAlert ? "consent-message" : undefined}
+                          onChange={(e) =>
+                            setFormData({ ...formData, consentimiento: e.target.checked })
+                          }
+                          className={`mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-white/30 bg-white/5 accent-[#88BD4C] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0087C3]/70 ${
+                            showConsentAlert ? "ring-2 ring-[#F3CB35] ring-offset-2 ring-offset-[#0A192F]" : ""
+                          }`}
+                        />
+                        <span>
+                          Autorizo el tratamiento de mis datos personales conforme a la política de
+                          privacidad de TELCOBRAS S.A.S. *
+                        </span>
+                      </label>
+
+                      {showConsentAlert ? (
+                        <p
+                          id="consent-message"
+                          role="alert"
+                          className="consent-message mt-2 flex items-start gap-2 text-xs font-semibold text-[#F3CB35]"
+                        >
+                          <ShieldAlert aria-hidden="true" className="mt-px h-4 w-4 shrink-0" />
+                          <span>
+                            Para proteger tu información necesitamos tu autorización. Marca la
+                            casilla y vuelve a enviar: ¡estás a un clic de tu cotización!
+                          </span>
+                        </p>
+                      ) : (
+                        formData.consentimiento &&
+                        consentAttempts > 0 && (
+                          <p
+                            role="status"
+                            className="consent-message mt-2 flex items-center gap-2 text-xs font-semibold text-[#88BD4C]"
+                          >
+                            <CheckCircle2 aria-hidden="true" className="h-4 w-4 shrink-0" />
+                            ¡Perfecto! Ya puedes enviar tu solicitud.
+                          </p>
+                        )
+                      )}
                     </div>
 
                     <button
                       type="submit"
-                      className="w-full py-4 rounded-xl text-sm font-extrabold text-white bg-[#0087C3] hover:bg-[#006BA4] shadow-lg shadow-sky-500/20 transition-all flex items-center justify-center gap-2"
+                      disabled={isSubmitting}
+                      className="group flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#0087C3] via-[#39a86f] to-[#88BD4C] text-sm font-extrabold text-[#04121f] shadow-lg shadow-[#0087C3]/25 transition-all hover:brightness-110 hover:shadow-xl hover:shadow-[#88BD4C]/25 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#0087C3]/40 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      <Send className="w-4 h-4" />
-                      Enviar Solicitud de Cotización
+                      {isSubmitting ? (
+                        <>
+                          <Loader2
+                            aria-hidden="true"
+                            className="w-4 h-4 motion-safe:animate-spin"
+                          />
+                          Enviando...
+                        </>
+                      ) : (
+                        <>
+                          <Send
+                            aria-hidden="true"
+                            className="w-4 h-4 transition-transform duration-300 motion-safe:group-hover:translate-x-1"
+                          />
+                          Enviar Solicitud de Cotización
+                        </>
+                      )}
                     </button>
                   </form>
                 )}
@@ -320,12 +584,68 @@ export function ContactAndFooter() {
 
       {/* ¿DÓNDE ESTAMOS? */}
       <section id="ubicacion" className="py-20 md:py-28 bg-white relative overflow-hidden">
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+          <svg
+            focusable="false"
+            viewBox="0 0 1440 760"
+            preserveAspectRatio="xMidYMid slice"
+            className="h-full w-full"
+          >
+            <defs>
+              <linearGradient id="location-network-line" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#0087C3" stopOpacity="0.12" />
+                <stop offset="55%" stopColor="#88BD4C" stopOpacity="0.16" />
+                <stop offset="100%" stopColor="#0087C3" stopOpacity="0.1" />
+              </linearGradient>
+              <radialGradient id="location-node-glow">
+                <stop offset="0%" stopColor="#0087C3" stopOpacity="0.2" />
+                <stop offset="100%" stopColor="#0087C3" stopOpacity="0" />
+              </radialGradient>
+            </defs>
+            <g
+              fill="none"
+              stroke="url(#location-network-line)"
+              strokeWidth="1.5"
+              strokeDasharray="3 8"
+            >
+              <path d="M-40 180 180 110 370 230 570 130 760 220 980 110 1190 210 1480 100" />
+              <path d="M-30 610 180 500 370 620 570 500 760 610 980 490 1190 610 1470 480" />
+              <path d="M180 110 180 500M370 230 370 620M570 130 570 500M760 220 760 610M980 110 980 490M1190 210 1190 610" />
+              <path d="M370 230 570 500 760 220 980 490 1190 210" />
+            </g>
+            <g fill="url(#location-node-glow)">
+              <circle cx="180" cy="110" r="34" />
+              <circle cx="570" cy="130" r="34" />
+              <circle cx="980" cy="110" r="34" />
+              <circle cx="370" cy="620" r="34" />
+              <circle cx="760" cy="610" r="34" />
+              <circle cx="1190" cy="610" r="34" />
+            </g>
+            <g fill="#0087C3" opacity="0.48">
+              <circle className="contact-node-pulse" cx="180" cy="110" r="3" />
+              <circle className="contact-node-pulse" cx="570" cy="130" r="3" />
+              <circle className="contact-node-pulse" cx="980" cy="110" r="3" />
+              <circle className="contact-node-pulse" cx="370" cy="620" r="3" />
+              <circle className="contact-node-pulse" cx="760" cy="610" r="3" />
+              <circle className="contact-node-pulse" cx="1190" cy="610" r="3" />
+            </g>
+            <g fill="white" stroke="#88BD4C" strokeOpacity="0.45" strokeWidth="1.5">
+              <circle cx="370" cy="230" r="4" />
+              <circle cx="760" cy="220" r="4" />
+              <circle cx="1190" cy="210" r="4" />
+              <circle cx="180" cy="500" r="4" />
+              <circle cx="570" cy="500" r="4" />
+              <circle cx="980" cy="490" r="4" />
+            </g>
+          </svg>
+        </div>
+
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center mb-10 space-y-3">
             <span className="inline-flex px-3 py-1 rounded-full bg-[#0087C3]/10 text-[#0087C3] text-xs font-extrabold uppercase tracking-wider">
               Encuéntranos
             </span>
-            <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
+            <h2 className="bg-gradient-to-r from-[#0087C3] via-[#88BD4C] to-[#F3CB35] bg-clip-text text-3xl sm:text-4xl font-black text-transparent tracking-tight">
               ¿Dónde estamos?
             </h2>
             <p className="text-slate-600 text-sm sm:text-base max-w-xl mx-auto">

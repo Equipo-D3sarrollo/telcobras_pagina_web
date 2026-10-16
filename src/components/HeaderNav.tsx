@@ -17,16 +17,16 @@ export function HeaderNav() {
   ];
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/95 shadow-[0_8px_30px_-20px_rgba(10,25,47,0.45)] backdrop-blur-xl">
-      <div className="bg-[#0A192F] px-4 text-slate-300 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-50 shadow-[0_8px_30px_-20px_rgba(10,25,47,0.45)]">
+      <div className="header-topbar px-4 text-slate-300 sm:px-6 lg:px-8">
         <div className="mx-auto flex min-h-10 max-w-7xl flex-wrap items-center justify-between gap-x-6 gap-y-1 py-2 text-[11px] sm:text-xs">
           <div className="flex min-w-0 items-center gap-x-5 gap-y-1">
             <span className="hidden items-center gap-2 text-slate-200 sm:flex">
-              <MapPin className="h-3.5 w-3.5 shrink-0 text-[#88BD4C]" />
+              <MapPin className="header-topbar-icon h-3.5 w-3.5 shrink-0 text-[#88BD4C]" />
               Carrera 83A # 20 - 20, Cali, Colombia
             </span>
             <span className="flex items-center gap-2 text-slate-200">
-              <Clock className="h-3.5 w-3.5 shrink-0 text-[#F3CB35]" />
+              <Clock className="header-topbar-icon h-3.5 w-3.5 shrink-0 text-[#F3CB35]" />
               <span className="hidden sm:inline">Soporte Técnico</span> 24/7
               <span className="hidden md:inline">| NOC Especializado</span>
             </span>
@@ -36,21 +36,21 @@ export function HeaderNav() {
               href={CONTACT.phoneHref}
               className="flex items-center gap-2 whitespace-nowrap transition-colors hover:text-white"
             >
-              <Phone className="h-3.5 w-3.5 text-[#2491CC]" />
+              <Phone className="header-topbar-icon h-3.5 w-3.5 text-[#2491CC]" />
               {CONTACT.phoneDisplay}
             </a>
             <a
               href={CONTACT.emailHref}
               className="hidden items-center gap-2 whitespace-nowrap transition-colors hover:text-white sm:flex"
             >
-              <Mail className="h-3.5 w-3.5 text-[#2491CC]" />
+              <Mail className="header-topbar-icon h-3.5 w-3.5 text-[#2491CC]" />
               {CONTACT.emailDisplay}
             </a>
           </div>
         </div>
       </div>
 
-      <div className="bg-white">
+      <div className="header-glass">
         <div className="mx-auto flex h-[76px] max-w-7xl items-center justify-between gap-4 px-4 sm:h-20 sm:px-6 lg:px-8">
           <a href="#inicio" className="flex items-center shrink-0 pr-4">
             <img
@@ -62,13 +62,13 @@ export function HeaderNav() {
 
           <nav
             aria-label="Navegación principal"
-            className="hidden items-center gap-1 bg-white p-1 xl:flex"
+            className="hidden items-center gap-0.5 p-1 xl:flex"
           >
             {navLinks.map((link) => (
               <a
                 key={link.name}
                 href={link.href}
-                className="whitespace-nowrap rounded-xl px-2.5 py-2 text-[11px] font-black text-black transition-all hover:bg-[#88BD4C] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#0A192F] xl:px-2.5 2xl:px-3 2xl:text-xs"
+                className="header-nav-link whitespace-nowrap rounded-lg px-2 py-2.5 text-[14px] font-semibold text-[#0A192F] transition-colors duration-300 hover:text-[#0A5F8F] focus-visible:text-[#0A5F8F] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#0A5F8F]"
               >
                 {link.name}
               </a>
@@ -78,17 +78,17 @@ export function HeaderNav() {
           <div className="hidden shrink-0 pl-1 xl:flex">
             <a
               href="#contacto"
-              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full bg-[#2491CC] px-4 py-2.5 text-sm font-extrabold text-white shadow-md shadow-[#2491CC]/25 transition-all hover:-translate-y-0.5 hover:bg-[#42A9DC] hover:text-white hover:shadow-lg"
+              className="header-cta group inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full px-4 py-2.5 text-sm font-extrabold text-white hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0A192F]"
             >
               Solicita una cotización
-              <ArrowRight className="h-4 w-4" />
+              <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1 group-focus-visible:translate-x-1 motion-reduce:transform-none" />
             </a>
           </div>
 
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="rounded-xl p-2.5 text-black transition-colors hover:bg-[#88BD4C] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0A192F] xl:hidden"
+            className="rounded-xl p-2.5 text-[#0A192F] transition-colors hover:bg-[#0087C3]/10 hover:text-[#0A5F8F] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0A5F8F] xl:hidden"
             aria-expanded={mobileMenuOpen}
             aria-controls="mobile-navigation"
             aria-label={mobileMenuOpen ? "Cerrar menú" : "Abrir menú"}
@@ -100,7 +100,7 @@ export function HeaderNav() {
 
       {mobileMenuOpen && (
         <div
-          className="absolute inset-x-0 top-full bg-white px-4 pb-6 pt-3 shadow-xl shadow-slate-900/10 xl:hidden"
+          className="header-glass-panel absolute inset-x-0 top-full px-4 pb-6 pt-3 shadow-xl shadow-slate-900/10 xl:hidden"
           id="mobile-navigation"
         >
           <nav aria-label="Navegación móvil" className="mx-auto max-w-7xl space-y-1">
@@ -109,7 +109,7 @@ export function HeaderNav() {
                 key={link.name}
                 href={link.href}
                 onClick={() => setMobileMenuOpen(false)}
-                className="block rounded-xl px-4 py-3.5 text-base font-extrabold text-black transition-colors hover:bg-[#88BD4C] hover:text-white"
+                className="header-nav-link header-nav-link--block block rounded-xl px-4 py-3.5 text-base font-semibold text-[#0A192F] transition-colors duration-300 hover:text-[#0A5F8F] focus-visible:text-[#0A5F8F] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#0A5F8F]"
               >
                 {link.name}
               </a>
@@ -118,10 +118,10 @@ export function HeaderNav() {
               <a
                 href="#contacto"
                 onClick={() => setMobileMenuOpen(false)}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#2491CC] px-5 py-3.5 text-base font-extrabold text-white shadow-md shadow-[#2491CC]/25 transition-colors hover:bg-[#42A9DC] hover:text-white"
+                className="header-cta group inline-flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3.5 text-base font-extrabold text-white hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0A192F]"
               >
                 Solicita una cotización
-                <ArrowRight className="h-4 w-4" />
+                <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1 group-focus-visible:translate-x-1 motion-reduce:transform-none" />
               </a>
             </div>
           </nav>

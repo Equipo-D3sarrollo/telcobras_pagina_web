@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   ArrowRight,
   ChevronDown,
@@ -9,11 +9,56 @@ import {
   RadioTower,
 } from "lucide-react";
 import { CALI_PHOTO, HERO_PHOTO, TECHNICIAN_PHOTO } from "@/lib/telcobras-data";
+import { useRotatingHighlight } from "@/hooks/use-rotating-highlight";
+import { BrandGlowBorder } from "./BrandGlowBorder";
 
 const HERO_SLIDES = [HERO_PHOTO, TECHNICIAN_PHOTO, CALI_PHOTO];
+const METRICS_COUNT = 4;
+const METRIC_HIGHLIGHT_MS = 3000;
+
+interface MetricCardProps {
+  index: number;
+  activeIndex: number;
+  onHoverStart: (index: number) => void;
+  onHoverEnd: () => void;
+  children: ReactNode;
+}
+
+/* Tarjeta de cifra con borde iluminado decorativo; el contenido se mantiene intacto. */
+function MetricCard({ index, activeIndex, onHoverStart, onHoverEnd, children }: MetricCardProps) {
+  const isActive = index === activeIndex;
+
+  return (
+    <div
+      className="relative rounded-lg border border-slate-100 bg-white p-7 text-center shadow-md transition-shadow duration-300 hover:shadow-xl sm:p-8"
+      data-active={isActive}
+      onBlur={onHoverEnd}
+      onFocus={() => onHoverStart(index)}
+      onMouseEnter={() => onHoverStart(index)}
+      onMouseLeave={onHoverEnd}
+    >
+      <BrandGlowBorder />
+      {children}
+    </div>
+  );
+}
+
+/* Rotación de la tarjeta iluminada (lógica compartida en useRotatingHighlight). */
+function useMetricHighlight() {
+  const { containerRef, activeIndex, onHoverStart, onHoverEnd } = useRotatingHighlight<HTMLElement>(
+    METRICS_COUNT,
+    METRIC_HIGHLIGHT_MS,
+  );
+
+  return {
+    metricsRef: containerRef,
+    metricCardProps: { activeIndex, onHoverStart, onHoverEnd },
+  };
+}
 
 export function HeroAndMetrics() {
   const [activeSlide, setActiveSlide] = useState(0);
+  const { metricsRef, metricCardProps } = useMetricHighlight();
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
@@ -137,9 +182,12 @@ export function HeroAndMetrics() {
       </section>
 
       {/* 3. CIFRAS */}
-      <section className="telcobras-rounded-font relative z-20 -mt-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section
+        ref={metricsRef}
+        className="telcobras-rounded-font relative z-20 -mt-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
+      >
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-lg border border-slate-100 bg-white p-7 text-center shadow-md transition-shadow duration-300 hover:shadow-xl sm:p-8">
+          <MetricCard index={0} {...metricCardProps}>
             <div className="metric-icon-glow mb-4 inline-flex h-14 w-14 items-center justify-center rounded-full border-2 border-[#0087C3]/35 bg-white text-[#0087C3]">
               <Award className="w-6 h-6" />
             </div>
@@ -149,9 +197,9 @@ export function HeroAndMetrics() {
             <div className="mt-2 text-sm font-bold text-slate-600">
               De Experiencia y Trayectoria
             </div>
-          </div>
+          </MetricCard>
 
-          <div className="rounded-lg border border-slate-100 bg-white p-7 text-center shadow-md transition-shadow duration-300 hover:shadow-xl sm:p-8">
+          <MetricCard index={1} {...metricCardProps}>
             <div className="metric-icon-glow mb-4 inline-flex h-14 w-14 items-center justify-center rounded-full border-2 border-[#88BD4C]/45 bg-white text-[#6A9D32]">
               <CheckCircle2 className="w-6 h-6" />
             </div>
@@ -161,9 +209,9 @@ export function HeroAndMetrics() {
             <div className="mt-2 text-sm font-bold text-slate-600">
               Disponibilidad SLA Garantizada
             </div>
-          </div>
+          </MetricCard>
 
-          <div className="rounded-lg border border-slate-100 bg-white p-7 text-center shadow-md transition-shadow duration-300 hover:shadow-xl sm:p-8">
+          <MetricCard index={2} {...metricCardProps}>
             <div className="metric-icon-glow mb-4 inline-flex h-14 w-14 items-center justify-center rounded-full border-2 border-[#F3CB35]/60 bg-white text-[#B18B00]">
               <TrendingUp className="w-6 h-6" />
             </div>
@@ -173,9 +221,9 @@ export function HeroAndMetrics() {
             <div className="mt-2 text-sm font-bold text-slate-600">
               Instalación Rápida y Eficiente
             </div>
-          </div>
+          </MetricCard>
 
-          <div className="rounded-lg border border-slate-100 bg-white p-7 text-center shadow-md transition-shadow duration-300 hover:shadow-xl sm:p-8">
+          <MetricCard index={3} {...metricCardProps}>
             <div className="metric-icon-glow mb-4 inline-flex h-14 w-14 items-center justify-center rounded-full border-2 border-[#0087C3]/35 bg-white text-[#0087C3]">
               <Headphones className="w-6 h-6" />
             </div>
@@ -185,7 +233,7 @@ export function HeroAndMetrics() {
             <div className="mt-2 text-sm font-bold text-slate-600">
               Soporte e Ingeniería Especializada
             </div>
-          </div>
+          </MetricCard>
         </div>
       </section>
     </>

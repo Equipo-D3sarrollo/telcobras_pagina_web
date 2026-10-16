@@ -131,6 +131,10 @@ export interface ProyectoItem {
   descripcion: string;
   imagen: string;
   alt: string;
+  categoria: string;
+  ubicacion?: string;
+  destacado: boolean;
+  descripcionLarga?: string;
 }
 
 export const PROYECTOS_DATA: ProyectoItem[] = [
@@ -142,6 +146,9 @@ export const PROYECTOS_DATA: ProyectoItem[] = [
     imagen:
       "https://vibe.filesafe.space/1790689453956353174/assets/1a6aea77-be1e-458d-aa3c-4ae83e2fc5da.png",
     alt: "Técnicos trabajando en una torre de telecomunicaciones en Risaralda",
+    categoria: "Seguridad y monitoreo",
+    ubicacion: "Risaralda",
+    destacado: false,
   },
   {
     id: "chatbot-espy",
@@ -151,6 +158,8 @@ export const PROYECTOS_DATA: ProyectoItem[] = [
     imagen:
       "https://vibe.filesafe.space/1790689453956353174/assets/2f97bb56-1ff4-4480-bca9-686f0d3c2116.png",
     alt: "Ilustración de un asistente virtual para la ESPY",
+    categoria: "Inteligencia Artificial",
+    destacado: false,
   },
   {
     id: "automatizacion-agua-cali",
@@ -160,6 +169,9 @@ export const PROYECTOS_DATA: ProyectoItem[] = [
     imagen:
       "https://vibe.filesafe.space/1790689453956353174/assets/ad8085cb-07e6-4591-b2df-757a45ef5cbd.png",
     alt: "Planta industrial de tratamiento de agua en Cali",
+    categoria: "Automatización y telemetría",
+    ubicacion: "Cali",
+    destacado: true,
   },
   {
     id: "zonas-wifi-corregimientos",
@@ -169,6 +181,9 @@ export const PROYECTOS_DATA: ProyectoItem[] = [
     imagen:
       "https://vibe.filesafe.space/1790689453956353174/assets/93272a4c-e38b-405c-9909-020e4723858c.png",
     alt: "Persona usando su celular en un parque con zona Wi-Fi gratis",
+    categoria: "Conectividad",
+    ubicacion: "Corregimientos a nivel nacional",
+    destacado: false,
   },
   {
     id: "nodos-telemetria-cali",
@@ -178,6 +193,9 @@ export const PROYECTOS_DATA: ProyectoItem[] = [
     imagen:
       "https://vibe.filesafe.space/1790689453956353174/assets/61394b6f-242d-4577-9d11-52de82f6af69.png",
     alt: "Alumbrado público nocturno en Santiago de Cali",
+    categoria: "Telemetría IoT",
+    ubicacion: "Santiago de Cali",
+    destacado: false,
   },
   {
     id: "centros-digitales-claro",
@@ -186,5 +204,8 @@ export const PROYECTOS_DATA: ProyectoItem[] = [
     imagen:
       "https://vibe.filesafe.space/1790689453956353174/assets/ed66df52-8cb3-4397-b286-b2d51d2b280a.png",
     alt: "Estudiantes con dispositivos en una escuela rural",
+    categoria: "Conectividad",
+    ubicacion: "Zonas rurales",
+    destacado: false,
   },
 ];
