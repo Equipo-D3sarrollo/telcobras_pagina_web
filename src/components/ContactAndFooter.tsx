@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { Facebook, Instagram, Linkedin } from "lucide-react";
 import { BrandGlowBorder } from "./BrandGlowBorder";
+import { useTranslations } from "@/lib/accessibility-preferences-context";
 
 const INITIAL_FORM_DATA = {
   nombre: "",
@@ -30,6 +31,7 @@ const INITIAL_FORM_DATA = {
 };
 
 export function ContactAndFooter() {
+  const t = useTranslations().contact;
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);
 
   const [formSubmitted, setFormSubmitted] = useState(false);
@@ -81,14 +83,13 @@ export function ContactAndFooter() {
     e.preventDefault();
     if (isSubmitting) return;
     if (!formData.nombre || !formData.correo || !formData.telefono) {
-      toast.error("Por favor completa los campos obligatorios.");
+      toast.error(t.requiredError);
       return;
     }
     if (!formData.consentimiento) {
       setConsentAttempts((n) => n + 1);
-      toast.warning("¡Casi listo! Falta un paso", {
-        description:
-          "Marca la casilla de autorización de tratamiento de datos para enviar tu solicitud.",
+      toast.warning(t.consentWarning, {
+        description: t.consentWarningDescription,
       });
       return;
     }
@@ -108,14 +109,10 @@ export function ContactAndFooter() {
       setFormData(INITIAL_FORM_DATA);
       setConsentAttempts(0);
       setFormSubmitted(true);
-      toast.success(
-        "¡Gracias! Tu solicitud ha sido enviada con éxito. Un consultor se comunicará en menos de 24 horas.",
-      );
+      toast.success(t.successTitle);
     } catch (error) {
       console.error("Falló el envío de la solicitud de contacto.", error);
-      toast.error(
-        `No pudimos enviar tu solicitud. Intenta de nuevo o escríbenos a ${CONTACT.emailDisplay} o por WhatsApp.`,
-      );
+      toast.error(t.submissionError.replace("{email}", CONTACT.emailDisplay));
     } finally {
       setIsSubmitting(false);
     }
@@ -131,7 +128,7 @@ export function ContactAndFooter() {
         className="py-20 md:py-28 bg-slate-900 text-white relative overflow-hidden"
       >
         <div className="absolute inset-0 z-0 opacity-15">
-          <img src={CALI_PHOTO} alt="Sede TELCOBRAS Cali" className="w-full h-full object-cover" />
+          <img src={CALI_PHOTO} alt={t.address} className="w-full h-full object-cover" />
         </div>
 
         {/* Red decorativa de fondo: nodos y enlaces de marca con pulso lento. */}
@@ -239,17 +236,16 @@ export function ContactAndFooter() {
             <div className="lg:col-span-5 space-y-8">
               <div>
                 <span className="px-3 py-1 rounded-full bg-[#88BD4C]/20 text-[#88BD4C] text-xs font-extrabold uppercase tracking-wider">
-                  Atención Inmediata B2B
+                  {t.badge}
                 </span>
                 <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight mt-3">
-                  Hablemos de las necesidades{" "}
-                  <span className="bg-gradient-to-r from-[#0087C3] via-[#88BD4C] to-[#F3CB35] bg-clip-text text-transparent">
-                    tecnológicas de tu empresa
+                  {t.title}{" "}
+                  <span className="bg-gradient-to-r from-[var(--brand-gradient-blue)] via-[var(--brand-gradient-green)] to-[var(--brand-gradient-yellow)] bg-clip-text text-transparent">
+                    {t.titleHighlight}
                   </span>
                 </h2>
                 <p className="text-slate-300 text-sm sm:text-base mt-3 leading-relaxed">
-                  Completa el formulario y un asesor técnico especializado se pondrá en contacto
-                  contigo para conversar sobre tu proyecto.
+                  {t.description}
                 </p>
               </div>
 
@@ -260,9 +256,7 @@ export function ContactAndFooter() {
                     <Phone aria-hidden="true" className="w-5 h-5" />
                   </div>
                   <div className="relative">
-                    <p className="text-xs font-bold text-slate-400 uppercase">
-                      Línea de Atención Comercial
-                    </p>
+                    <p className="text-xs font-bold text-slate-400 uppercase">{t.phone}</p>
                     <a
                       href={CONTACT.phoneHref}
                       className="rounded text-base font-bold text-white transition-colors hover:text-[#88BD4C] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#88BD4C] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A192F]"
@@ -278,9 +272,7 @@ export function ContactAndFooter() {
                     <Mail aria-hidden="true" className="w-5 h-5" />
                   </div>
                   <div className="relative">
-                    <p className="text-xs font-bold text-slate-400 uppercase">
-                      Correo Electrónico Directo
-                    </p>
+                    <p className="text-xs font-bold text-slate-400 uppercase">{t.email}</p>
                     <a
                       href={CONTACT.emailHref}
                       className="rounded text-base font-bold text-white transition-colors hover:text-[#88BD4C] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#88BD4C] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A192F]"
@@ -296,9 +288,7 @@ export function ContactAndFooter() {
                     <MapPin aria-hidden="true" className="w-5 h-5" />
                   </div>
                   <div className="relative">
-                    <p className="text-xs font-bold text-slate-400 uppercase">
-                      Sede Principal Corporativa
-                    </p>
+                    <p className="text-xs font-bold text-slate-400 uppercase">{t.address}</p>
                     <p className="text-sm font-bold text-white">{CONTACT.address}</p>
                   </div>
                 </div>
@@ -306,7 +296,7 @@ export function ContactAndFooter() {
 
               <div className="pt-2">
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
-                  Síguenos en redes sociales:
+                  {t.socialTitle}
                 </p>
                 <div className="flex items-center gap-3">
                   <a
@@ -314,7 +304,7 @@ export function ContactAndFooter() {
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label="Facebook"
-                    className="rounded-xl border border-white/15 bg-white/10 p-2.5 text-white transition-all hover:border-[#0087C3] hover:bg-[#0087C3] hover:shadow-lg hover:shadow-[#0087C3]/30 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#0087C3]/40 motion-safe:hover:-translate-y-0.5"
+                    className="rounded-xl border border-white/15 bg-white/10 p-2.5 text-white transition-all hover:border-[#006BA4] hover:bg-[#006BA4] hover:shadow-lg hover:shadow-[#0087C3]/30 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#0087C3]/40 motion-safe:hover:-translate-y-0.5"
                   >
                     <Facebook aria-hidden="true" className="w-5 h-5" />
                   </a>
@@ -323,7 +313,7 @@ export function ContactAndFooter() {
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label="Instagram"
-                    className="rounded-xl border border-white/15 bg-white/10 p-2.5 text-white transition-all hover:border-[#0087C3] hover:bg-[#0087C3] hover:shadow-lg hover:shadow-[#0087C3]/30 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#0087C3]/40 motion-safe:hover:-translate-y-0.5"
+                    className="rounded-xl border border-white/15 bg-white/10 p-2.5 text-white transition-all hover:border-[#006BA4] hover:bg-[#006BA4] hover:shadow-lg hover:shadow-[#0087C3]/30 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#0087C3]/40 motion-safe:hover:-translate-y-0.5"
                   >
                     <Instagram aria-hidden="true" className="w-5 h-5" />
                   </a>
@@ -332,7 +322,7 @@ export function ContactAndFooter() {
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label="LinkedIn"
-                    className="rounded-xl border border-white/15 bg-white/10 p-2.5 text-white transition-all hover:border-[#0087C3] hover:bg-[#0087C3] hover:shadow-lg hover:shadow-[#0087C3]/30 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#0087C3]/40 motion-safe:hover:-translate-y-0.5"
+                    className="rounded-xl border border-white/15 bg-white/10 p-2.5 text-white transition-all hover:border-[#006BA4] hover:bg-[#006BA4] hover:shadow-lg hover:shadow-[#0087C3]/30 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#0087C3]/40 motion-safe:hover:-translate-y-0.5"
                   >
                     <Linkedin aria-hidden="true" className="w-5 h-5" />
                   </a>
@@ -349,40 +339,34 @@ export function ContactAndFooter() {
                     <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-emerald-400/40 bg-emerald-500/15 text-emerald-300">
                       <CheckCircle2 aria-hidden="true" className="w-10 h-10" />
                     </div>
-                    <h3 className="text-2xl font-black text-white">¡Solicitud Recibida!</h3>
+                    <h3 className="text-2xl font-black text-white">{t.successTitle}</h3>
                     <p className="mx-auto max-w-md text-sm text-slate-300">
-                      Hemos asignado tu requerimiento a nuestro equipo de ingeniería comercial. Te
-                      contactaremos al teléfono indicado o a tu correo corporativo en menos de 24
-                      horas.
+                      {t.successDescription}
                     </p>
                     <button
                       type="button"
                       onClick={() => setFormSubmitted(false)}
                       className="rounded-full bg-gradient-to-r from-[#0087C3] to-[#88BD4C] px-6 py-2.5 text-xs font-extrabold text-[#04121f] shadow-lg shadow-[#0087C3]/25 transition-all hover:brightness-110 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#0087C3]/40"
                     >
-                      Enviar otra consulta
+                      {t.successAnother}
                     </button>
                   </div>
                 ) : (
                   <form onSubmit={handleSubmit} className="relative space-y-5">
                     <div>
-                      <h3 className="text-xl font-black text-white sm:text-2xl">
-                        Solicitud de Cotización o Diagnóstico
-                      </h3>
-                      <p className="mt-1 text-xs text-slate-300 sm:text-sm">
-                        Ingresa tus datos corporativos para entregarte una propuesta a la medida.
-                      </p>
+                      <h3 className="text-xl font-black text-white sm:text-2xl">{t.formTitle}</h3>
+                      <p className="mt-1 text-xs text-slate-300 sm:text-sm">{t.formDescription}</p>
                     </div>
 
                     <div className="grid sm:grid-cols-2 gap-4">
                       <div>
-                        <label className={labelClass}>Nombre Completo *</label>
+                        <label className={labelClass}>{t.name}</label>
                         <div className="group relative">
                           <User aria-hidden="true" className={fieldIconClass} />
                           <input
                             type="text"
                             required
-                            placeholder="Ej. Carlos Mendoza"
+                            placeholder={t.namePlaceholder}
                             value={formData.nombre}
                             onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
                             className={fieldClass}
@@ -391,12 +375,12 @@ export function ContactAndFooter() {
                       </div>
 
                       <div>
-                        <label className={labelClass}>Nombre de la Empresa</label>
+                        <label className={labelClass}>{t.company}</label>
                         <div className="group relative">
                           <Building2 aria-hidden="true" className={fieldIconClass} />
                           <input
                             type="text"
-                            placeholder="Ej. Grupo Industrial S.A."
+                            placeholder={t.companyPlaceholder}
                             value={formData.empresa}
                             onChange={(e) => setFormData({ ...formData, empresa: e.target.value })}
                             className={fieldClass}
@@ -407,12 +391,12 @@ export function ContactAndFooter() {
 
                     <div className="grid sm:grid-cols-2 gap-4">
                       <div>
-                        <label className={labelClass}>Cargo en la empresa</label>
+                        <label className={labelClass}>{t.position}</label>
                         <div className="group relative">
                           <Briefcase aria-hidden="true" className={fieldIconClass} />
                           <input
                             type="text"
-                            placeholder="Ej. Director de TI / Gerente Operaciones"
+                            placeholder={t.positionPlaceholder}
                             value={formData.cargo}
                             onChange={(e) => setFormData({ ...formData, cargo: e.target.value })}
                             className={fieldClass}
@@ -421,13 +405,13 @@ export function ContactAndFooter() {
                       </div>
 
                       <div>
-                        <label className={labelClass}>Correo Electrónico *</label>
+                        <label className={labelClass}>{t.emailLabel}</label>
                         <div className="group relative">
                           <Mail aria-hidden="true" className={fieldIconClass} />
                           <input
                             type="email"
                             required
-                            placeholder="carlos@tuempresa.com"
+                            placeholder={t.emailPlaceholder}
                             value={formData.correo}
                             onChange={(e) => setFormData({ ...formData, correo: e.target.value })}
                             className={fieldClass}
@@ -438,13 +422,13 @@ export function ContactAndFooter() {
 
                     <div className="grid sm:grid-cols-2 gap-4">
                       <div>
-                        <label className={labelClass}>Teléfono / WhatsApp *</label>
+                        <label className={labelClass}>{t.phoneLabel}</label>
                         <div className="group relative">
                           <Phone aria-hidden="true" className={fieldIconClass} />
                           <input
                             type="tel"
                             required
-                            placeholder="+57 300 000 0000"
+                            placeholder={t.phonePlaceholder}
                             value={formData.telefono}
                             onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
                             className={fieldClass}
@@ -453,20 +437,18 @@ export function ContactAndFooter() {
                       </div>
 
                       <div>
-                        <label className={labelClass}>Servicio de Interés</label>
+                        <label className={labelClass}>{t.service}</label>
                         <div className="relative">
                           <select
                             value={formData.servicio}
                             onChange={(e) => setFormData({ ...formData, servicio: e.target.value })}
                             className="h-12 w-full appearance-none rounded-xl border border-white/15 bg-white/5 pl-3 pr-10 text-sm text-white transition-colors focus:border-[#0087C3] focus:bg-white/10 focus:outline-none focus:ring-2 focus:ring-[#0087C3]/70 focus:shadow-[0_0_0_4px_rgba(0,135,195,0.18)] [&>option]:bg-[#0A192F] [&>option]:text-white"
                           >
-                            <option>Conectividad (Fibra & Radioenlace)</option>
-                            <option>Seguridad Sincronizada & Ciberdefensa</option>
-                            <option>Colaboración & Trabajo Híbrido</option>
-                            <option>Nube Híbrida & Almacenamiento</option>
-                            <option>Inteligencia Artificial integrada</option>
-                            <option>Agentes con Inteligencia Artificial</option>
-                            <option>Solución Integral a la Medida</option>
+                            {t.serviceOptions.map(({ value, label }) => (
+                              <option key={value} value={value}>
+                                {label}
+                              </option>
+                            ))}
                           </select>
                           <ChevronDown
                             aria-hidden="true"
@@ -477,10 +459,10 @@ export function ContactAndFooter() {
                     </div>
 
                     <div>
-                      <label className={labelClass}>Detalles de tu requerimiento</label>
+                      <label className={labelClass}>{t.details}</label>
                       <textarea
                         rows={3}
-                        placeholder="Cuéntanos brevemente la ubicación, sedes o necesidades técnicas de tu empresa..."
+                        placeholder={t.detailsPlaceholder}
                         value={formData.mensaje}
                         onChange={(e) => setFormData({ ...formData, mensaje: e.target.value })}
                         className="min-h-[96px] w-full rounded-xl border border-white/15 bg-white/5 p-3.5 text-sm text-white placeholder:text-slate-400 transition-colors focus:border-[#0087C3] focus:bg-white/10 focus:outline-none focus:ring-2 focus:ring-[#0087C3]/70 focus:shadow-[0_0_0_4px_rgba(0,135,195,0.18)]"
@@ -501,9 +483,9 @@ export function ContactAndFooter() {
                         {showConsentAlert && (
                           <span
                             aria-hidden="true"
-                            className="consent-pointer absolute -top-3 left-1 rounded-full bg-[#F3CB35] px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-[#04121f] shadow-lg shadow-[#F3CB35]/40"
+                            className="consent-pointer absolute -top-3 left-1 rounded-full bg-[#F3CB35] px-2 py-0.5 text-[0.625rem] font-extrabold uppercase tracking-wider text-[#04121f] shadow-lg shadow-[#F3CB35]/40"
                           >
-                            Marca aquí ↓
+                            {t.consentPointer}
                           </span>
                         )}
                         <input
@@ -516,13 +498,12 @@ export function ContactAndFooter() {
                             setFormData({ ...formData, consentimiento: e.target.checked })
                           }
                           className={`mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-white/30 bg-white/5 accent-[#88BD4C] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0087C3]/70 ${
-                            showConsentAlert ? "ring-2 ring-[#F3CB35] ring-offset-2 ring-offset-[#0A192F]" : ""
+                            showConsentAlert
+                              ? "ring-2 ring-[#F3CB35] ring-offset-2 ring-offset-[#0A192F]"
+                              : ""
                           }`}
                         />
-                        <span>
-                          Autorizo el tratamiento de mis datos personales conforme a la política de
-                          privacidad de TELCOBRAS S.A.S. *
-                        </span>
+                        <span>{t.consent}</span>
                       </label>
 
                       {showConsentAlert ? (
@@ -532,10 +513,7 @@ export function ContactAndFooter() {
                           className="consent-message mt-2 flex items-start gap-2 text-xs font-semibold text-[#F3CB35]"
                         >
                           <ShieldAlert aria-hidden="true" className="mt-px h-4 w-4 shrink-0" />
-                          <span>
-                            Para proteger tu información necesitamos tu autorización. Marca la
-                            casilla y vuelve a enviar: ¡estás a un clic de tu cotización!
-                          </span>
+                          <span>{t.consentError}</span>
                         </p>
                       ) : (
                         formData.consentimiento &&
@@ -545,7 +523,7 @@ export function ContactAndFooter() {
                             className="consent-message mt-2 flex items-center gap-2 text-xs font-semibold text-[#88BD4C]"
                           >
                             <CheckCircle2 aria-hidden="true" className="h-4 w-4 shrink-0" />
-                            ¡Perfecto! Ya puedes enviar tu solicitud.
+                            {t.consentSuccess}
                           </p>
                         )
                       )}
@@ -562,7 +540,7 @@ export function ContactAndFooter() {
                             aria-hidden="true"
                             className="w-4 h-4 motion-safe:animate-spin"
                           />
-                          Enviando...
+                          {t.submitting}
                         </>
                       ) : (
                         <>
@@ -570,7 +548,7 @@ export function ContactAndFooter() {
                             aria-hidden="true"
                             className="w-4 h-4 transition-transform duration-300 motion-safe:group-hover:translate-x-1"
                           />
-                          Enviar Solicitud de Cotización
+                          {t.submit}
                         </>
                       )}
                     </button>
@@ -643,13 +621,13 @@ export function ContactAndFooter() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center mb-10 space-y-3">
             <span className="inline-flex px-3 py-1 rounded-full bg-[#0087C3]/10 text-[#0087C3] text-xs font-extrabold uppercase tracking-wider">
-              Encuéntranos
+              {t.findUs}
             </span>
-            <h2 className="bg-gradient-to-r from-[#0087C3] via-[#88BD4C] to-[#F3CB35] bg-clip-text text-3xl sm:text-4xl font-black text-transparent tracking-tight">
-              ¿Dónde estamos?
+            <h2 className="bg-gradient-to-r from-[var(--brand-gradient-blue)] via-[var(--brand-gradient-green)] to-[var(--brand-gradient-yellow)] bg-clip-text text-3xl sm:text-4xl font-black text-transparent tracking-tight">
+              {t.locationTitle}
             </h2>
             <p className="text-slate-600 text-sm sm:text-base max-w-xl mx-auto">
-              Visítanos en nuestra sede principal en Cali.
+              {t.locationDescription}
             </p>
             <div className="inline-flex items-center gap-2 text-slate-700 text-sm font-bold">
               <MapPin className="w-4 h-4 text-[#88BD4C]" />
@@ -657,9 +635,9 @@ export function ContactAndFooter() {
             </div>
           </div>
 
-          <div className="rounded-3xl overflow-hidden border border-slate-200 shadow-xl shadow-slate-200/60">
+          <div className="location-map-frame rounded-3xl overflow-hidden border border-slate-200 shadow-xl shadow-slate-200/60">
             <iframe
-              title="Ubicación TELCOBRAS S.A.S. en Cali"
+              title={t.mapTitle}
               src="https://www.google.com/maps?q=Carrera+83A+%23+20+-+20,+Cali,+Colombia&output=embed"
               width="100%"
               height="400"
@@ -676,9 +654,9 @@ export function ContactAndFooter() {
               href="https://www.google.com/maps/dir/?api=1&destination=Carrera+83A+%23+20+-+20,+Cali,+Colombia"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center px-6 py-3 rounded-full text-sm font-bold text-white bg-[#0087C3] hover:bg-[#006BA4] shadow-md shadow-sky-500/20 transition-all transform hover:-translate-y-0.5"
+              className="inline-flex items-center justify-center px-6 py-3 rounded-full text-sm font-bold text-white bg-[#006BA4] hover:bg-[#005888] shadow-md shadow-sky-500/20 transition-all transform hover:-translate-y-0.5"
             >
-              <Navigation className="w-4 h-4 mr-2" /> Cómo llegar
+              <Navigation className="w-4 h-4 mr-2" /> {t.directions}
             </a>
           </div>
         </div>
@@ -690,34 +668,30 @@ export function ContactAndFooter() {
           <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-8 border-b border-slate-800">
             {/* Logo oficial transparente sobre fondo oscuro */}
             <div className="inline-flex items-center">
-              <img
-                src={LOGO_URL}
-                alt="TELCOBRAS S.A.S. Logo"
-                className="h-12 w-auto object-contain"
-              />
+              <img src={LOGO_URL} alt={t.logoAlt} className="h-12 w-auto object-contain" />
             </div>
 
             <div className="text-center md:text-right">
               <p className="text-xs sm:text-sm font-extrabold text-white tracking-widest uppercase">
-                Innovación • Compromiso • Resultados
+                {t.footerTagline}
               </p>
               <p className="text-xs text-slate-400 mt-1">
-                TELCOBRAS S.A.S. © {new Date().getFullYear()} — Todos los derechos reservados.
+                {t.copyright.replace("{year}", String(new Date().getFullYear()))}
               </p>
             </div>
           </div>
 
           <div className="pt-6 flex flex-wrap justify-between items-center text-xs text-slate-400 gap-4">
-            <p>Sede Principal: Carrera 83A # 20 - 20, Cali, Valle del Cauca - Colombia</p>
+            <p>{CONTACT.address}</p>
             <div className="flex gap-6">
               <a href="#contacto" className="hover:text-white transition-colors">
-                Términos de Servicio
+                {t.terms}
               </a>
               <a href="#contacto" className="hover:text-white transition-colors">
-                Política de Tratamiento de Datos
+                {t.privacy}
               </a>
               <a href="#contacto" className="hover:text-white transition-colors">
-                SLA & Garantías
+                {t.sla}
               </a>
             </div>
           </div>

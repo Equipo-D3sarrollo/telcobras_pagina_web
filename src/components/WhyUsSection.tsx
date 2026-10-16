@@ -11,25 +11,18 @@ import {
 import { cn } from "@/lib/utils";
 import { useRotatingHighlight } from "@/hooks/use-rotating-highlight";
 import { BrandGlowBorder } from "./BrandGlowBorder";
+import { useTranslations } from "@/lib/accessibility-preferences-context";
 
 type TipoEnlace = "fibra" | "radio";
 
 interface Diferencial {
   id: string;
   icon: LucideIcon;
-  title: string;
-  desc: string;
   /** Clases de posición en el bento grid. */
   span?: string;
   /** Nodo de la ilustración que representa a la tarjeta (coordenadas del viewBox). */
   nodo: { x: number; y: number; color: string; enlace: TipoEnlace };
 }
-
-const DIFERENCIAL_DESTACADO = {
-  id: "red-propia",
-  title: "Red Propia y Redundante",
-  desc: "Fibra óptica y radioenlace de microondas propios: autonomía y respuesta inmediata, sin intermediarios.",
-};
 
 // Orden del grid (lg: 3 columnas): destacada 2x2 a la izquierda, dos apiladas a su
 // derecha y tres en la fila inferior. En tablet la última ocupa 2 columnas para no
@@ -38,36 +31,26 @@ const DIFERENCIALES: Diferencial[] = [
   {
     id: "instalacion-15-dias",
     icon: Clock,
-    title: "Instalación en 15 Días",
-    desc: "Desplegamos sobre nuestra propia red, sin depender de terceros, para que tu empresa opere sin demoras.",
     nodo: { x: 340, y: 50, color: "#0087C3", enlace: "fibra" },
   },
   {
     id: "soporte-24-7",
     icon: Headphones,
-    title: "Soporte Técnico 24/7",
-    desc: "Ingeniería especializada y NOC que atienden cada evento de forma oportuna y proactiva.",
     nodo: { x: 340, y: 190, color: "#F3CB35", enlace: "fibra" },
   },
   {
     id: "acompanamiento-cercano",
     icon: Users,
-    title: "Acompañamiento Cercano",
-    desc: "Un equipo asignado que entiende la realidad y las metas operativas de tu organización.",
     nodo: { x: 60, y: 190, color: "#6A9D32", enlace: "radio" },
   },
   {
     id: "soluciones-a-la-medida",
     icon: Cpu,
-    title: "Soluciones a la Medida",
-    desc: "Arquitectura de red y ciberseguridad diseñada según el tamaño, presupuesto y crecimiento de tu empresa.",
     nodo: { x: 200, y: 225, color: "#1a6f9c", enlace: "radio" },
   },
   {
     id: "compromiso-integridad",
     icon: ShieldCheck,
-    title: "Compromiso e Integridad",
-    desc: "Nuestro valor primordial es la confianza de las organizaciones que eligen nuestras soluciones.",
     span: "md:col-span-2 lg:col-span-1",
     nodo: { x: 60, y: 50, color: "#88BD4C", enlace: "fibra" },
   },
@@ -193,7 +176,7 @@ function NetworkIllustration({ activeId, pointerHandlers }: NetworkIllustrationP
       {/* Nodos de los diferenciales */}
       {DIFERENCIALES.map((item) => {
         const isActive = item.id === activeId;
-        const { x, y, color } = item.nodo;
+        const { x, y, color, enlace } = item.nodo;
         return (
           <g
             key={item.id}
@@ -214,8 +197,35 @@ function NetworkIllustration({ activeId, pointerHandlers }: NetworkIllustrationP
                 strokeWidth="2"
               />
             )}
-            <circle cx={x} cy={y} r="7" fill="#0A192F" stroke={color} strokeWidth="2.25" />
-            <circle className="network-node-core" cx={x} cy={y} r="3" fill={color} />
+            {enlace === "fibra" ? (
+              <>
+                <circle cx={x} cy={y} r="7" fill="#0A192F" stroke={color} strokeWidth="2.25" />
+                <circle className="network-node-core" cx={x} cy={y} r="3" fill={color} />
+              </>
+            ) : (
+              <>
+                <rect
+                  x={x - 5}
+                  y={y - 5}
+                  width="10"
+                  height="10"
+                  rx="1"
+                  transform={`rotate(45 ${x} ${y})`}
+                  fill="#0A192F"
+                  stroke={color}
+                  strokeWidth="2.25"
+                />
+                <rect
+                  className="network-node-core"
+                  x={x - 2}
+                  y={y - 2}
+                  width="4"
+                  height="4"
+                  transform={`rotate(45 ${x} ${y})`}
+                  fill={color}
+                />
+              </>
+            )}
           </g>
         );
       })}
@@ -248,6 +258,7 @@ function NetworkIllustration({ activeId, pointerHandlers }: NetworkIllustrationP
 }
 
 export function WhyUsSection() {
+  const t = useTranslations().why;
   const sectionRef = useRef<HTMLElement>(null);
   // Arranca visible y animado; solo se pausa cuando el observer confirma que salió.
   const [isInView, setIsInView] = useState(true);
@@ -374,14 +385,12 @@ export function WhyUsSection() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto mb-8 max-w-3xl space-y-3 text-center md:mb-10">
           <h2 className="text-3xl font-black tracking-tight text-white sm:text-4xl md:text-5xl">
-            ¿Por qué{" "}
-            <span className="bg-gradient-to-r from-[#0087C3] via-[#88BD4C] to-[#F3CB35] bg-clip-text text-transparent">
-              TELCOBRAS S.A.S.?
+            {t.title.split("TELCOBRAS")[0]}
+            <span className="bg-gradient-to-r from-[var(--brand-gradient-blue)] via-[var(--brand-gradient-green)] to-[var(--brand-gradient-yellow)] bg-clip-text text-transparent">
+              TELCOBRAS{t.title.includes("S.A.S.") ? " S.A.S.?" : "?"}
             </span>
           </h2>
-          <p className="text-base text-slate-300 sm:text-lg">
-            Razones concretas por las que las organizaciones confían en nuestras soluciones.
-          </p>
+          <p className="text-base text-slate-300 sm:text-lg">{t.description}</p>
         </div>
 
         <div
@@ -401,25 +410,25 @@ export function WhyUsSection() {
               <BrandGlowBorder />
 
               <div className="space-y-3">
-                <h3 className="text-2xl font-black leading-tight sm:text-[28px]">
-                  {DIFERENCIAL_DESTACADO.title}
+                <h3 className="text-2xl font-black leading-tight sm:text-[1.75rem]">
+                  {t.featuredTitle}
                 </h3>
-                <p className="max-w-xl text-[15px] leading-relaxed text-slate-200 sm:text-base">
-                  {DIFERENCIAL_DESTACADO.desc}
+                <p className="max-w-xl text-[0.9375rem] leading-relaxed text-slate-200 sm:text-base">
+                  {t.featuredDescription}
                 </p>
               </div>
 
               <div className="flex flex-wrap gap-2">
                 <span className="inline-flex items-center gap-2 rounded-full border border-[#0087C3]/50 bg-[#0087C3]/15 px-3 py-1 text-xs font-bold text-sky-100">
                   <span aria-hidden="true" className="h-0.5 w-4 rounded-full bg-[#0087C3]" />
-                  Fibra óptica
+                  {t.fiber}
                 </span>
                 <span className="inline-flex items-center gap-2 rounded-full border border-[#88BD4C]/50 bg-[#88BD4C]/15 px-3 py-1 text-xs font-bold text-lime-100">
                   <span
                     aria-hidden="true"
                     className="h-0.5 w-4 bg-[repeating-linear-gradient(90deg,#88BD4C_0_3px,transparent_3px_6px)]"
                   />
-                  Radioenlace
+                  {t.radio}
                 </span>
               </div>
 
@@ -478,10 +487,10 @@ export function WhyUsSection() {
                       />
                     </span>
                     <h3 className="mb-2 text-lg font-extrabold text-slate-900 sm:text-xl">
-                      {item.title}
+                      {t.differences[item.id as keyof typeof t.differences].title}
                     </h3>
-                    <p className="line-clamp-3 text-sm leading-relaxed text-slate-600 sm:text-[15px]">
-                      {item.desc}
+                    <p className="why-us-card-description line-clamp-3 text-sm leading-relaxed text-slate-600 sm:text-[0.9375rem]">
+                      {t.differences[item.id as keyof typeof t.differences].description}
                     </p>
                   </div>
                 </article>
@@ -492,12 +501,12 @@ export function WhyUsSection() {
 
         {/* Cierre de sección */}
         <div className="mt-10 flex flex-col items-center gap-4 text-center">
-          <p className="text-xl font-black text-white sm:text-2xl">¿Quieres conocer nuestra red?</p>
+          <p className="text-xl font-black text-white sm:text-2xl">{t.ctaQuestion}</p>
           <a
             href="#contacto"
             className="inline-flex items-center gap-2 rounded-full bg-[#88BD4C] px-7 py-3.5 text-sm font-extrabold text-slate-900 shadow-lg shadow-emerald-500/20 transition-all hover:-translate-y-0.5 hover:bg-[#78a841] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#88BD4C]/40"
           >
-            Hablemos
+            {t.cta}
             <ArrowRight aria-hidden="true" className="h-4 w-4" />
           </a>
         </div>

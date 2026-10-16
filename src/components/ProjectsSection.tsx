@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowRight, ArrowUpRight, MapPin } from "lucide-react";
 import { PROYECTOS_DATA, CHATBOT_PHONE, type ProyectoItem } from "@/lib/telcobras-data";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "@/lib/accessibility-preferences-context";
 import {
   Dialog,
   DialogContent,
@@ -11,8 +12,7 @@ import {
 } from "@/components/ui/dialog";
 
 const CHATBOT_ID = "chatbot-espy";
-const CHATBOT_WHATSAPP_URL =
-  "https://wa.me/573106777412?text=Hola%2C%20quiero%20probar%20el%20chatbot%20de%20la%20ESPY";
+const CHATBOT_WHATSAPP_BASE_URL = "https://wa.me/573106777412";
 
 // Orden y tamaño de cada tarjeta en el bento grid (lg: 4 columnas x 3 filas sin huecos).
 // Los proyectos que no aparezcan aquí se agregan al final como celdas simples.
@@ -44,13 +44,21 @@ function WhatsAppIcon({ className }: { className?: string }) {
   );
 }
 
-function ChatbotWhatsAppLink({ className }: { className?: string }) {
+function ChatbotWhatsAppLink({
+  className,
+  label,
+  message,
+}: {
+  className?: string;
+  label: string;
+  message: string;
+}) {
   return (
     <a
-      href={CHATBOT_WHATSAPP_URL}
+      href={`${CHATBOT_WHATSAPP_BASE_URL}?text=${encodeURIComponent(message)}`}
       target="_blank"
       rel="noopener noreferrer"
-      aria-label="Prueba el chatbot de la ESPY por WhatsApp"
+      aria-label={label}
       className={cn(
         "inline-flex items-center gap-2.5 rounded-xl border border-white/30 bg-white/15 px-4 py-2.5 text-sm font-bold text-white backdrop-blur-sm transition-colors hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F3CB35]",
         className,
@@ -63,13 +71,21 @@ function ChatbotWhatsAppLink({ className }: { className?: string }) {
 }
 
 /* Ilustración del robot asistente virtual con diálogos en español */
-function EspyBotIllustration({ compact = false }: { compact?: boolean }) {
+function EspyBotIllustration({
+  compact = false,
+  copy,
+}: {
+  compact?: boolean;
+  copy: ReturnType<typeof useTranslations>["chatbotProject"];
+}) {
   return (
     <div className="relative flex select-none flex-col items-center justify-center">
       {/* Globo superior: ¡HOLA! */}
       <div className="relative z-10 mb-2 motion-safe:animate-bounce [animation-duration:3s]">
-        <div className="flex items-center justify-center rounded-2xl border-2 border-white bg-[#0087C3] px-7 py-2.5 shadow-lg shadow-sky-500/25">
-          <span className="text-2xl font-black tracking-wider text-white sm:text-3xl">¡HOLA!</span>
+        <div className="flex items-center justify-center rounded-2xl border-2 border-white bg-[#006BA4] px-7 py-2.5 shadow-lg shadow-sky-500/25">
+          <span className="text-2xl font-black tracking-wider text-white sm:text-3xl">
+            {copy.greeting}
+          </span>
         </div>
         <div className="mx-auto h-0 w-0 border-l-[10px] border-r-[10px] border-t-[10px] border-l-transparent border-r-transparent border-t-[#0087C3]" />
       </div>
@@ -115,7 +131,7 @@ function EspyBotIllustration({ compact = false }: { compact?: boolean }) {
           <div className="mt-1 h-3 w-28 rounded-full bg-gradient-to-r from-transparent via-[#88BD4C] to-transparent opacity-80 blur-[1px] sm:w-36" />
           <div className="mt-0.5 flex h-5 w-32 items-center justify-center gap-2 rounded-t-xl border border-slate-200 bg-slate-100 shadow-xs sm:w-40">
             <span className="h-1.5 w-1.5 rounded-full bg-[#0087C3]" />
-            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+            <span className="text-[0.5625rem] font-black uppercase tracking-widest text-slate-500">
               ESPY BOT
             </span>
             <span className="h-1.5 w-1.5 rounded-full bg-[#88BD4C]" />
@@ -124,16 +140,16 @@ function EspyBotIllustration({ compact = false }: { compact?: boolean }) {
 
         <div className="flex max-w-[150px] flex-col gap-2 sm:max-w-[180px]">
           <div className="relative rounded-2xl border-2 border-white bg-[#88BD4C] px-3 py-2 shadow-md">
-            <p className="text-[11px] font-black leading-tight text-white sm:text-xs">
-              ¿Cómo puedo ayudarte hoy?
+            <p className="text-[0.6875rem] font-black leading-tight text-slate-900 sm:text-xs">
+              {copy.question}
             </p>
             <div className="absolute -left-2 top-3 h-0 w-0 border-b-[6px] border-r-[8px] border-t-[6px] border-b-transparent border-r-[#88BD4C] border-t-transparent" />
           </div>
-          <div className="relative rounded-2xl border-2 border-white bg-[#0087C3] px-3 py-2 shadow-md">
-            <p className="text-[11px] font-black leading-tight text-white sm:text-xs">
-              ¡Soy tu asistente virtual!
+          <div className="relative rounded-2xl border-2 border-white bg-[#006BA4] px-3 py-2 shadow-md">
+            <p className="text-[0.6875rem] font-black leading-tight text-white sm:text-xs">
+              {copy.assistant}
             </p>
-            <div className="absolute -left-2 top-3 h-0 w-0 border-b-[6px] border-r-[8px] border-t-[6px] border-b-transparent border-r-[#0087C3] border-t-transparent" />
+            <div className="absolute -left-2 top-3 h-0 w-0 border-b-[6px] border-r-[8px] border-t-[6px] border-b-transparent border-r-[#006BA4] border-t-transparent" />
           </div>
         </div>
       </div>
@@ -141,16 +157,20 @@ function EspyBotIllustration({ compact = false }: { compact?: boolean }) {
   );
 }
 
-function ProjectChips({ proyecto }: { proyecto: ProyectoItem }) {
+type ProjectTranslation = ReturnType<typeof useTranslations>["projects"]["cards"][keyof ReturnType<
+  typeof useTranslations
+>["projects"]["cards"]];
+
+function ProjectChips({ proyecto, copy }: { proyecto: ProyectoItem; copy: ProjectTranslation }) {
   return (
     <div className="flex flex-wrap gap-2">
-      <span className="rounded-full bg-[#0087C3] px-3 py-1 text-xs font-extrabold text-white shadow-sm">
-        {proyecto.categoria}
+      <span className="rounded-full bg-[#006BA4] px-3 py-1 text-xs font-extrabold text-white shadow-sm">
+        {copy.category}
       </span>
       {proyecto.ubicacion && (
         <span className="inline-flex items-center gap-1 rounded-full bg-white/90 px-3 py-1 text-xs font-bold text-slate-800 shadow-sm">
           <MapPin aria-hidden="true" className="h-3.5 w-3.5 text-[#0087C3]" />
-          {proyecto.ubicacion}
+          {copy.location ?? proyecto.ubicacion}
         </span>
       )}
     </div>
@@ -161,9 +181,12 @@ interface ProjectCardProps {
   proyecto: ProyectoItem;
   numero: number;
   onOpen: () => void;
+  copy: ProjectTranslation;
+  labels: ReturnType<typeof useTranslations>["projects"];
+  chatbotCopy: ReturnType<typeof useTranslations>["chatbotProject"];
 }
 
-function ProjectCard({ proyecto, numero, onOpen }: ProjectCardProps) {
+function ProjectCard({ proyecto, numero, onOpen, copy, labels, chatbotCopy }: ProjectCardProps) {
   const isChatbot = proyecto.id === CHATBOT_ID;
   const isFeatured = proyecto.destacado;
 
@@ -182,14 +205,14 @@ function ProjectCard({ proyecto, numero, onOpen }: ProjectCardProps) {
           className="absolute inset-x-0 top-0 -z-10 flex h-[62%] items-start justify-center pt-16 md:h-full md:items-center md:justify-end md:pr-6 md:pt-0"
         >
           <div className="origin-top scale-[0.72] transition-transform duration-700 ease-out group-hover:scale-[0.76] md:origin-right md:scale-[0.78] md:group-hover:scale-[0.82]">
-            <EspyBotIllustration compact />
+            <EspyBotIllustration compact copy={chatbotCopy} />
           </div>
         </div>
       ) : (
         <>
           <img
             src={proyecto.imagen}
-            alt={proyecto.alt}
+            alt={copy.alt}
             loading="lazy"
             decoding="async"
             className="absolute inset-0 -z-20 h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105 group-focus-within:scale-105"
@@ -224,13 +247,13 @@ function ProjectCard({ proyecto, numero, onOpen }: ProjectCardProps) {
       <button
         type="button"
         onClick={onOpen}
-        aria-label={`Ver detalle del proyecto: ${proyecto.titulo}`}
+        aria-label={labels.detail.replace("{title}", copy.title)}
         aria-haspopup="dialog"
         className="absolute inset-0 z-10 cursor-pointer rounded-3xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#F3CB35] focus-visible:ring-inset"
       />
 
       <div className="pointer-events-none relative p-5 sm:p-6">
-        <ProjectChips proyecto={proyecto} />
+        <ProjectChips proyecto={proyecto} copy={copy} />
       </div>
 
       <div
@@ -242,27 +265,33 @@ function ProjectCard({ proyecto, numero, onOpen }: ProjectCardProps) {
         <h3
           className={cn(
             "font-black leading-tight text-white",
-            isFeatured ? "text-[22px] sm:text-2xl lg:text-[28px]" : "text-lg sm:text-xl",
+            isFeatured ? "text-[1.375rem] sm:text-2xl lg:text-[1.75rem]" : "text-lg sm:text-xl",
           )}
         >
-          {proyecto.titulo}
+          {copy.title}
         </h3>
         <p
           className={cn(
-            "text-sm leading-relaxed text-slate-200 sm:text-[15px]",
+            "project-card-description text-sm leading-relaxed text-slate-200 sm:text-[0.9375rem]",
             isFeatured ? "line-clamp-3" : "line-clamp-2",
           )}
         >
-          {proyecto.descripcion}
+          {copy.description}
         </p>
 
         <div className="flex flex-wrap items-center gap-3 pt-2">
-          {isChatbot && <ChatbotWhatsAppLink className="pointer-events-auto relative z-20" />}
+          {isChatbot && (
+            <ChatbotWhatsAppLink
+              label={labels.chatbotTry}
+              message={labels.chatbotMessage}
+              className="pointer-events-auto relative z-20"
+            />
+          )}
           <span
             aria-hidden="true"
             className="inline-flex items-center gap-1.5 text-sm font-extrabold text-[#F3CB35] transition-all duration-300 lg:translate-x-[-4px] lg:opacity-0 lg:group-hover:translate-x-0 lg:group-hover:opacity-100 lg:group-focus-within:translate-x-0 lg:group-focus-within:opacity-100"
           >
-            Ver proyecto <ArrowUpRight className="h-4 w-4" />
+            {labels.view} <ArrowUpRight className="h-4 w-4" />
           </span>
         </div>
       </div>
@@ -271,6 +300,8 @@ function ProjectCard({ proyecto, numero, onOpen }: ProjectCardProps) {
 }
 
 export function ProjectsSection() {
+  const translations = useTranslations();
+  const t = translations.projects;
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [revealed, setRevealed] = useState(false);
@@ -304,12 +335,10 @@ export function ProjectsSection() {
     <section id="proyectos" className="relative bg-white py-20 md:py-28">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto mb-12 max-w-3xl space-y-4 text-center md:mb-16">
-          <h2 className="bg-gradient-to-r from-[#0087C3] via-[#88BD4C] to-[#F3CB35] bg-clip-text text-3xl font-black tracking-tight text-transparent sm:text-4xl md:text-5xl">
-            Proyectos que respaldan nuestra experiencia
+          <h2 className="bg-gradient-to-r from-[var(--brand-gradient-blue)] via-[var(--brand-gradient-green)] to-[var(--brand-gradient-yellow)] bg-clip-text text-3xl font-black tracking-tight text-transparent sm:text-4xl md:text-5xl">
+            {t.title}
           </h2>
-          <p className="text-base text-slate-600 sm:text-lg">
-            Conectividad, telemetría, seguridad e inteligencia artificial implementadas en Colombia.
-          </p>
+          <p className="text-base text-slate-600 sm:text-lg">{t.description}</p>
         </div>
 
         <div
@@ -333,6 +362,9 @@ export function ProjectsSection() {
               <ProjectCard
                 proyecto={proyecto}
                 numero={index + 1}
+                copy={t.cards[proyecto.id as keyof typeof t.cards]}
+                labels={t}
+                chatbotCopy={translations.chatbotProject}
                 onOpen={() => {
                   setSelectedId(proyecto.id);
                   setIsDialogOpen(true);
@@ -345,16 +377,16 @@ export function ProjectsSection() {
         {/* Cierre de sección */}
         <div className="mt-12 flex flex-col items-center justify-between gap-5 rounded-3xl border border-slate-200 bg-slate-50 px-6 py-8 text-center sm:flex-row sm:px-10 sm:text-left">
           <p className="text-xl font-black text-slate-900 sm:text-2xl">
-            ¿Tienes un reto similar?{" "}
-            <span className="bg-gradient-to-r from-[#0087C3] to-[#88BD4C] bg-clip-text text-transparent">
-              Hablemos
+            {t.challenge}{" "}
+            <span className="bg-gradient-to-r from-[var(--brand-gradient-blue)] to-[var(--brand-gradient-green)] bg-clip-text text-transparent">
+              {t.talk}
             </span>
           </p>
           <a
             href="#contacto"
-            className="inline-flex shrink-0 items-center gap-2 rounded-full bg-[#0087C3] px-7 py-3.5 text-sm font-extrabold text-white shadow-lg shadow-sky-500/20 transition-all hover:-translate-y-0.5 hover:bg-[#0077ad] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#0087C3]/40"
+            className="inline-flex shrink-0 items-center gap-2 rounded-full bg-[#006BA4] px-7 py-3.5 text-sm font-extrabold text-white shadow-lg shadow-sky-500/20 transition-all hover:-translate-y-0.5 hover:bg-[#005888] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#0087C3]/40"
           >
-            Hablemos de tu proyecto
+            {t.talkProject}
             <ArrowRight aria-hidden="true" className="h-4 w-4" />
           </a>
         </div>
@@ -376,14 +408,14 @@ export function ProjectsSection() {
               {selected.id === CHATBOT_ID ? (
                 <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#0087C3] via-[#1a6f9c] to-[#0A192F]">
                   <div className="scale-[0.8] sm:scale-90">
-                    <EspyBotIllustration />
+                    <EspyBotIllustration copy={translations.chatbotProject} />
                   </div>
                 </div>
               ) : (
                 <>
                   <img
                     src={selected.imagen}
-                    alt={selected.alt}
+                    alt={t.cards[selected.id as keyof typeof t.cards].alt}
                     width={1280}
                     height={720}
                     className="h-full w-full object-cover"
@@ -395,29 +427,37 @@ export function ProjectsSection() {
                 </>
               )}
               <div className="absolute bottom-4 left-4">
-                <ProjectChips proyecto={selected} />
+                <ProjectChips
+                  proyecto={selected}
+                  copy={t.cards[selected.id as keyof typeof t.cards]}
+                />
               </div>
             </div>
 
             <div className="space-y-5 p-6 sm:p-8">
               <DialogHeader className="space-y-3 text-left">
                 <DialogTitle className="text-2xl font-black leading-tight text-slate-900 sm:text-3xl">
-                  {selected.titulo}
+                  {t.cards[selected.id as keyof typeof t.cards].title}
                 </DialogTitle>
-                <DialogDescription className="text-[15px] leading-relaxed text-slate-600">
-                  {selected.descripcionLarga ?? selected.descripcion}
+                <DialogDescription className="text-[0.9375rem] leading-relaxed text-slate-600">
+                  {t.cards[selected.id as keyof typeof t.cards].longDescription ??
+                    t.cards[selected.id as keyof typeof t.cards].description}
                 </DialogDescription>
               </DialogHeader>
 
               <dl className="grid gap-3 rounded-2xl bg-slate-50 p-4 text-sm sm:grid-cols-2">
                 <div>
-                  <dt className="font-bold text-slate-500">Categoría</dt>
-                  <dd className="font-extrabold text-slate-900">{selected.categoria}</dd>
+                  <dt className="font-bold text-slate-500">{t.category}</dt>
+                  <dd className="font-extrabold text-slate-900">
+                    {t.cards[selected.id as keyof typeof t.cards].category}
+                  </dd>
                 </div>
                 {selected.ubicacion && (
                   <div>
-                    <dt className="font-bold text-slate-500">Ubicación</dt>
-                    <dd className="font-extrabold text-slate-900">{selected.ubicacion}</dd>
+                    <dt className="font-bold text-slate-500">{t.location}</dt>
+                    <dd className="font-extrabold text-slate-900">
+                      {t.cards[selected.id as keyof typeof t.cards].location ?? selected.ubicacion}
+                    </dd>
                   </div>
                 )}
               </dl>
@@ -432,11 +472,15 @@ export function ProjectsSection() {
                   }}
                   className="inline-flex items-center gap-2 rounded-full bg-[#88BD4C] px-6 py-3 text-sm font-extrabold text-slate-900 shadow-lg shadow-emerald-500/20 transition-all hover:-translate-y-0.5 hover:bg-[#78a841] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#88BD4C]/40"
                 >
-                  Cotizar algo similar
+                  {t.quoteSimilar}
                   <ArrowRight aria-hidden="true" className="h-4 w-4" />
                 </a>
                 {selected.id === CHATBOT_ID && (
-                  <ChatbotWhatsAppLink className="border-[#0087C3]/30 bg-[#0087C3] hover:bg-[#0077ad]" />
+                  <ChatbotWhatsAppLink
+                    label={t.chatbotTry}
+                    message={t.chatbotMessage}
+                    className="border-[#0087C3]/30 bg-[#006BA4] hover:bg-[#005888]"
+                  />
                 )}
               </div>
             </div>

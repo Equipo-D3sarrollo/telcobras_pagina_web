@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { ArrowUp } from "lucide-react";
+import { useTranslations } from "@/lib/accessibility-preferences-context";
 
 export function ScrollToTopButton() {
+  const label = useTranslations().navigation.backToTop;
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -21,7 +23,7 @@ export function ScrollToTopButton() {
     <button
       type="button"
       onClick={scrollToTop}
-      aria-label="Volver al inicio"
+      aria-label={label}
       className={[
         "fixed right-6 z-50 flex items-center justify-center rounded-full shadow-lg",
         "bg-[#F3CB35] text-slate-950 hover:bg-[#e2bb2d]",

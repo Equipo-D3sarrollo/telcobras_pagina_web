@@ -55,6 +55,7 @@
 }
 
 :root {
+  color-scheme: light;
   --radius: 0.85rem;
   /* Brand colors in OKLCH */
   /* Blue #0087C3 (logo) -> oklch(0.59 0.13 238) */
@@ -88,9 +89,19 @@
   --border: oklch(0.9 0.01 240);
   --input: oklch(0.9 0.01 240);
   --ring: oklch(0.59 0.13 238);
+  --surface-hover: oklch(0.95 0.008 240);
+  --surface-overlay-mix: 70%;
+  --focus-ring: oklch(0.45 0.12 240);
+  --brand-link: oklch(0.48 0.12 238);
+  --brand-action: oklch(0.43 0.12 128);
+  --brand-gradient-blue: #006ba4;
+  --brand-gradient-green: #477b1f;
+  --brand-gradient-yellow: #8a6500;
 }
 
-.dark {
+.dark,
+:root[data-theme="dark"] {
+  color-scheme: dark;
   --background: oklch(0.129 0.042 264.695);
   --foreground: oklch(0.984 0.003 247.858);
   --card: oklch(0.208 0.042 265.755);
@@ -110,6 +121,14 @@
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.551 0.027 264.364);
+  --surface-hover: oklch(0.279 0.041 260.031);
+  --surface-overlay-mix: 92%;
+  --focus-ring: oklch(0.82 0.11 225);
+  --brand-link: oklch(0.78 0.11 225);
+  --brand-action: oklch(0.43 0.12 128);
+  --brand-gradient-blue: #70c9f5;
+  --brand-gradient-green: #a8d97a;
+  --brand-gradient-yellow: #f3cb35;
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
@@ -123,6 +142,153 @@
   --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.551 0.027 264.364);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-theme="system"] {
+    color-scheme: dark;
+    --background: oklch(0.129 0.042 264.695);
+    --foreground: oklch(0.984 0.003 247.858);
+    --card: oklch(0.208 0.042 265.755);
+    --card-foreground: oklch(0.984 0.003 247.858);
+    --popover: oklch(0.208 0.042 265.755);
+    --popover-foreground: oklch(0.984 0.003 247.858);
+    --primary: oklch(0.929 0.013 255.508);
+    --primary-foreground: oklch(0.208 0.042 265.755);
+    --secondary: oklch(0.279 0.041 260.031);
+    --secondary-foreground: oklch(0.984 0.003 247.858);
+    --muted: oklch(0.279 0.041 260.031);
+    --muted-foreground: oklch(0.704 0.04 256.788);
+    --accent: oklch(0.279 0.041 260.031);
+    --accent-foreground: oklch(0.984 0.003 247.858);
+    --destructive: oklch(0.704 0.191 22.216);
+    --destructive-foreground: oklch(0.984 0.003 247.858);
+    --border: oklch(1 0 0 / 10%);
+    --input: oklch(1 0 0 / 15%);
+    --ring: oklch(0.551 0.027 264.364);
+    --surface-hover: oklch(0.279 0.041 260.031);
+    --surface-overlay-mix: 92%;
+    --focus-ring: oklch(0.82 0.11 225);
+    --brand-link: oklch(0.78 0.11 225);
+    --brand-action: oklch(0.43 0.12 128);
+    --brand-gradient-blue: #70c9f5;
+    --brand-gradient-green: #a8d97a;
+    --brand-gradient-yellow: #f3cb35;
+    --chart-1: oklch(0.488 0.243 264.376);
+    --chart-2: oklch(0.696 0.17 162.48);
+    --chart-3: oklch(0.769 0.188 70.08);
+    --chart-4: oklch(0.627 0.265 303.9);
+    --chart-5: oklch(0.645 0.246 16.439);
+    --sidebar: oklch(0.208 0.042 265.755);
+    --sidebar-foreground: oklch(0.984 0.003 247.858);
+    --sidebar-primary: oklch(0.488 0.243 264.376);
+    --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
+    --sidebar-accent: oklch(0.279 0.041 260.031);
+    --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: oklch(0.551 0.027 264.364);
+  }
+}
+
+[data-font-size="large"] {
+  font-size: 125%;
+}
+
+[data-font-size="larger"] {
+  font-size: 150%;
+}
+
+[data-font-size="largest"] {
+  font-size: 200%;
+}
+
+@media (max-width: 479px) {
+  .accessibility-toggle-label {
+    display: none;
+  }
+}
+
+@media (min-width: 80rem) {
+  :root:is([data-font-size="larger"], [data-font-size="largest"]) .header-desktop-nav,
+  :root:is([data-font-size="larger"], [data-font-size="largest"]) .header-desktop-cta {
+    display: none;
+  }
+
+  :root:is([data-font-size="larger"], [data-font-size="largest"]) .header-mobile-toggle {
+    display: flex;
+  }
+
+  :root:is([data-font-size="larger"], [data-font-size="largest"]) .header-mobile-menu {
+    display: block;
+  }
+}
+
+:root:is([data-font-size="large"], [data-font-size="larger"], [data-font-size="largest"])
+:where(.min-h-screen) * {
+  overflow-wrap: anywhere;
+}
+
+:root:is([data-font-size="large"], [data-font-size="larger"], [data-font-size="largest"])
+  .min-h-screen
+  :is(.grid, .flex)
+  > * {
+  min-width: 0;
+}
+
+:root:is([data-font-size="large"], [data-font-size="larger"], [data-font-size="largest"])
+  :is(.project-card-description, .services-card-tagline, .why-us-card-description) {
+  display: block;
+  overflow: visible;
+  -webkit-box-orient: initial;
+  -webkit-line-clamp: unset;
+}
+
+[data-colorblind-mode="true"] a:not([aria-hidden="true"]) {
+  text-decoration: underline;
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.18em;
+}
+
+[data-colorblind-mode="true"] a:not([aria-hidden="true"]):hover,
+[data-colorblind-mode="true"] a:not([aria-hidden="true"]):focus-visible {
+  text-decoration-thickness: 0.16em;
+}
+
+[data-colorblind-mode="true"] .services-tab[aria-pressed="true"] {
+  outline: 3px double currentColor;
+  outline-offset: -5px;
+  text-decoration: underline;
+  text-decoration-thickness: 0.12em;
+  text-underline-offset: 0.2em;
+}
+
+[data-colorblind-mode="true"] .services-tab[aria-pressed="true"] .services-tab-icon {
+  color: currentColor;
+}
+
+[data-colorblind-mode="true"] .services-card[aria-pressed="true"] {
+  outline: 3px double var(--foreground);
+  outline-offset: -5px;
+}
+
+[data-colorblind-mode="true"] .diff-card[data-node-active="true"] {
+  outline: 3px double #fff;
+  outline-offset: -6px;
+}
+
+[data-colorblind-mode="true"] [aria-invalid="true"] {
+  outline: 3px dashed currentColor;
+  outline-offset: 3px;
+}
+
+[data-colorblind-mode="true"] .consent-alert {
+  border-style: dashed;
+  border-width: 2px;
+}
+
+[data-colorblind-mode="true"] .chat-message--error {
+  border-style: double;
+  border-width: 4px;
 }
 
 @layer base {
@@ -815,6 +981,104 @@
   }
 }
 
+:root:is([data-theme="dark"], [data-theme="system"]) {
+  --surface-raised: var(--card);
+  --surface-muted: var(--muted);
+  --text-secondary: var(--muted-foreground);
+}
+
+:root:is([data-theme="dark"], [data-theme="system"]) [class~="bg-white"],
+:root:is([data-theme="dark"], [data-theme="system"]) [class~="bg-white/95"],
+:root:is([data-theme="dark"], [data-theme="system"]) [class~="bg-white/90"] {
+  background-color: var(--surface-raised) !important;
+}
+
+:root:is([data-theme="dark"], [data-theme="system"]) [class~="bg-white/70"],
+:root:is([data-theme="dark"], [data-theme="system"]) [class~="bg-white/60"] {
+  background-color: color-mix(in srgb, var(--surface-raised) var(--surface-overlay-mix), transparent) !important;
+}
+
+:root:is([data-theme="dark"], [data-theme="system"]) [class~="bg-white/65"] {
+  background-color: color-mix(in srgb, var(--background) 65%, transparent) !important;
+}
+
+:root:is([data-theme="dark"], [data-theme="system"]) [class~="bg-slate-50"],
+:root:is([data-theme="dark"], [data-theme="system"]) [class~="bg-slate-100"],
+:root:is([data-theme="dark"], [data-theme="system"]) [class~="bg-slate-200"],
+:root:is([data-theme="dark"], [data-theme="system"]) [class~="bg-[#F3F4F6]"] {
+  background-color: var(--surface-muted) !important;
+}
+
+:root:is([data-theme="dark"], [data-theme="system"]) [class~="bg-sky-100"] {
+  background-color: var(--accent) !important;
+}
+
+:root:is([data-theme="dark"], [data-theme="system"]) [class~="hover:bg-white/70"]:hover,
+:root:is([data-theme="dark"], [data-theme="system"]) [class~="hover:bg-slate-100"]:hover,
+:root:is([data-theme="dark"], [data-theme="system"]) [class~="hover:bg-slate-50"]:hover {
+  background-color: var(--surface-hover) !important;
+}
+
+:root:is([data-theme="dark"], [data-theme="system"]) [class~="text-slate-950"],
+:root:is([data-theme="dark"], [data-theme="system"]) [class~="text-slate-900"],
+:root:is([data-theme="dark"], [data-theme="system"]) [class~="text-slate-800"] {
+  color: var(--foreground) !important;
+}
+
+:root:is([data-theme="dark"], [data-theme="system"]) [class~="text-slate-700"],
+:root:is([data-theme="dark"], [data-theme="system"]) [class~="text-slate-600"],
+:root:is([data-theme="dark"], [data-theme="system"]) [class~="text-slate-500"] {
+  color: var(--text-secondary) !important;
+}
+
+:root:is([data-theme="dark"], [data-theme="system"]) [class~="text-[#0A192F]"] {
+  color: var(--foreground) !important;
+}
+
+:root:is([data-theme="dark"], [data-theme="system"]) [class~="text-[#0087C3]"] {
+  color: var(--brand-link) !important;
+}
+
+[class~="text-[#0087C3]"] {
+  color: var(--brand-link);
+}
+
+:root:is([data-theme="dark"], [data-theme="system"]) [class~="border-slate-100"],
+:root:is([data-theme="dark"], [data-theme="system"]) [class~="border-slate-200"],
+:root:is([data-theme="dark"], [data-theme="system"]) [class~="border-slate-200/80"],
+:root:is([data-theme="dark"], [data-theme="system"]) [class~="border-slate-300"] {
+  border-color: var(--border) !important;
+}
+
+:root:is([data-theme="dark"], [data-theme="system"]) :focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
+:root:is([data-theme="dark"], [data-theme="system"]) :disabled {
+  color: var(--text-secondary);
+  background-color: var(--surface-muted);
+  border-color: var(--border);
+  opacity: 1;
+  box-shadow: none;
+}
+
+:root:is([data-theme="dark"], [data-theme="system"]) [class~="bg-[#88BD4C]"][class~="text-slate-900"],
+:root:is([data-theme="dark"], [data-theme="system"]) [class~="bg-[#88BD4C]"][class~="text-slate-950"],
+:root:is([data-theme="dark"], [data-theme="system"]) [class~="bg-[#F3CB35]"][class~="text-slate-900"],
+:root:is([data-theme="dark"], [data-theme="system"]) [class~="bg-[#F3CB35]"][class~="text-slate-950"] {
+  color: #0a192f !important;
+}
+
+.whatsapp-floating-button {
+  background-color: var(--brand-action);
+}
+
+.location-map-frame {
+  background-color: var(--card);
+  border-color: var(--border);
+}
+
 /* === HeaderNav: vidrio claro, línea de luz y estados de navegación ===
    Solo decoración: pseudoelementos y fondos (no añaden nodos al DOM ni son
    interactivos). Animan únicamente transform, opacity y background-position. */
@@ -843,12 +1107,12 @@
 
 .header-glass {
   overflow: hidden;
-  background-color: rgb(255 255 255 / 85%);
+  background-color: color-mix(in srgb, var(--background) 88%, transparent);
 }
 
 .header-glass-panel {
-  background-color: rgb(255 255 255 / 92%);
-  border-top: 1px solid rgb(10 25 47 / 6%);
+  background-color: color-mix(in srgb, var(--background) 94%, transparent);
+  border-top: 1px solid var(--border);
 }
 
 /* Línea de luz inferior: degradado de marca fijo + destello que la recorre. */
@@ -1117,8 +1381,8 @@
 
 /* Tarjetas: vidrio translúcido; la activa toma tinte, icono encendido y señal. */
 .services-card {
-  border-color: rgb(226 232 240);
-  background-color: rgb(248 250 252 / 75%);
+  border-color: var(--border);
+  background-color: var(--muted);
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   transition:
@@ -1130,12 +1394,12 @@
 .services-card:hover,
 .services-card:focus-visible {
   transform: translateY(-3px);
-  background-color: #ffffff;
+  background-color: var(--card);
 }
 
 .services-card[data-active="true"] {
   border-color: transparent;
-  background-color: color-mix(in srgb, var(--service-color) 9%, #ffffff);
+  background-color: var(--accent);
 }
 
 .services-card > .brand-glow-ring {
@@ -1150,8 +1414,8 @@
 }
 
 .services-card-frame {
-  border-color: rgb(226 232 240);
-  background-color: #ffffff;
+  border-color: var(--border);
+  background-color: var(--card);
   transition:
     background-color 400ms ease,
     border-color 400ms ease;
@@ -1159,7 +1423,7 @@
 
 .services-card[data-active="true"] .services-card-frame {
   border-color: color-mix(in srgb, var(--service-color) 50%, transparent);
-  background-color: color-mix(in srgb, var(--service-color) 14%, #ffffff);
+  background-color: var(--accent);
 }
 
 .services-card-icon {
@@ -1194,46 +1458,6 @@
   opacity: 1;
 }
 
-/* Línea de estado: punto hueco en inactivas; en la activa, relleno y pulso. */
-.services-status-dot {
-  position: relative;
-  display: inline-block;
-  width: 0.5rem;
-  height: 0.5rem;
-  border: 1.5px solid #94a3b8;
-  border-radius: 9999px;
-  transition:
-    background-color 400ms ease,
-    border-color 400ms ease;
-}
-
-.services-card[data-active="true"] .services-status-dot {
-  border-color: var(--service-color);
-  background-color: var(--service-color);
-}
-
-.services-card[data-active="true"] .services-status-dot::after {
-  content: "";
-  position: absolute;
-  inset: -1.5px;
-  border-radius: inherit;
-  background-color: var(--service-color);
-  animation: services-status-pulse 2.4s ease-out infinite;
-}
-
-@keyframes services-status-pulse {
-  0% {
-    opacity: 0.6;
-    transform: scale(1);
-  }
-
-  70%,
-  100% {
-    opacity: 0;
-    transform: scale(2.6);
-  }
-}
-
 /* Movimiento reducido: el indicador no se desliza (cada pestaña funde su fondo),
    sin pulso ni elevación; se conservan los cambios de color y estado. */
 @media (prefers-reduced-motion: reduce) {
@@ -1254,9 +1478,5 @@
     transform: none;
   }
 
-  .services-card[data-active="true"] .services-status-dot::after {
-    animation: none;
-    display: none;
-  }
 }
 /* === Fin ServicesSection === */

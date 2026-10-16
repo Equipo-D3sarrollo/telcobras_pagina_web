@@ -6,23 +6,10 @@ import { ServicesSection } from "@/components/ServicesSection";
 import { LetyIaAndWhyUs } from "@/components/LetyIaAndWhyUs";
 import { ContactAndFooter } from "@/components/ContactAndFooter";
 import { ScrollToTopButton } from "@/components/ScrollToTopButton";
-import { CONTACT } from "@/lib/telcobras-data";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "TELCOBRAS S.A.S. | Una nueva forma de entender las redes" },
-      {
-        name: "description",
-        content:
-          "El aliado tecnológico de confianza para las empresas en Colombia. Red propia de fibra óptica y radioenlace, ciberseguridad, nube híbrida e Inteligencia Artificial.",
-      },
-      { property: "og:title", content: "TELCOBRAS S.A.S. | Una nueva forma de entender las redes" },
-      {
-        property: "og:description",
-        content:
-          "Soluciones de tecnología, conectividad e IA con infraestructura propia en Cali y cobertura nacional.",
-      },
       {
         property: "og:image",
         content:
@@ -40,7 +27,7 @@ export const Route = createFileRoute("/")({
 
 function TelcobrasLandingPage() {
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans selection:bg-[#0087C3] selection:text-white">
+    <div className="min-h-screen overflow-x-clip bg-background font-sans text-foreground selection:bg-[#0087C3] selection:text-white">
       {/* 1. Header & Menú Fijo con logo oficial */}
       <HeaderNav />
 

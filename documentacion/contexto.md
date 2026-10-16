@@ -89,7 +89,7 @@ Usar lint, build y comprobaciones manuales/navegador hasta que se agreguen prueb
 │   ├── components/                 # Secciones y controles de la interfaz
 │   │   └── ui/                     # Primitivas reutilizables estilo shadcn/Radix
 │   ├── hooks/                      # Hooks compartidos (móvil, rotación de resaltado)
-│   ├── lib/                        # Datos, utilidades y manejo de errores
+│   ├── lib/                        # Datos, preferencias, utilidades y manejo de errores
 │   ├── routes/                     # Rutas TanStack Start
 │   ├── routeTree.gen.ts            # Generado automáticamente; no editar
 │   ├── router.tsx                  # Crea router y QueryClient
@@ -128,9 +128,70 @@ contener configuración privada, así que no debe abrirse ni reproducirse en inf
 - Carga la tipografía Nunito desde Google Fonts (`preconnect` + `stylesheet`) además
   de `styles.css`.
 - Tiene los componentes raíz de error (`ErrorComponent`, con `reportVibeError`) y 404.
-- El atributo `<html lang>` sigue en `"en"` aunque el contenido es español: revisar
-  si se busca SEO/accesibilidad en español.
+- El loader raíz obtiene las preferencias de accesibilidad desde la cookie
+  `telcobras_a11y` en el servidor y las aplica a los atributos de `<html>`, incluido
+  `lang`, antes de renderizar. El idioma predeterminado es `es`.
 - Si se añaden rutas, no eliminar `<Outlet />`.
+
+### Preferencias de accesibilidad
+
+- `src/lib/accessibility-preferences.ts` define el esquema, los valores por defecto y la
+  validación de las preferencias recibidas desde la cookie.
+- `src/lib/accessibility-preferences.server.ts` lee la cookie con las utilidades de
+  petición de TanStack Start; el loader de la ruta raíz comparte el resultado con el
+  shell SSR y la interfaz.
+- `src/components/AccessibilityMenu.tsx` proporciona el estado global y un control
+  flotante inferior izquierdo con opciones de apariencia (sistema/claro/oscuro), tamaño
+  de texto (100/125/150/200 %), idioma (español/inglés), modo daltonismo y restauración
+  de valores predeterminados.
+- `src/lib/accessibility-preferences-context.ts` y
+  `src/lib/accessibility-preferences-provider.tsx` exponen las preferencias existentes
+  al árbol React; no se debe crear un segundo estado de idioma.
+- `src/lib/translations.ts` contiene los catálogos tipados `es` y `en`, agrupados por
+  navegación, contenido, formulario, chatbot, accesibilidad, errores y metadatos. Los
+  componentes consultan el catálogo mediante `useTranslations()`.
+- El idioma guardado se usa durante el SSR para `lang`, título, descripción y metadatos
+  Open Graph; los metadatos del navegador también se actualizan al cambiar la preferencia.
+  Los mensajes previos del chatbot conservan su idioma mediante `lang` en cada mensaje.
+- El cambio de idioma solo cambia cadenas visibles: no desmonta ni reinicia el estado del
+  formulario o del chat. Las opciones de servicio conservan sus valores originales en
+  español al enviar la solicitud para mantener compatible el contrato del endpoint.
+- Los fuentes deben permanecer en UTF-8. Mantener tildes y caracteres españoles como
+  texto Unicode real; evitar conversiones que produzcan secuencias mojibake.
+- Los cambios se guardan en una cookie `SameSite=Lax` durante un año para que el
+  servidor pueda producir el idioma y el tema iniciales sin esperar a la hidratación.
+  El contenido de la cookie no es información sensible ni se usa para autorización.
+- La escala de contenido se apoya en el zoom nativo del navegador y no se persiste como
+  una preferencia propia; no se aplica `transform: scale()` ni se añade otro control de
+  escala. El selector de texto conserva los niveles 100/125/150/200 % y sus tamaños
+  tipográficos relativos crecen sin escalar las imágenes ni el mapa.
+- A tamaños grandes, el menú de navegación se repliega para evitar desbordamiento y las
+  etiquetas largas pueden redistribuirse. En ventanas de menos de 400 px, el botón
+  flotante de accesibilidad muestra el icono y conserva su nombre accesible para no
+  competir por espacio con WhatsApp y el chatbot. Las descripciones truncadas en tarjetas
+  se muestran completas al ampliar el texto; el menú móvil limita su altura y permite
+  desplazamiento vertical propio.
+- Los tokens semánticos cubren fondo, texto, tarjetas, superficies, bordes, controles,
+  foco y estados. Las secciones de marca con fondo azul marino conservan su identidad;
+  se ajustan los controles superpuestos, tarjetas y enlaces para mantener legibilidad
+  en ambas apariencias.
+- Los botones de acción que usan verde o azul de marca emplean variantes más oscuras
+  cuando necesitan texto o iconos blancos. El amarillo y el verde claros conservan texto
+  azul marino de alto contraste. Los títulos con degradado usan tonos de marca ajustados
+  para conservar contraste sobre superficies claras y oscuras. El foco visible se refuerza
+  globalmente y los controles nativos siguen `color-scheme` de la apariencia seleccionada.
+- El modo daltonismo subraya los enlaces, resalta las pestañas y tarjetas de servicio
+  seleccionadas con un borde doble, y mantiene la distinción de enlaces continuos/
+  punteados y nodos circulares/romboidales en el diagrama de red. Los errores del formulario
+  y del chatbot incluyen texto e icono además del color y reciben un borde reforzado. No se
+  aplican filtros cromáticos a imágenes ni videos.
+- El panel de accesibilidad, la navegación, el formulario, las tarjetas, el chatbot y los
+  diálogos consumen los colores semánticos o sus variantes compatibles con el tema.
+  El mapa es un `iframe` de Google Maps y, por ser contenido externo de otro origen,
+  conserva los colores propios del proveedor; su contenedor y los controles circundantes
+  sí se adaptan al tema.
+- Esta fase no traduce integralmente la página ni el chatbot al inglés; esa traducción
+  continúa pendiente de su fase específica.
 
 ### `src/routes/api.chat.ts`
 

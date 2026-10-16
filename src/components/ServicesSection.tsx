@@ -3,6 +3,7 @@ import { SERVICIOS_DATA } from "@/lib/telcobras-data";
 import type { CSSProperties } from "react";
 import { Wifi, ShieldCheck, Users, Cloud, Bot, CheckCircle2, Zap } from "lucide-react";
 import { BrandGlowBorder } from "@/components/BrandGlowBorder";
+import { useTranslations } from "@/lib/accessibility-preferences-context";
 
 const ICONS_MAP = {
   conectividad: Wifi,
@@ -25,9 +26,14 @@ const serviceColorStyle = (id: string) =>
   ({ "--service-color": SERVICE_COLORS[id] ?? "#0087C3" }) as CSSProperties;
 
 export function ServicesSection() {
+  const t = useTranslations().services;
   const [activeTab, setActiveTab] = useState(0);
   const currentService = SERVICIOS_DATA[activeTab];
+  if (!currentService) {
+    throw new Error("SERVICIOS_DATA must contain a service for the active tab.");
+  }
   const CurrentIcon = ICONS_MAP[currentService.id as keyof typeof ICONS_MAP] || Wifi;
+  const translatedService = t.cards[currentService.id as keyof typeof t.cards];
 
   useEffect(() => {
     const rotationInterval = window.setInterval(() => {
@@ -42,15 +48,12 @@ export function ServicesSection() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
           <span className="px-3.5 py-1.5 rounded-full bg-sky-100 text-[#0087C3] text-xs font-extrabold uppercase tracking-wider">
-            Portafolio de Servicios
+            {t.badge}
           </span>
-          <h2 className="bg-gradient-to-r from-[#0087C3] via-[#88BD4C] to-[#F3CB35] bg-clip-text text-3xl sm:text-4xl md:text-5xl font-black text-transparent tracking-tight">
-            Soluciones integradas para la continuidad de tu negocio
+          <h2 className="bg-gradient-to-r from-[var(--brand-gradient-blue)] via-[var(--brand-gradient-green)] to-[var(--brand-gradient-yellow)] bg-clip-text text-3xl sm:text-4xl md:text-5xl font-black text-transparent tracking-tight">
+            {t.title}
           </h2>
-          <p className="text-slate-600 text-base sm:text-lg">
-            Combinamos infraestructura de última generación, plataformas digitales seguras e
-            Inteligencia Artificial.
-          </p>
+          <p className="text-slate-600 text-base sm:text-lg">{t.description}</p>
         </div>
 
         {/* Tab Buttons */}
@@ -63,6 +66,7 @@ export function ServicesSection() {
             />
             {SERVICIOS_DATA.map((s, idx) => {
               const TabIcon = ICONS_MAP[s.id as keyof typeof ICONS_MAP] || Wifi;
+              const translated = t.cards[s.id as keyof typeof t.cards];
               const isActive = activeTab === idx;
               return (
                 <button
@@ -80,7 +84,7 @@ export function ServicesSection() {
                 >
                   <span
                     aria-hidden="true"
-                    className={`text-[10px] font-bold tabular-nums transition-colors duration-300 ${
+                    className={`text-[0.625rem] font-bold tabular-nums transition-colors duration-300 ${
                       isActive ? "text-slate-300" : "text-slate-500"
                     }`}
                   >
@@ -90,7 +94,10 @@ export function ServicesSection() {
                     aria-hidden="true"
                     className="services-tab-icon h-4 w-4 shrink-0 text-[var(--service-color)]"
                   />
-                  {s.title.split(" ")[0]}
+                  {translated.title.split(" ")[0]}
+                  {isActive && (
+                    <CheckCircle2 aria-hidden="true" className="services-tab-selected h-4 w-4" />
+                  )}
                 </button>
               );
             })}
@@ -153,12 +160,12 @@ export function ServicesSection() {
                   <CurrentIcon className="w-8 h-8" />
                 </div>
                 <span className="services-accent-chip px-3 py-1 rounded-full text-xs font-bold text-slate-200 border">
-                  {currentService.badge}
+                  {translatedService.badge}
                 </span>
               </div>
 
               <h3 className="text-2xl sm:text-3xl md:text-4xl font-black text-white leading-tight">
-                {currentService.title}
+                {translatedService.title}
               </h3>
               <span
                 aria-hidden="true"
@@ -166,19 +173,19 @@ export function ServicesSection() {
               />
 
               <p className="text-[#88BD4C] font-extrabold text-base sm:text-lg">
-                {currentService.tagline}
+                {translatedService.tagline}
               </p>
 
               <p className="text-slate-300 text-sm sm:text-base leading-relaxed">
-                {currentService.description}
+                {translatedService.description}
               </p>
 
               <div className="space-y-3 pt-2">
                 <p className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
-                  Capacidades y características:
+                  {t.capabilities}
                 </p>
                 <div className="grid sm:grid-cols-2 gap-3">
-                  {currentService.features.map((feat) => (
+                  {translatedService.features.map((feat) => (
                     <div
                       key={feat}
                       className="flex items-start gap-2.5 text-xs sm:text-sm text-slate-200"
@@ -195,7 +202,10 @@ export function ServicesSection() {
                   href="#contacto"
                   className="px-6 py-3 rounded-full text-xs font-extrabold text-slate-900 bg-[#F3CB35] hover:bg-[#e2bb2d] shadow-md transition-all"
                 >
-                  Cotizar {currentService.title.split(" ")[0]} para tu empresa
+                  {t.quoteService.replace(
+                    "{service}",
+                    translatedService.title.split(/\s+/, 1).join(""),
+                  )}
                 </a>
               </div>
             </div>
@@ -203,21 +213,21 @@ export function ServicesSection() {
             <div className="lg:col-span-5">
               <div className="services-accent-border p-6 rounded-2xl bg-white/5 backdrop-blur-md border space-y-4">
                 <h4 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-[#F3CB35]" /> Valor diferencial
+                  <Zap className="w-4 h-4 text-[#F3CB35]" /> {t.differentiator}
                 </h4>
 
                 <div className="space-y-3 text-xs sm:text-sm text-slate-300">
                   <div className="p-3 rounded-xl bg-slate-800/80 border border-slate-700/50">
-                    <strong className="text-white block">Alta Disponibilidad:</strong>{" "}
-                    Disponibilidad de red del 99,6 %.
+                    <strong className="text-white block">{t.availabilityTitle}</strong>{" "}
+                    {t.availabilityDescription}
                   </div>
                   <div className="p-3 rounded-xl bg-slate-800/80 border border-slate-700/50">
-                    <strong className="text-white block">Soporte Continuo:</strong> Atención 24/7
-                    con ingeniería especializada.
+                    <strong className="text-white block">{t.supportTitle}</strong>{" "}
+                    {t.supportDescription}
                   </div>
                   <div className="p-3 rounded-xl bg-slate-800/80 border border-slate-700/50">
-                    <strong className="text-white block">Instalación en 15 Días:</strong> Agilidad
-                    de implementación para no retrasar tu operación.
+                    <strong className="text-white block">{t.installationTitle}</strong>{" "}
+                    {t.installationDescription}
                   </div>
                 </div>
               </div>
@@ -243,7 +253,7 @@ export function ServicesSection() {
             </linearGradient>
           </defs>
         </svg>
-        <div className="grid grid-cols-2 gap-4 mt-12 md:grid-cols-6 lg:grid-cols-5">
+        <div className="services-card-grid mt-12 grid grid-cols-2 gap-4 md:grid-cols-6 lg:grid-cols-5">
           {SERVICIOS_DATA.map((serv, index) => {
             const CardIcon = ICONS_MAP[serv.id as keyof typeof ICONS_MAP] || Wifi;
             const isActive = activeTab === index;
@@ -271,20 +281,24 @@ export function ServicesSection() {
                   </span>
                   <span
                     aria-hidden="true"
-                    className="text-[11px] font-bold tabular-nums text-slate-500"
+                    className="text-[0.6875rem] font-bold tabular-nums text-slate-500"
                   >
                     {String(index + 1).padStart(2, "0")}
                   </span>
                 </span>
                 <span className="mb-1.5 block text-sm font-extrabold text-[#0A192F]">
-                  {serv.title}
+                  {t.cards[serv.id as keyof typeof t.cards].title}
                 </span>
-                <span className="mb-4 block text-xs text-slate-600 line-clamp-2">
-                  {serv.tagline}
+                <span className="services-card-tagline mb-4 block text-xs text-slate-600 line-clamp-2">
+                  {t.cards[serv.id as keyof typeof t.cards].tagline}
                 </span>
-                <span className="mt-auto flex items-center gap-2 text-[11px] font-bold text-[#0A192F]">
-                  <span aria-hidden="true" className="services-status-dot" />
-                  {isActive && "En pantalla"}
+                <span className="mt-auto flex items-center gap-2 text-[0.6875rem] font-bold text-[#0A192F]">
+                  {isActive && (
+                    <>
+                      <CheckCircle2 aria-hidden="true" className="h-4 w-4 shrink-0" />
+                      {t.active}
+                    </>
+                  )}
                 </span>
                 <BrandGlowBorder light={false} />
               </button>
