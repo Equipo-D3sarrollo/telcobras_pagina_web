@@ -6,6 +6,7 @@ import {
   useRouter,
   HeadContent,
   Scripts,
+  useRouterState,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 import { getAccessibilityPreferences } from "../lib/accessibility-preferences.server";
@@ -13,6 +14,7 @@ import { getAccessibilityPreferences } from "../lib/accessibility-preferences.se
 import appCss from "../styles.css?url";
 import { reportVibeError } from "../lib/vibe-error-reporting";
 import { AccessibilityMenu } from "../components/AccessibilityMenu";
+import { CookieBanner } from "../components/CookieBanner";
 import { FloatingChatbot } from "../components/FloatingChatbot";
 import { useTranslations } from "@/lib/accessibility-preferences-context";
 import { AccessibilityPreferencesProvider } from "@/lib/accessibility-preferences-provider";
@@ -177,6 +179,7 @@ function RootComponent() {
         <AccessibilityMenu />
         <FloatingChatbot />
         <WhatsAppFloatingButton />
+        <CookieBanner />
       </AccessibilityPreferencesProvider>
     </QueryClientProvider>
   );
@@ -184,8 +187,11 @@ function RootComponent() {
 
 function LocalizedMetadata() {
   const { metadata } = useTranslations();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
 
   useEffect(() => {
+    if (pathname !== "/") return;
+
     document.title = metadata.title;
     document
       .querySelector('meta[name="description"]')
@@ -202,7 +208,7 @@ function LocalizedMetadata() {
     document
       .querySelector('meta[name="twitter:description"]')
       ?.setAttribute("content", metadata.socialDescription);
-  }, [metadata]);
+  }, [metadata, pathname]);
 
   return null;
 }

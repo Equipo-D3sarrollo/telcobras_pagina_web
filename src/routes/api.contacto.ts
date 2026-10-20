@@ -5,13 +5,13 @@ const MAX_REQUEST_BYTES = 16 * 1024;
 const SUPABASE_TABLE = "solicitudes_contacto";
 
 const LIMITS = {
-  nombre: 120,
-  empresa: 160,
-  cargo: 120,
-  correo: 254,
-  telefono: 40,
+  nombre: 100,
+  empresa: 100,
+  cargo: 100,
+  correo: 200,
+  telefono: 20,
   servicio: 120,
-  mensaje: 4000,
+  mensaje: 2000,
 } as const;
 
 type ContactoRequest = {
@@ -137,6 +137,10 @@ async function handlePost(request: Request): Promise<Response> {
   try {
     input = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(body));
   } catch {
+    return jsonResponse({ error: "invalid_request" }, 400);
+  }
+
+  if (isRecord(input) && typeof input["sitio_web"] === "string" && input["sitio_web"].trim()) {
     return jsonResponse({ error: "invalid_request" }, 400);
   }
 

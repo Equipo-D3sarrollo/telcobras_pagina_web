@@ -22,7 +22,8 @@ conocidos. Debe actualizarse cuando cambien la arquitectura o las capacidades de
 - Los cambios visuales del sitio suelen hacerse en los componentes de `src/components/`
   y los estilos globales en `src/styles.css`.
 - Ejecutar `npm exec eslint -- <archivos-modificados>` y `npm run build` cuando
-  corresponda. El proyecto no define actualmente un script de pruebas automatizadas.
+  corresponda. Hay archivos de pruebas/configuración vacíos en el árbol de trabajo,
+  pero no constituyen una suite ejecutable ni hay scripts `test` en `package.json`.
 - Mantener la interfaz, mensajes y documentación del producto principalmente en español.
 - No ejecutar `npm run build` con el servidor de desarrollo activo: en Windows Vite
   vigila `.output/` y se cae con `EBUSY`. Detener el servidor, compilar y volver a
@@ -131,6 +132,11 @@ contener configuración privada, así que no debe abrirse ni reproducirse en inf
 - El loader raíz obtiene las preferencias de accesibilidad desde la cookie
   `telcobras_a11y` en el servidor y las aplica a los atributos de `<html>`, incluido
   `lang`, antes de renderizar. El idioma predeterminado es `es`.
+- `src/components/CookieBanner.tsx` se monta desde el shell global. Guarda la elección
+  en `localStorage` bajo `telcobras_cookie_consent` (esenciales siempre activas y una
+  preferencia booleana para las no esenciales); si la clave existe, no vuelve a mostrar
+  el banner. El control registra la preferencia, pero la carga/ejecución de cookies de
+  terceros debe conectarse a esa preferencia si se incorporan esas integraciones.
 - Si se añaden rutas, no eliminar `<Outlet />`.
 
 ### Preferencias de accesibilidad
@@ -190,8 +196,18 @@ contener configuración privada, así que no debe abrirse ni reproducirse en inf
   El mapa es un `iframe` de Google Maps y, por ser contenido externo de otro origen,
   conserva los colores propios del proveedor; su contenedor y los controles circundantes
   sí se adaptan al tema.
-- Esta fase no traduce integralmente la página ni el chatbot al inglés; esa traducción
-  continúa pendiente de su fase específica.
+- La landing y los controles principales consumen los catálogos ES/EN de
+  `src/lib/translations.ts`; header, formulario, ubicación, footer, chatbot, proyectos,
+  nombres accesibles, metadatos SSR y páginas de error usan el idioma seleccionado.
+  La dirección física se mantiene como dato geográfico propio (no se traduce), pero se
+  obtiene del catálogo locale. Los campos visibles del formulario están asociados a sus
+  controles mediante `htmlFor`/`id`.
+- Cambiar de idioma conserva los valores del formulario y el historial/chat escrito. El
+  saludo inicial del chatbot se actualiza y los mensajes anteriores mantienen su atributo
+  `lang` original. La página HTML de contingencia también lee el idioma de la cookie.
+- `formatLocalizedNumber` y `formatLocalizedDate` están disponibles en `translations.ts`;
+  el año del pie usa el helper numérico. Aplicar estos helpers a futuras fechas y cifras
+  que se incorporen a la interfaz.
 
 ### `src/routes/api.chat.ts`
 
@@ -382,14 +398,28 @@ Reúne tres bloques en un solo componente: `#contacto`, `#ubicacion` y el pie de
   Cali; se pausa con `data-animations-paused` controlado por `IntersectionObserver`
   (`sectionRef`/`isInView`), con el mismo criterio que `WhyUsSection`.
 
-**Limitación funcional importante:** el formulario todavía no persiste ni envía datos.
-`handleSubmit` solo revisa nombre/correo/teléfono en el cliente, establece
-`formSubmitted` y muestra toast de éxito. No hace `fetch`, no hay endpoint de contacto.
-Existe un `conexion.php` de ejemplo (PHP + MySQL/PDO) en la raíz, pero no está conectado
-a este formulario ni a la aplicación. Antes de implementar almacenamiento, decidir
-D1/PostgreSQL/Firebase, consentimiento de tratamiento de datos, retención, anti-spam y
-canal de notificación. El formulario recopila nombre, empresa, cargo, correo, teléfono,
-servicio y mensaje; nombre, correo y teléfono son obligatorios en UI.
+El formulario hace `POST /api/contacto` y muestra éxito solo si el endpoint responde
+con estado HTTP exitoso. El servidor valida el JSON y longitudes, exige
+`consentimiento: true` y persiste el registro en Supabase, tabla
+`solicitudes_contacto`, usando `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` del entorno
+de servidor. `conexion.php` continúa siendo un ejemplo aislado de MySQL/PDO, no usado
+por la aplicación.
+
+**Pendientes de seguridad y accesibilidad confirmados:** el endpoint no implementa
+limitación de tasa; incluye un honeypot `sitio_web` para descartar envíos automatizados,
+pero no sustituye un rate limit. Además incluye el mensaje de error
+`error.message` de Supabase en el campo `detail` de su respuesta 500, lo que puede
+exponer detalles internos al cliente. No devolver ese mensaje crudo en producción.
+Las etiquetas visibles de nombre, empresa, cargo, correo, teléfono, servicio y mensaje
+están asociadas mediante `htmlFor`/`id`; los límites HTML y los del endpoint están
+alineados para esos campos.
+
+El formulario recopila nombre, empresa, cargo, correo, teléfono, servicio, mensaje y
+consentimiento; nombre, correo y teléfono son obligatorios en cliente y servidor.
+La ruta interna `/politica-de-privacidad` describe los tratamientos conocidos en la
+aplicación. El responsable de datos debe revisar y confirmar especialmente las bases
+jurídicas, proveedores/transferencias, retención, acceso y borrado antes de tratarla como
+política legal aprobada.
 
 ### `src/components/FloatingChatbot.tsx`
 
@@ -409,8 +439,9 @@ servicio y mensaje; nombre, correo y teléfono son obligatorios en UI.
 - El input se deshabilita durante la petición o mientras se inicializa la sesión.
 - El panel se amplió verticalmente: casi toda la altura disponible en móvil y hasta
   720 px en escritorio, limitado por altura de viewport.
-- Los mensajes de error del backend se traducen a mensajes en español (mapa por código
-  de error, incluido `agent_response_unavailable`).
+- Los mensajes de error del backend se traducen al idioma seleccionado mediante el
+  catálogo de chatbot, incluido `agent_response_unavailable`. Cada mensaje del historial
+  conserva el idioma con `lang`; cambiar idioma no desmonta el chat ni borra lo escrito.
 - No exponer la URL de Make en el frontend. No pasar datos sensibles del historial
   en telemetría.
 
@@ -571,6 +602,9 @@ exitosa y repetible con el módulo Webhook response configurado correctamente.
   server functions; el filtro solo cubre handlers `serverFn`.
 - El endpoint HTTP `/api/chat` tiene su propia validación y controles; no confundir
   la protección CSRF de server functions con validación del endpoint de chat.
+- `src/start.ts` limita `createCsrfMiddleware` a handlers `serverFn`. Los handlers HTTP
+  `/api/chat` y `/api/contacto` no obtienen esa protección automáticamente; al endurecer
+  estos endpoints, decidir una política de origen/CSRF además de limitación de tasa.
 - `src/router.tsx` construye QueryClient y el router con restauración de scroll.
 - `tsconfig.json` está en modo estricto y define alias `@/*` → `src/*`.
 - `components.json` refleja la configuración de componentes tipo shadcn.
@@ -593,13 +627,10 @@ En `public/` se encontraron:
 | `logo_xpertic.png` | Aliado Xpertic |
 | `robots.txt` | Reglas básicas para rastreo |
 
-**Versionado:** ya están en Git `public/video_inicio.mp4`,
-`public/video_conectividad.mp4`, `public/video_seguridad.mp4`,
-`public/video_agentes.mp4` y `public/robots.txt`. Siguen sin versionar
-`public/video_colaboracion.mp4`, `public/video_nuve.mp4`, `public/logo_aquora.png` y
-`public/logo_xpertic.png` (también hay copias sin versionar de los logos en la raíz).
-El código ya los usa: si se suben los componentes sin ellos, la rama conectada a AI
-Studio muestra videos y logos rotos (404).
+**Versionado:** al auditar el repositorio, todos los recursos de la tabla de `public/`
+estaban versionados en Git. `video_tel.mp4` existe en la raíz del repositorio, pero no
+en `public/`; el componente Quiénes Somos pide `/video_tel.mp4`, por lo que esa
+referencia produce un 404 salvo que se copie el recurso a `public/`.
 
 Los archivos de la carpeta `public/` se sirven desde raíz (por ejemplo,
 `public/video_inicio.mp4` se solicita como `/video_inicio.mp4`). También existen
@@ -615,6 +646,10 @@ descargarlas con autorización y migrarlas a `public/`.
 ### Implementado
 
 - Landing responsiva con secciones institucionales, servicios, proyectos, contacto y ubicación.
+- Preferencias de accesibilidad persistidas/validadas y aplicadas en SSR; catálogos
+  tipados ES/EN para el contenido principal, el formulario, el chatbot y los errores raíz.
+- Formulario conectado al endpoint `/api/contacto`, con persistencia de solicitudes en
+  Supabase mediante credenciales de servidor.
 - Header sticky con barra superior, efecto glass y menú móvil.
 - Fondos de video por pestaña de servicio y rotación automática cada 30 segundos;
   pestañas y cuadrícula de tarjetas seleccionan el mismo servicio.
@@ -629,53 +664,72 @@ descargarlas con autorización y migrarlas a `public/`.
 
 ### Pendiente/por confirmar
 
-0. **Commit pendiente:** hay cambios locales sin commitear (revisar `git status`).
-   Sin versionar: `ProjectsSection.tsx`, `WhyUsSection.tsx`, `BrandGlowBorder.tsx`,
-   `use-rotating-highlight.ts`, `conexion.php`, `documentacion/` y los recursos de
-   `public/` citados arriba. Hay modificaciones sin commitear en `ContactAndFooter`,
-   `FloatingChatbot`, `HeaderNav`, `HeroAndMetrics`, `LetyIaAndWhyUs`, `ServicesSection`,
-   `ScrollToTopButton`, `telcobras-data.ts` y `styles.css`. Revisar antes
-   `src/tailwind.config.vibe.json`, que regenera el plugin `vibe-tagger` al arrancar el
-   servidor.
-
-1. **Formulario y base de datos:** aún no hay persistencia ni endpoint. El éxito visual
-   del formulario es local; no tratarlo como recepción real. `conexion.php` es solo un
-   ejemplo de referencia (PHP/PDO) y no está enlazado al formulario ni al despliegue.
-2. **Make:** ejecutar una prueba exitosa de extremo a extremo y revisar salida del módulo
+1. **Estado Git al 19-10-2026:** `main` y `origin/main` estaban en `2300af0`
+   (`Add Spanish and English translations for the application content`). El push
+   intentado a `Equipo-D3sarrollo/telcobras_pagina_web` fue rechazado por GitHub con
+   HTTP 403 para la cuenta `guidogonzalez21`; el `main` remoto de esa organización
+   permanecía en `16e5c5a`. No reescribir historia; comprobar permisos y volver a intentar
+   solo cuando la cuenta tenga escritura. El árbol de trabajo tenía cambios locales
+   adicionales —entre ellos `HeaderNav.tsx`, `styles.css`, `package.json`,
+   `package-lock.json` y archivos de pruebas/configuración— que no forman parte de
+   `2300af0`; no descartarlos ni incluirlos sin revisión.
+2. **Pruebas:** `npm run lint` pasó con 0 errores y 6 advertencias de
+   `react-refresh/only-export-components` en componentes UI compartidos.
+   `npx tsc --noEmit` pasó. Los archivos
+   `src/components/AccessibilityMenu.test.tsx`,
+   `src/lib/accessibility-preferences.test.ts`, `e2e/accessibility.spec.ts`,
+   `vitest.config.ts` y `playwright.config.ts` estaban vacíos (0 bytes) en el árbol
+   de trabajo auditado; no hay pruebas efectivas ni scripts de test declarados.
+   No se ejecutó `npm run build` porque había un servidor Vite escuchando en el puerto
+   8080 y este repositorio documenta el conflicto de `.output/` en Windows.
+3. **Make:** ejecutar una prueba exitosa de extremo a extremo y revisar salida del módulo
    Webhook response; hay históricos de respuestas upstream inválidas.
-3. **Video de Quiénes Somos:** `AboutAndValues.tsx` pide `/video_tel.mp4`, pero el listado
-   de `public/` no lo incluye. Verificar la disponibilidad en navegador y colocar el
-   archivo en `public/` si corresponde.
-4. **Rotación automática de Servicios:** rota incluso sin interacción y cambia también
+4. **Video de Quiénes Somos:** `AboutAndValues.tsx` pide `/video_tel.mp4`, pero solo
+   existe en la raíz, no en `public/`; colocar una copia autorizada en `public/` o
+   actualizar/eliminar la referencia para evitar 404.
+5. **Rotación automática de Servicios:** rota incluso sin interacción y cambia también
    si el visitante seleccionó manualmente una pestaña. Si UX requiere pausar/reiniciar
    el reloj tras interacción o al salir de viewport, implementar explícitamente.
-5. **Peso de videos:** revisar compresión, dimensiones, poster, carga diferida y política
+6. **Peso de videos:** revisar compresión, dimensiones, poster, carga diferida y política
    de reproducción móvil, especialmente para `video_agentes.mp4`.
-6. **Privacidad:** antes de persistir leads, definir consentimiento informado, política
-   de tratamiento, retención, acceso y borrado con el responsable de datos.
-7. **Formulario:** los enlaces «Términos de Servicio» y «Política de Tratamiento de
-   Datos» actualmente conducen a `#contacto`, no a documentos legales independientes.
-8. **Integración real de proyectos/fotos/redes:** comprobar enlaces sociales e imágenes
-   externas antes de publicar en producción.
-9. **Tarjetas invisibles antes de hidratar:** las tarjetas de `#por-que` se renderizan
-   con `opacity-0` (y las de `#proyectos` con `motion-safe:opacity-0`, es decir, solo
-   sin movimiento reducido) y aparecen cuando el JavaScript hidrata y el observer las
-   revela. En modo dev eso tarda unos 10 s; con conexión lenta se vería un
-   hueco. Propuesta: renderizarlas visibles y aplicar la animación solo tras el montaje.
-10. **Accesibilidad del chatbot:** el robot flotante usa `animate-bounce` sin
-    `motion-safe:` y las animaciones `chatbot-robot-vibrate` y `ally-logo-rotation` no
-    tienen regla de movimiento reducido.
-11. **Por confirmar con el cliente:** textos nuevos de los diferenciales, colores por
+7. **Privacidad:** la ruta `/politica-de-privacidad` y el consentimiento del formulario
+   están implementados. Revisar el contenido con el responsable de datos, en particular
+   bases jurídicas, proveedores/transferencias, retención, acceso y borrado.
+8. **Protección de endpoints HTTP:** `/api/contacto` y `/api/chat` no tienen limitación
+   de tasa; el primero puede recibir spam de leads y el segundo puede disparar llamadas
+   al webhook. Añadir protección anti-spam/rate limit y revisar política de origen/CSRF.
+   Eliminar también `error.message` de Supabase de la respuesta pública; mantener el
+   detalle interno solo en logs controlados, sin incluir datos personales.
+9. **Codificación de README:** `README.md` decodifica como UTF-8, pero contiene 24 bytes
+    NUL. Revisar y guardar el documento como UTF-8 limpio; no copiar/re-guardar con una
+    codificación ambigua.
+10. **Lockfiles:** están versionados `package-lock.json` y `bun.lock`, mientras que los
+    comandos documentados usan npm. Elegir cuál es la fuente canónica y mantener o retirar
+    el otro mediante una decisión coordinada para evitar instalaciones divergentes.
+11. **Formulario:** los enlaces «Términos de Servicio» y «SLA y garantías» aún conducen
+    a `#contacto`, no a documentos legales independientes.
+12. **Integración real de proyectos/fotos/redes:** comprobar enlaces sociales e imágenes
+    externas antes de publicar en producción.
+13. **Tarjetas invisibles antes de hidratar:** las tarjetas de `#por-que` se renderizan
+    con `opacity-0` (y las de `#proyectos` con `motion-safe:opacity-0`, es decir, solo
+    sin movimiento reducido) y aparecen cuando el JavaScript hidrata y el observer las
+    revela. En modo dev eso tarda unos 10 s; con conexión lenta se vería un
+    hueco. Propuesta: renderizarlas visibles y aplicar la animación solo tras el montaje.
+14. **Accesibilidad del movimiento:** el robot y los puntos de carga del chatbot usan
+    `animate-bounce` sin `motion-safe:`. `chatbot-robot-vibrate` y `ally-logo-rotation`
+    tampoco tienen regla de movimiento reducido; la invitación del chatbot sí tiene un
+    tratamiento específico en `styles.css`.
+15. **Por confirmar con el cliente:** textos nuevos de los diferenciales, colores por
     tarjeta, si con movimiento reducido la tarjeta activa debe seguir creciendo, y
     categorías/subtítulo de Proyectos.
 
-## 12. Recomendación para implementar persistencia del formulario
+## 12. Operación y privacidad del formulario
 
-El frontend actual está listo como formulario visual, no como captura de leads.
-Si el proyecto permanece en Cloudflare, evaluar Cloudflare D1 como opción SQL con
-integración directa con Workers. Firebase/Firestore es viable si TELCOBRAS ya usa el
-ecosistema Firebase, pero mantener las escrituras detrás de un endpoint servidor;
-no dar acceso de escritura indiscriminado al navegador.
+La captura de leads está implementada en `src/routes/api.contacto.ts` y usa Supabase
+desde el servidor; no cambiarla por el ejemplo PHP sin una decisión explícita. Mantener
+la URL y la service-role key exclusivamente en variables de entorno de servidor. La
+clave service-role tiene privilegios elevados y no debe aparecer en código cliente,
+logs, documentación ni variables `VITE_*`.
 
 En la raíz existe `conexion.php`, un ejemplo de conexión a MySQL con PDO (DSN `mysql:`,
 credenciales por variables de entorno `DB_HOST`/`DB_PORT`/`DB_NAME`/`DB_USER`/`DB_PASS`/
@@ -683,17 +737,10 @@ credenciales por variables de entorno `DB_HOST`/`DB_PORT`/`DB_NAME`/`DB_USER`/`D
 referencia: Cloudflare Workers no ejecuta PHP, así que no reemplaza a D1 ni a un backend
 Node del stack actual y no debe usarse como el camino de persistencia del formulario.
 
-Secuencia recomendada:
-
-1. Confirmar proveedor/entorno objetivo (Cloudflare D1, Firebase/Firestore u otro).
-2. Acordar campos, estado de seguimiento, retención y acceso.
-3. Crear migración/esquema y binding/credenciales solo en servidor.
-4. Crear un `POST /api/contacto` con validación de tipos, longitudes y valores permitidos.
-5. Insertar con consultas parametrizadas o SDK servidor y devolver éxito solo tras persistir.
-6. Conectar `ContactAndFooter.tsx` con loading/error/success y prevenir doble envío.
-7. Añadir consentimiento y protección anti-spam/limitación de tasa.
-8. Añadir notificación a ventas/CRM/Make solo después de guardar, con gestión de fallos.
-9. Probar en entorno staging y verificar que el registro existe realmente.
+Pendiente: verificar esquema/RLS/políticas de acceso de la tabla
+`solicitudes_contacto`, añadir limitación de tasa/anti-spam, devolver errores genéricos al
+cliente, validar con el responsable de datos el contenido de la política y definir
+retención/borrado, y probar la inserción en staging de extremo a extremo.
 
 No crear un endpoint público para listar todas las solicitudes sin autenticación y
 autorización. Evitar registrar datos personales completos en logs.

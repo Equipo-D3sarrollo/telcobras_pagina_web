@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Accessibility, RotateCcw } from "lucide-react";
+import { Eye, RotateCcw } from "lucide-react";
 
 import {
   DEFAULT_ACCESSIBILITY_PREFERENCES,
@@ -33,10 +33,9 @@ export function AccessibilityMenu() {
         aria-expanded={isOpen}
         aria-controls="accessibility-panel"
         onClick={() => setIsOpen((open) => !open)}
-        className="inline-flex min-h-12 items-center gap-2 rounded-full border-2 border-white bg-[#0A5F8F] px-4 text-sm font-bold text-white shadow-lg hover:bg-[#084a70] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0A192F]"
+        className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-white bg-[#0A5F8F] p-0 text-white shadow-lg hover:bg-[#084a70] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0A192F]"
       >
-        <Accessibility aria-hidden="true" className="h-5 w-5" />
-        <span className="accessibility-toggle-label">{copy.title}</span>
+        <Eye aria-hidden="true" className="h-5 w-5" />
       </button>
 
       <section

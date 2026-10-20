@@ -26,7 +26,7 @@ export function HeaderNav() {
           <div className="flex min-w-0 items-center gap-x-5 gap-y-1">
             <span className="hidden items-center gap-2 text-slate-200 sm:flex">
               <MapPin className="header-topbar-icon h-3.5 w-3.5 shrink-0 text-[#88BD4C]" />
-              Carrera 83A # 20 - 20, Cali, Colombia
+              {translations.contact.shortAddress}
             </span>
             <span className="flex items-center gap-2 text-slate-200">
               <Clock className="header-topbar-icon h-3.5 w-3.5 shrink-0 text-[#F3CB35]" />
@@ -65,13 +65,13 @@ export function HeaderNav() {
 
           <nav
             aria-label={t.mainLabel}
-            className="header-desktop-nav hidden items-center gap-0.5 p-1 xl:flex"
+            className="header-desktop-nav hidden items-center gap-0.5 p-1 lg:flex"
           >
             {navLinks.map((link, index) => (
               <a
                 key={link.href}
                 href={link.href}
-                className="header-nav-link rounded-lg px-2 py-2.5 text-[0.875rem] font-semibold text-foreground transition-colors duration-300 hover:text-[var(--brand-link)] focus-visible:text-[var(--brand-link)] focus-visible:outline-2 focus-visible:outline-offset-1"
+                className="header-nav-link rounded-lg px-1.5 py-2.5 text-[0.8125rem] xl:px-2 xl:text-[0.875rem] font-semibold text-foreground transition-colors duration-300 hover:text-[var(--brand-link)] focus-visible:text-[var(--brand-link)] focus-visible:outline-2 focus-visible:outline-offset-1"
               >
                 {t.links[index]}
               </a>
@@ -91,7 +91,7 @@ export function HeaderNav() {
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="header-mobile-toggle rounded-xl p-2 text-foreground transition-colors hover:bg-accent hover:text-[var(--brand-link)] focus-visible:outline-2 focus-visible:outline-offset-2 xl:hidden"
+            className="header-mobile-toggle rounded-xl p-2 text-foreground transition-colors hover:bg-accent hover:text-[var(--brand-link)] focus-visible:outline-2 focus-visible:outline-offset-2 lg:hidden"
             aria-expanded={mobileMenuOpen}
             aria-controls="mobile-navigation"
             aria-label={mobileMenuOpen ? t.closeMenu : t.openMenu}
@@ -103,7 +103,7 @@ export function HeaderNav() {
 
       {mobileMenuOpen && (
         <div
-          className="header-mobile-menu header-glass-panel absolute inset-x-0 top-full max-h-[calc(100dvh-8rem)] overflow-y-auto px-4 pb-6 pt-3 shadow-xl shadow-slate-900/10 xl:hidden"
+          className="header-mobile-menu header-glass-panel absolute inset-x-0 top-full max-h-[calc(100dvh-8rem)] overflow-y-auto px-4 pb-6 pt-3 shadow-xl shadow-slate-900/10 lg:hidden"
           id="mobile-navigation"
         >
           <nav aria-label={t.mobileLabel} className="mx-auto max-w-7xl space-y-1">

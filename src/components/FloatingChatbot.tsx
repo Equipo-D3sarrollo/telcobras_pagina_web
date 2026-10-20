@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { AlertTriangle, Bot, Send, X } from "lucide-react";
+import { AlertTriangle, Bot, Maximize2, Minimize2, Send, X } from "lucide-react";
 import {
   useAccessibilityPreferences,
   useTranslations,
 } from "@/lib/accessibility-preferences-context";
 import type { LanguagePreference } from "@/lib/accessibility-preferences";
+import { getTranslations } from "@/lib/translations";
 
 type ChatMessage = {
   id: number;
@@ -30,7 +31,10 @@ export function FloatingChatbot() {
   const { preferences } = useAccessibilityPreferences();
   const t = useTranslations().chatbot;
   const language = preferences.language;
+  const languageRef = useRef(language);
+  languageRef.current = language;
   const [isOpen, setIsOpen] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [welcomeVisible, setWelcomeVisible] = useState(true);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -67,6 +71,14 @@ export function FloatingChatbot() {
   }, [isLoading, messages]);
 
   useEffect(() => {
+    setMessages((currentMessages) =>
+      currentMessages.map((message) =>
+        message.id === 0 ? { ...message, text: t.initialGreeting, language } : message,
+      ),
+    );
+  }, [language, t.initialGreeting]);
+
+  useEffect(() => {
     if (isOpen && !isLoading && sessionId) {
       messageInputRef.current?.focus();
     }
@@ -76,6 +88,7 @@ export function FloatingChatbot() {
     event.preventDefault();
     const userText = input.trim();
     if (!userText || !sessionId || isLoading) return;
+    let getLocalizedError = () => getTranslations(languageRef.current).chatbot.errors.generic;
 
     setMessages((currentMessages) => [
       ...currentMessages,
@@ -96,19 +109,23 @@ export function FloatingChatbot() {
       try {
         payload = await response.json();
       } catch {
+        getLocalizedError = () => getTranslations(languageRef.current).chatbot.responseParseError;
         throw new Error(t.responseParseError);
       }
 
       if (!response.ok) {
         const errorCode = isRecord(payload) ? payload["error"] : undefined;
-        const message =
-          typeof errorCode === "string" && Object.hasOwn(t.errors, errorCode)
-            ? t.errors[errorCode as keyof typeof t.errors]
-            : t.errors.generic;
-        throw new Error(message);
+        getLocalizedError = () => {
+          const currentCopy = getTranslations(languageRef.current).chatbot;
+          return typeof errorCode === "string" && Object.hasOwn(currentCopy.errors, errorCode)
+            ? currentCopy.errors[errorCode as keyof typeof currentCopy.errors]
+            : currentCopy.errors.generic;
+        };
+        throw new Error(t.errors.generic);
       }
 
       if (!isRecord(payload) || typeof payload["respuesta_bot"] !== "string") {
+        getLocalizedError = () => getTranslations(languageRef.current).chatbot.invalidResponse;
         throw new Error(t.invalidResponse);
       }
 
@@ -120,7 +137,8 @@ export function FloatingChatbot() {
       setNextMessageId((currentId) => currentId + 1);
     } catch (error) {
       console.error("Falló el envío del mensaje al asistente.", error);
-      const errorText = error instanceof Error ? error.message : t.errors.generic;
+      const errorLanguage = languageRef.current;
+      const errorText = getLocalizedError();
       setMessages((currentMessages) => [
         ...currentMessages,
         {
@@ -128,7 +146,7 @@ export function FloatingChatbot() {
           sender: "bot",
           text: errorText,
           kind: "error",
-          language,
+          language: errorLanguage,
         },
       ]);
       setNextMessageId((currentId) => currentId + 1);
@@ -143,7 +161,11 @@ export function FloatingChatbot() {
         <section
           aria-label={t.title}
           aria-modal="false"
-          className="fixed inset-x-3 bottom-16 top-12 z-50 flex flex-col overflow-hidden rounded-2xl bg-card text-card-foreground shadow-2xl shadow-slate-950/25 sm:inset-auto sm:bottom-36 sm:right-5 sm:h-[min(720px,calc(100vh-10rem))] sm:w-[380px]"
+          className={`fixed z-50 flex flex-col overflow-hidden rounded-2xl bg-card text-card-foreground shadow-2xl shadow-slate-950/25 ${
+            isExpanded
+              ? "inset-x-2 top-2 bottom-[4.5rem] sm:inset-x-4 sm:top-4 sm:bottom-[4.5rem]"
+              : "inset-x-3 bottom-16 top-12 sm:inset-auto sm:bottom-36 sm:right-5 sm:h-[min(720px,calc(100vh-10rem))] sm:w-[380px]"
+          }`}
           role="dialog"
         >
           <header className="flex shrink-0 items-center justify-between bg-[#006BA4] px-5 py-4 text-white">
@@ -156,14 +178,28 @@ export function FloatingChatbot() {
                 <p className="text-xs text-white/85">{t.subtitle}</p>
               </div>
             </div>
-            <button
-              aria-label={t.close}
-              className="rounded-full p-2 transition-colors hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-              onClick={() => setIsOpen(false)}
-              type="button"
-            >
-              <X aria-hidden="true" className="h-5 w-5" />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                aria-label={isExpanded ? t.restore : t.expand}
+                className="rounded-full p-2 transition-colors hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                onClick={() => setIsExpanded((expanded) => !expanded)}
+                type="button"
+              >
+                {isExpanded ? (
+                  <Minimize2 aria-hidden="true" className="h-5 w-5" />
+                ) : (
+                  <Maximize2 aria-hidden="true" className="h-5 w-5" />
+                )}
+              </button>
+              <button
+                aria-label={t.close}
+                className="rounded-full p-2 transition-colors hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                onClick={() => setIsOpen(false)}
+                type="button"
+              >
+                <X aria-hidden="true" className="h-5 w-5" />
+              </button>
+            </div>
           </header>
 
           <div

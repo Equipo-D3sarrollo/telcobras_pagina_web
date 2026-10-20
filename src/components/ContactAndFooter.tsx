@@ -1,6 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { CALI_PHOTO, LOGO_URL, CONTACT } from "@/lib/telcobras-data";
+import {
+  CALI_PHOTO,
+  CONTACT,
+  LOGO_URL,
+  NIT,
+  PRIVACY_POLICY_URL,
+  RAZON_SOCIAL,
+  SOCIAL_LINKS,
+} from "@/lib/telcobras-data";
 import {
   Phone,
   Mail,
@@ -15,9 +23,13 @@ import {
   Loader2,
   ShieldAlert,
 } from "lucide-react";
-import { Facebook, Instagram, Linkedin } from "lucide-react";
+import { Facebook, Instagram, Linkedin, Music2 } from "lucide-react";
 import { BrandGlowBorder } from "./BrandGlowBorder";
-import { useTranslations } from "@/lib/accessibility-preferences-context";
+import {
+  useAccessibilityPreferences,
+  useTranslations,
+} from "@/lib/accessibility-preferences-context";
+import { getTranslations } from "@/lib/translations";
 
 const INITIAL_FORM_DATA = {
   nombre: "",
@@ -31,7 +43,11 @@ const INITIAL_FORM_DATA = {
 };
 
 export function ContactAndFooter() {
-  const t = useTranslations().contact;
+  const translations = useTranslations();
+  const t = translations.contact;
+  const { preferences } = useAccessibilityPreferences();
+  const languageRef = useRef(preferences.language);
+  languageRef.current = preferences.language;
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);
 
   const [formSubmitted, setFormSubmitted] = useState(false);
@@ -79,9 +95,11 @@ export function ContactAndFooter() {
   const fieldClass =
     "h-12 w-full rounded-xl border border-white/15 bg-white/5 pl-10 pr-3 text-sm text-white placeholder:text-slate-400 transition-colors focus:border-[#0087C3] focus:bg-white/10 focus:outline-none focus:ring-2 focus:ring-[#0087C3]/70 focus:shadow-[0_0_0_4px_rgba(0,135,195,0.18)]";
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (isSubmitting) return;
+    const websiteField = new FormData(e.currentTarget).get("sitio_web");
+    if (typeof websiteField === "string" && websiteField.trim()) return;
     if (!formData.nombre || !formData.correo || !formData.telefono) {
       toast.error(t.requiredError);
       return;
@@ -109,10 +127,15 @@ export function ContactAndFooter() {
       setFormData(INITIAL_FORM_DATA);
       setConsentAttempts(0);
       setFormSubmitted(true);
-      toast.success(t.successTitle);
+      toast.success(getTranslations(languageRef.current).contact.successTitle);
     } catch (error) {
       console.error("Falló el envío de la solicitud de contacto.", error);
-      toast.error(t.submissionError.replace("{email}", CONTACT.emailDisplay));
+      toast.error(
+        getTranslations(languageRef.current).contact.submissionError.replace(
+          "{email}",
+          CONTACT.emailDisplay,
+        ),
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -128,7 +151,7 @@ export function ContactAndFooter() {
         className="py-20 md:py-28 bg-slate-900 text-white relative overflow-hidden"
       >
         <div className="absolute inset-0 z-0 opacity-15">
-          <img src={CALI_PHOTO} alt={t.address} className="w-full h-full object-cover" />
+          <img src={CALI_PHOTO} alt="" className="w-full h-full object-cover" />
         </div>
 
         {/* Red decorativa de fondo: nodos y enlaces de marca con pulso lento. */}
@@ -289,7 +312,7 @@ export function ContactAndFooter() {
                   </div>
                   <div className="relative">
                     <p className="text-xs font-bold text-slate-400 uppercase">{t.address}</p>
-                    <p className="text-sm font-bold text-white">{CONTACT.address}</p>
+                    <p className="text-sm font-bold text-white">{t.streetAddress}</p>
                   </div>
                 </div>
               </div>
@@ -300,31 +323,40 @@ export function ContactAndFooter() {
                 </p>
                 <div className="flex items-center gap-3">
                   <a
-                    href="https://www.facebook.com/"
+                    href={SOCIAL_LINKS.facebook}
                     target="_blank"
                     rel="noopener noreferrer"
-                    aria-label="Facebook"
+                    aria-label={t.socialLabels.facebook}
                     className="rounded-xl border border-white/15 bg-white/10 p-2.5 text-white transition-all hover:border-[#006BA4] hover:bg-[#006BA4] hover:shadow-lg hover:shadow-[#0087C3]/30 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#0087C3]/40 motion-safe:hover:-translate-y-0.5"
                   >
                     <Facebook aria-hidden="true" className="w-5 h-5" />
                   </a>
                   <a
-                    href="https://www.instagram.com/"
+                    href={SOCIAL_LINKS.instagram}
                     target="_blank"
                     rel="noopener noreferrer"
-                    aria-label="Instagram"
+                    aria-label={t.socialLabels.instagram}
                     className="rounded-xl border border-white/15 bg-white/10 p-2.5 text-white transition-all hover:border-[#006BA4] hover:bg-[#006BA4] hover:shadow-lg hover:shadow-[#0087C3]/30 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#0087C3]/40 motion-safe:hover:-translate-y-0.5"
                   >
                     <Instagram aria-hidden="true" className="w-5 h-5" />
                   </a>
                   <a
-                    href="https://www.linkedin.com/"
+                    href={SOCIAL_LINKS.linkedin}
                     target="_blank"
                     rel="noopener noreferrer"
-                    aria-label="LinkedIn"
+                    aria-label={t.socialLabels.linkedin}
                     className="rounded-xl border border-white/15 bg-white/10 p-2.5 text-white transition-all hover:border-[#006BA4] hover:bg-[#006BA4] hover:shadow-lg hover:shadow-[#0087C3]/30 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#0087C3]/40 motion-safe:hover:-translate-y-0.5"
                   >
                     <Linkedin aria-hidden="true" className="w-5 h-5" />
+                  </a>
+                  <a
+                    href={SOCIAL_LINKS.tiktok}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={t.socialLabels.tiktok}
+                    className="rounded-xl border border-white/15 bg-white/10 p-2.5 text-white transition-all hover:border-[#006BA4] hover:bg-[#006BA4] hover:shadow-lg hover:shadow-[#0087C3]/30 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#0087C3]/40 motion-safe:hover:-translate-y-0.5"
+                  >
+                    <Music2 aria-hidden="true" className="w-5 h-5" />
                   </a>
                 </div>
               </div>
@@ -360,11 +392,15 @@ export function ContactAndFooter() {
 
                     <div className="grid sm:grid-cols-2 gap-4">
                       <div>
-                        <label className={labelClass}>{t.name}</label>
+                        <label className={labelClass} htmlFor="contact-name">
+                          {t.name}
+                        </label>
                         <div className="group relative">
                           <User aria-hidden="true" className={fieldIconClass} />
                           <input
+                            id="contact-name"
                             type="text"
+                            maxLength={100}
                             required
                             placeholder={t.namePlaceholder}
                             value={formData.nombre}
@@ -375,11 +411,15 @@ export function ContactAndFooter() {
                       </div>
 
                       <div>
-                        <label className={labelClass}>{t.company}</label>
+                        <label className={labelClass} htmlFor="contact-company">
+                          {t.company}
+                        </label>
                         <div className="group relative">
                           <Building2 aria-hidden="true" className={fieldIconClass} />
                           <input
+                            id="contact-company"
                             type="text"
+                            maxLength={100}
                             placeholder={t.companyPlaceholder}
                             value={formData.empresa}
                             onChange={(e) => setFormData({ ...formData, empresa: e.target.value })}
@@ -391,11 +431,15 @@ export function ContactAndFooter() {
 
                     <div className="grid sm:grid-cols-2 gap-4">
                       <div>
-                        <label className={labelClass}>{t.position}</label>
+                        <label className={labelClass} htmlFor="contact-position">
+                          {t.position}
+                        </label>
                         <div className="group relative">
                           <Briefcase aria-hidden="true" className={fieldIconClass} />
                           <input
+                            id="contact-position"
                             type="text"
+                            maxLength={100}
                             placeholder={t.positionPlaceholder}
                             value={formData.cargo}
                             onChange={(e) => setFormData({ ...formData, cargo: e.target.value })}
@@ -405,11 +449,15 @@ export function ContactAndFooter() {
                       </div>
 
                       <div>
-                        <label className={labelClass}>{t.emailLabel}</label>
+                        <label className={labelClass} htmlFor="contact-email">
+                          {t.emailLabel}
+                        </label>
                         <div className="group relative">
                           <Mail aria-hidden="true" className={fieldIconClass} />
                           <input
+                            id="contact-email"
                             type="email"
+                            maxLength={200}
                             required
                             placeholder={t.emailPlaceholder}
                             value={formData.correo}
@@ -422,11 +470,15 @@ export function ContactAndFooter() {
 
                     <div className="grid sm:grid-cols-2 gap-4">
                       <div>
-                        <label className={labelClass}>{t.phoneLabel}</label>
+                        <label className={labelClass} htmlFor="contact-phone">
+                          {t.phoneLabel}
+                        </label>
                         <div className="group relative">
                           <Phone aria-hidden="true" className={fieldIconClass} />
                           <input
+                            id="contact-phone"
                             type="tel"
+                            maxLength={20}
                             required
                             placeholder={t.phonePlaceholder}
                             value={formData.telefono}
@@ -437,9 +489,12 @@ export function ContactAndFooter() {
                       </div>
 
                       <div>
-                        <label className={labelClass}>{t.service}</label>
+                        <label className={labelClass} htmlFor="contact-service">
+                          {t.service}
+                        </label>
                         <div className="relative">
                           <select
+                            id="contact-service"
                             value={formData.servicio}
                             onChange={(e) => setFormData({ ...formData, servicio: e.target.value })}
                             className="h-12 w-full appearance-none rounded-xl border border-white/15 bg-white/5 pl-3 pr-10 text-sm text-white transition-colors focus:border-[#0087C3] focus:bg-white/10 focus:outline-none focus:ring-2 focus:ring-[#0087C3]/70 focus:shadow-[0_0_0_4px_rgba(0,135,195,0.18)] [&>option]:bg-[#0A192F] [&>option]:text-white"
@@ -459,9 +514,13 @@ export function ContactAndFooter() {
                     </div>
 
                     <div>
-                      <label className={labelClass}>{t.details}</label>
+                      <label className={labelClass} htmlFor="contact-details">
+                        {t.details}
+                      </label>
                       <textarea
+                        id="contact-details"
                         rows={3}
+                        maxLength={2000}
                         placeholder={t.detailsPlaceholder}
                         value={formData.mensaje}
                         onChange={(e) => setFormData({ ...formData, mensaje: e.target.value })}
@@ -469,10 +528,18 @@ export function ContactAndFooter() {
                       />
                     </div>
 
+                    <input
+                      type="text"
+                      name="sitio_web"
+                      tabIndex={-1}
+                      autoComplete="off"
+                      aria-hidden="true"
+                      style={{ position: "absolute", left: "-9999px" }}
+                    />
+
                     <div>
-                      <label
-                        key={consentAttempts}
-                        className={`relative flex cursor-pointer items-start gap-3 rounded-xl border p-3 text-xs leading-relaxed transition-colors duration-300 ${
+                      <div
+                        className={`relative flex items-start gap-3 rounded-xl border p-3 text-xs leading-relaxed transition-colors duration-300 ${
                           showConsentAlert
                             ? "consent-alert border-[#F3CB35] bg-[#F3CB35]/10 text-white"
                             : formData.consentimiento && consentAttempts > 0
@@ -489,6 +556,7 @@ export function ContactAndFooter() {
                           </span>
                         )}
                         <input
+                          id="contact-consent"
                           ref={consentCheckboxRef}
                           type="checkbox"
                           checked={formData.consentimiento}
@@ -503,8 +571,18 @@ export function ContactAndFooter() {
                               : ""
                           }`}
                         />
-                        <span>{t.consent}</span>
-                      </label>
+                        <div>
+                          <label className="cursor-pointer" htmlFor="contact-consent">
+                            {t.consent}
+                          </label>{" "}
+                          <a
+                            href={PRIVACY_POLICY_URL}
+                            className="font-semibold text-[#88BD4C] underline underline-offset-2 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F3CB35]"
+                          >
+                            [{t.privacyLinkLabel}]
+                          </a>
+                        </div>
+                      </div>
 
                       {showConsentAlert ? (
                         <p
@@ -631,7 +709,7 @@ export function ContactAndFooter() {
             </p>
             <div className="inline-flex items-center gap-2 text-slate-700 text-sm font-bold">
               <MapPin className="w-4 h-4 text-[#88BD4C]" />
-              {CONTACT.address}
+              {t.streetAddress}
             </div>
           </div>
 
@@ -663,7 +741,7 @@ export function ContactAndFooter() {
       </section>
 
       {/* 10. PIE DE PÁGINA */}
-      <footer className="bg-[#0A192F] text-slate-400 py-12 border-t border-slate-800">
+      <footer className="bg-[#0A192F] text-slate-400 border-t border-slate-800 pt-12 pb-32">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-8 border-b border-slate-800">
             {/* Logo oficial transparente sobre fondo oscuro */}
@@ -676,24 +754,68 @@ export function ContactAndFooter() {
                 {t.footerTagline}
               </p>
               <p className="text-xs text-slate-400 mt-1">
-                {t.copyright.replace("{year}", String(new Date().getFullYear()))}
+                {t.copyright
+                  .replace("{company}", RAZON_SOCIAL)
+                  .replace("{nit}", NIT)
+                  .replace("{year}", String(new Date().getFullYear()))}
               </p>
             </div>
           </div>
 
-          <div className="pt-6 flex flex-wrap justify-between items-center text-xs text-slate-400 gap-4">
-            <p>{CONTACT.address}</p>
-            <div className="flex gap-6">
+          <div className="flex flex-col gap-6 pt-6 text-xs text-slate-400 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+            <address className="not-italic">{t.streetAddress}</address>
+            <nav aria-label={t.socialTitle} className="flex items-center gap-3">
+              <a
+                href={SOCIAL_LINKS.facebook}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={t.socialLabels.facebook}
+                className="rounded-lg p-2 text-slate-300 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F3CB35]"
+              >
+                <Facebook aria-hidden="true" className="h-5 w-5" />
+              </a>
+              <a
+                href={SOCIAL_LINKS.instagram}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={t.socialLabels.instagram}
+                className="rounded-lg p-2 text-slate-300 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F3CB35]"
+              >
+                <Instagram aria-hidden="true" className="h-5 w-5" />
+              </a>
+              <a
+                href={SOCIAL_LINKS.linkedin}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={t.socialLabels.linkedin}
+                className="rounded-lg p-2 text-slate-300 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F3CB35]"
+              >
+                <Linkedin aria-hidden="true" className="h-5 w-5" />
+              </a>
+              <a
+                href={SOCIAL_LINKS.tiktok}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={t.socialLabels.tiktok}
+                className="rounded-lg p-2 text-slate-300 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F3CB35]"
+              >
+                <Music2 aria-hidden="true" className="h-5 w-5" />
+              </a>
+            </nav>
+            <nav
+              aria-label={t.legalLinksLabel}
+              className="flex flex-wrap gap-x-6 gap-y-3 sm:ml-auto"
+            >
               <a href="#contacto" className="hover:text-white transition-colors">
                 {t.terms}
               </a>
-              <a href="#contacto" className="hover:text-white transition-colors">
+              <a href={PRIVACY_POLICY_URL} className="hover:text-white transition-colors">
                 {t.privacy}
               </a>
               <a href="#contacto" className="hover:text-white transition-colors">
                 {t.sla}
               </a>
-            </div>
+            </nav>
           </div>
         </div>
       </footer>

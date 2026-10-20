@@ -24,6 +24,22 @@ type DifferenceId =
   | "compromiso-integridad";
 
 interface Catalog {
+  cookieBanner: {
+    label: string;
+    description: string;
+    privacyLink: string;
+    acceptAll: string;
+    rejectNonEssential: string;
+    configure: string;
+    preferencesTitle: string;
+    essentialCookies: string;
+    essentialDescription: string;
+    nonEssentialCookies: string;
+    nonEssentialDescription: string;
+    back: string;
+    savePreferences: string;
+    storageError: string;
+  };
   accessibility: {
     open: string;
     close: string;
@@ -165,6 +181,8 @@ interface Catalog {
     phone: string;
     email: string;
     address: string;
+    shortAddress: string;
+    streetAddress: string;
     formTitle: string;
     formDescription: string;
     name: string;
@@ -182,6 +200,7 @@ interface Catalog {
     details: string;
     detailsPlaceholder: string;
     consent: string;
+    privacyLinkLabel: string;
     consentPointer: string;
     consentError: string;
     consentSuccess: string;
@@ -208,12 +227,21 @@ interface Catalog {
     whatsappLabel: string;
     whatsappMessage: string;
     socialTitle: string;
+    socialLabels: {
+      facebook: string;
+      instagram: string;
+      linkedin: string;
+      tiktok: string;
+    };
+    legalLinksLabel: string;
   };
   chatbot: {
     initialGreeting: string;
     title: string;
     subtitle: string;
     close: string;
+    expand: string;
+    restore: string;
     messageLabel: string;
     placeholder: string;
     send: string;
@@ -262,6 +290,23 @@ interface Catalog {
 }
 
 const es: Catalog = {
+  cookieBanner: {
+    label: "Preferencias de cookies",
+    description:
+      "Utilizamos cookies para mejorar tu experiencia en nuestro sitio web. Al navegar por este sitio web, aceptas el uso de cookies. Más información en nuestra",
+    privacyLink: "Política de privacidad",
+    acceptAll: "Aceptar todas",
+    rejectNonEssential: "Rechazar las no esenciales",
+    configure: "Configurar preferencias",
+    preferencesTitle: "Configurar preferencias de cookies",
+    essentialCookies: "Cookies esenciales",
+    essentialDescription: "Necesarias para que el sitio web funcione.",
+    nonEssentialCookies: "Cookies no esenciales",
+    nonEssentialDescription: "Permiten guardar preferencias opcionales de cookies.",
+    back: "Volver",
+    savePreferences: "Guardar preferencias",
+    storageError: "No se pudo guardar tu preferencia. Inténtalo de nuevo.",
+  },
   accessibility: {
     open: "Abrir opciones de accesibilidad",
     close: "Cerrar opciones de accesibilidad",
@@ -559,6 +604,8 @@ const es: Catalog = {
     phone: "Línea de atención comercial",
     email: "Correo electrónico directo",
     address: "Sede principal corporativa",
+    shortAddress: "Carrera 83A # 20 - 20, Cali, Colombia",
+    streetAddress: "Carrera 83A # 20 - 20, Cali, Valle del Cauca",
     formTitle: "Solicitud de cotización o diagnóstico",
     formDescription: "Ingresa tus datos corporativos para entregarte una propuesta a la medida.",
     name: "Nombre completo *",
@@ -591,7 +638,8 @@ const es: Catalog = {
     detailsPlaceholder:
       "Cuéntanos brevemente la ubicación, sedes o necesidades técnicas de tu empresa...",
     consent:
-      "Autorizo el tratamiento de mis datos personales conforme a la política de privacidad de TELCOBRAS S.A.S. *",
+      "He leído la Política de Tratamiento de Datos Personales de TELCOBRAS S.A.S. y autorizo el tratamiento de mis datos personales de conformidad con la Ley 1581 de 2012.",
+    privacyLinkLabel: "Consultar política de tratamiento de datos",
     consentPointer: "Marca aquí ↓",
     consentError:
       "Para proteger tu información necesitamos tu autorización. Marca la casilla y vuelve a enviar: ¡estás a un clic de tu cotización!",
@@ -613,7 +661,7 @@ const es: Catalog = {
     locationDescription: "Visítanos en nuestra sede principal en Cali.",
     directions: "Cómo llegar",
     footerTagline: "Innovación • Compromiso • Resultados",
-    copyright: "TELCOBRAS S.A.S. © {year} — Todos los derechos reservados.",
+    copyright: "{company} | NIT {nit} © {year} — Todos los derechos reservados.",
     terms: "Términos del servicio",
     privacy: "Política de tratamiento de datos",
     sla: "SLA y garantías",
@@ -622,12 +670,21 @@ const es: Catalog = {
     whatsappLabel: "Contáctanos por WhatsApp",
     whatsappMessage: "Hola, quiero información sobre los servicios de TELCOBRAS",
     socialTitle: "Síguenos en redes sociales:",
+    socialLabels: {
+      facebook: "TELCOBRAS en Facebook",
+      instagram: "TELCOBRAS en Instagram",
+      linkedin: "TELCOBRAS en LinkedIn",
+      tiktok: "TELCOBRAS en TikTok",
+    },
+    legalLinksLabel: "Enlaces legales",
   },
   chatbot: {
     initialGreeting: "¡Hola! Soy el asistente de TELCOBRAS. ¿En qué puedo ayudarte?",
     title: "Asistente TELCOBRAS",
     subtitle: "Estamos aquí para ayudarte",
     close: "Cerrar chat",
+    expand: "Ampliar ventana del chat",
+    restore: "Restaurar tamaño del chat",
     messageLabel: "Escribe tu mensaje",
     placeholder: "Escribe tu mensaje...",
     send: "Enviar mensaje",
@@ -680,6 +737,23 @@ const es: Catalog = {
 };
 
 const en: Catalog = {
+  cookieBanner: {
+    label: "Cookie preferences",
+    description:
+      "We use cookies to improve your experience on our website. By browsing this website, you accept the use of cookies. Learn more in our",
+    privacyLink: "Privacy Policy",
+    acceptAll: "Accept all",
+    rejectNonEssential: "Reject non-essential",
+    configure: "Configure preferences",
+    preferencesTitle: "Configure cookie preferences",
+    essentialCookies: "Essential cookies",
+    essentialDescription: "Required for the website to function.",
+    nonEssentialCookies: "Non-essential cookies",
+    nonEssentialDescription: "Allow optional cookie preferences to be saved.",
+    back: "Back",
+    savePreferences: "Save preferences",
+    storageError: "Your preference could not be saved. Please try again.",
+  },
   accessibility: {
     open: "Open accessibility options",
     close: "Close accessibility options",
@@ -975,6 +1049,8 @@ const en: Catalog = {
     phone: "Business support line",
     email: "Direct email",
     address: "Corporate headquarters",
+    shortAddress: "Carrera 83A # 20 - 20, Cali, Colombia",
+    streetAddress: "Carrera 83A # 20 - 20, Cali, Valle del Cauca",
     formTitle: "Request a quote or assessment",
     formDescription: "Enter your business details and we'll prepare a tailored proposal.",
     name: "Full name *",
@@ -1007,7 +1083,8 @@ const en: Catalog = {
     detailsPlaceholder:
       "Briefly describe your locations, offices, or your company's technical needs...",
     consent:
-      "I authorize the processing of my personal data in accordance with TELCOBRAS S.A.S.'s privacy policy. *",
+      "I have read TELCOBRAS S.A.S.'s Personal Data Processing Policy and authorize the processing of my personal data in accordance with Law 1581 of 2012.",
+    privacyLinkLabel: "View the personal data processing policy",
     consentPointer: "Check here ↓",
     consentError:
       "To protect your information, we need your authorization. Check the box and submit again—your quote is just one click away!",
@@ -1029,7 +1106,7 @@ const en: Catalog = {
     locationDescription: "Visit us at our headquarters in Cali.",
     directions: "Get directions",
     footerTagline: "Innovation • Commitment • Results",
-    copyright: "TELCOBRAS S.A.S. © {year} — All rights reserved.",
+    copyright: "{company} | Tax ID {nit} © {year} — All rights reserved.",
     terms: "Terms of Service",
     privacy: "Data Privacy Policy",
     sla: "SLAs and Warranties",
@@ -1038,12 +1115,21 @@ const en: Catalog = {
     whatsappLabel: "Contact us on WhatsApp",
     whatsappMessage: "Hello, I'd like information about TELCOBRAS services",
     socialTitle: "Follow us on social media:",
+    socialLabels: {
+      facebook: "TELCOBRAS on Facebook",
+      instagram: "TELCOBRAS on Instagram",
+      linkedin: "TELCOBRAS on LinkedIn",
+      tiktok: "TELCOBRAS on TikTok",
+    },
+    legalLinksLabel: "Legal links",
   },
   chatbot: {
     initialGreeting: "Hello! I'm the TELCOBRAS assistant. How can I help you?",
     title: "TELCOBRAS Assistant",
     subtitle: "We're here to help",
     close: "Close chat",
+    expand: "Expand chat window",
+    restore: "Restore chat size",
     messageLabel: "Type your message",
     placeholder: "Type your message...",
     send: "Send message",

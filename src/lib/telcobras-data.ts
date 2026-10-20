@@ -1,3 +1,17 @@
+export const RAZON_SOCIAL = "TELCOBRAS S.A.S.";
+export const NIT = "900281488-1";
+export const CIUDAD = "Cali, Valle del Cauca";
+export const PRIVACY_POLICY_URL = "/politica-de-privacidad";
+
+export const SOCIAL_LINKS = {
+  instagram: "https://www.instagram.com/telcobrascolombia/",
+  facebook: "https://www.facebook.com/telcobras/",
+  linkedin: "https://www.linkedin.com/company/143916672/",
+  tiktok: "https://www.tiktok.com/@telcobras7",
+};
+
+export const WHATSAPP_SERVICE_AVAILABLE = true;
+
 export const LOGO_URL =
   "https://vibe.filesafe.space/1790689453956353174/attachments/147fd1a2-7658-455c-8a62-124542d73285.png";
 

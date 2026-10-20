@@ -202,13 +202,24 @@
   font-size: 200%;
 }
 
-@media (max-width: 479px) {
-  .accessibility-toggle-label {
+@media (min-width: 64rem) and (max-width: 79.999rem) {
+  :root:is([data-font-size="large"], [data-font-size="larger"], [data-font-size="largest"])
+    .header-desktop-nav {
     display: none;
+  }
+
+  :root:is([data-font-size="large"], [data-font-size="larger"], [data-font-size="largest"])
+    .header-mobile-toggle {
+    display: flex;
+  }
+
+  :root:is([data-font-size="large"], [data-font-size="larger"], [data-font-size="largest"])
+    .header-mobile-menu {
+    display: block;
   }
 }
 
-@media (min-width: 80rem) {
+@media (min-width: 64rem) {
   :root:is([data-font-size="larger"], [data-font-size="largest"]) .header-desktop-nav,
   :root:is([data-font-size="larger"], [data-font-size="largest"]) .header-desktop-cta {
     display: none;
