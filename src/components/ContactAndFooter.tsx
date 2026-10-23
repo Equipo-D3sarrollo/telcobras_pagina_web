@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
   CALI_PHOTO,
@@ -7,7 +8,9 @@ import {
   NIT,
   PRIVACY_POLICY_URL,
   RAZON_SOCIAL,
+  SLA_URL,
   SOCIAL_LINKS,
+  TERMS_OF_SERVICE_URL,
 } from "@/lib/telcobras-data";
 import {
   Phone,
@@ -25,6 +28,7 @@ import {
 } from "lucide-react";
 import { Facebook, Instagram, Linkedin, Music2 } from "lucide-react";
 import { BrandGlowBorder } from "./BrandGlowBorder";
+import { TurnstileWidget, type TurnstileWidgetHandle } from "./TurnstileWidget";
 import {
   useAccessibilityPreferences,
   useTranslations,
@@ -49,6 +53,8 @@ export function ContactAndFooter() {
   const languageRef = useRef(preferences.language);
   languageRef.current = preferences.language;
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null);
 
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -111,25 +117,62 @@ export function ContactAndFooter() {
       });
       return;
     }
+    if (!turnstileToken) {
+      toast.error(
+        preferences.language === "en"
+          ? "Please complete the security verification."
+          : "Por favor complete la verificación de seguridad.",
+      );
+      return;
+    }
 
     setIsSubmitting(true);
     try {
       const response = await fetch("/api/contacto", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          turnstile_token: turnstileToken,
+        }),
       });
 
       if (!response.ok) {
+        const errorData = (await response.json().catch(() => null)) as { error?: string } | null;
+        turnstileRef.current?.reset();
+        setTurnstileToken("");
+
+        if (response.status === 429) {
+          toast.error(
+            preferences.language === "en"
+              ? "Too many requests. Please wait a few minutes before trying again."
+              : "Has realizado demasiados intentos. Por favor espera unos minutos antes de volver a intentar.",
+          );
+          return;
+        }
+
+        if (errorData?.error === "turnstile_verification_failed") {
+          toast.error(
+            preferences.language === "en"
+              ? "Security verification failed. Please try again."
+              : "La verificación de seguridad falló. Por favor intente nuevamente.",
+          );
+          return;
+        }
+
         throw new Error(`El servidor respondió con estado ${response.status}.`);
       }
 
       setFormData(INITIAL_FORM_DATA);
       setConsentAttempts(0);
+      setTurnstileToken("");
+      turnstileRef.current?.reset();
       setFormSubmitted(true);
       toast.success(getTranslations(languageRef.current).contact.successTitle);
     } catch (error) {
       console.error("Falló el envío de la solicitud de contacto.", error);
+      turnstileRef.current?.reset();
+      setTurnstileToken("");
       toast.error(
         getTranslations(languageRef.current).contact.submissionError.replace(
           "{email}",
@@ -151,7 +194,13 @@ export function ContactAndFooter() {
         className="py-20 md:py-28 bg-slate-900 text-white relative overflow-hidden"
       >
         <div className="absolute inset-0 z-0 opacity-15">
-          <img src={CALI_PHOTO} alt="" className="w-full h-full object-cover" />
+          <img
+            src={CALI_PHOTO}
+            alt=""
+            width={1200}
+            height={800}
+            className="w-full h-full object-cover"
+          />
         </div>
 
         {/* Red decorativa de fondo: nodos y enlaces de marca con pulso lento. */}
@@ -575,12 +624,12 @@ export function ContactAndFooter() {
                           <label className="cursor-pointer" htmlFor="contact-consent">
                             {t.consent}
                           </label>{" "}
-                          <a
-                            href={PRIVACY_POLICY_URL}
+                          <Link
+                            to={PRIVACY_POLICY_URL}
                             className="font-semibold text-[#88BD4C] underline underline-offset-2 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F3CB35]"
                           >
                             [{t.privacyLinkLabel}]
-                          </a>
+                          </Link>
                         </div>
                       </div>
 
@@ -606,6 +655,14 @@ export function ContactAndFooter() {
                         )
                       )}
                     </div>
+
+                    <TurnstileWidget
+                      ref={turnstileRef}
+                      theme={preferences.theme === "light" ? "light" : "dark"}
+                      onSuccess={(token) => setTurnstileToken(token)}
+                      onError={() => setTurnstileToken("")}
+                      onExpire={() => setTurnstileToken("")}
+                    />
 
                     <button
                       type="submit"
@@ -746,7 +803,13 @@ export function ContactAndFooter() {
           <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-8 border-b border-slate-800">
             {/* Logo oficial transparente sobre fondo oscuro */}
             <div className="inline-flex items-center">
-              <img src={LOGO_URL} alt={t.logoAlt} className="h-12 w-auto object-contain" />
+              <img
+                src={LOGO_URL}
+                alt={t.logoAlt}
+                width={160}
+                height={48}
+                className="h-12 w-auto object-contain"
+              />
             </div>
 
             <div className="text-center md:text-right">
@@ -806,15 +869,15 @@ export function ContactAndFooter() {
               aria-label={t.legalLinksLabel}
               className="flex flex-wrap gap-x-6 gap-y-3 sm:ml-auto"
             >
-              <a href="#contacto" className="hover:text-white transition-colors">
+              <Link to={TERMS_OF_SERVICE_URL} className="hover:text-white transition-colors">
                 {t.terms}
-              </a>
-              <a href={PRIVACY_POLICY_URL} className="hover:text-white transition-colors">
+              </Link>
+              <Link to={PRIVACY_POLICY_URL} className="hover:text-white transition-colors">
                 {t.privacy}
-              </a>
-              <a href="#contacto" className="hover:text-white transition-colors">
+              </Link>
+              <Link to={SLA_URL} className="hover:text-white transition-colors">
                 {t.sla}
-              </a>
+              </Link>
             </nav>
           </div>
         </div>

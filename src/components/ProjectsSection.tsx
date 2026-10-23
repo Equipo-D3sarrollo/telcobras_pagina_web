@@ -213,6 +213,8 @@ function ProjectCard({ proyecto, numero, onOpen, copy, labels, chatbotCopy }: Pr
           <img
             src={proyecto.imagen}
             alt={copy.alt}
+            width={640}
+            height={480}
             loading="lazy"
             decoding="async"
             className="absolute inset-0 -z-20 h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105 group-focus-within:scale-105"

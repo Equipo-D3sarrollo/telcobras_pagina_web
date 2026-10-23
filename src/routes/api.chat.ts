@@ -104,97 +104,102 @@ function getConfiguredWebhookUrl(): string | null {
 }
 
 async function handlePost(request: Request): Promise<Response> {
-  const contentType = request.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase();
-  if (contentType !== "application/json") {
-    return jsonResponse({ error: "unsupported_media_type" }, 415);
-  }
-
-  let body: Uint8Array | null;
   try {
-    body = await readLimitedBody(request, MAX_REQUEST_BYTES);
-  } catch {
-    return jsonResponse({ error: "invalid_request" }, 400);
-  }
-  if (body === null) return jsonResponse({ error: "payload_too_large" }, 413);
-
-  let input: unknown;
-  try {
-    input = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(body));
-  } catch {
-    return jsonResponse({ error: "invalid_request" }, 400);
-  }
-  if (!isChatRequest(input)) return jsonResponse({ error: "invalid_request" }, 400);
-
-  const webhookUrl = getConfiguredWebhookUrl();
-  if (!webhookUrl) return jsonResponse({ error: "chat_unavailable" }, 503);
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
-
-  try {
-    const upstreamResponse = await fetch(webhookUrl, {
-      method: "POST",
-      headers: {
-        accept: "application/json",
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        session_id: input.session_id,
-        mensaje: input.mensaje,
-      }),
-      redirect: "error",
-      signal: controller.signal,
-    });
-
-    if (!upstreamResponse.ok) return jsonResponse({ error: "upstream_error" }, 502);
-    const upstreamContentType = upstreamResponse.headers
-      .get("content-type")
-      ?.split(";", 1)[0]
-      ?.trim()
-      .toLowerCase();
-    if (upstreamContentType !== "application/json" && upstreamContentType !== "text/plain") {
-      return jsonResponse({ error: "invalid_upstream_response" }, 502);
+    const contentType = request.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase();
+    if (contentType !== "application/json") {
+      return jsonResponse({ error: "unsupported_media_type" }, 415);
     }
 
-    let upstreamBody: Uint8Array | null;
+    let body: Uint8Array | null;
     try {
-      upstreamBody = await readUpstreamBody(upstreamResponse);
+      body = await readLimitedBody(request, MAX_REQUEST_BYTES);
     } catch {
-      if (controller.signal.aborted) return jsonResponse({ error: "upstream_timeout" }, 504);
-      return jsonResponse({ error: "invalid_upstream_response" }, 502);
+      return jsonResponse({ error: "invalid_request" }, 400);
     }
-    if (upstreamBody === null) return jsonResponse({ error: "invalid_upstream_response" }, 502);
+    if (body === null) return jsonResponse({ error: "payload_too_large" }, 413);
 
-    const upstreamText = new TextDecoder("utf-8", { fatal: true }).decode(upstreamBody);
-    let upstreamData: unknown = upstreamText;
-    if (upstreamContentType === "application/json" || upstreamText.trimStart().startsWith("{")) {
+    let input: unknown;
+    try {
+      input = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(body));
+    } catch {
+      return jsonResponse({ error: "invalid_request" }, 400);
+    }
+    if (!isChatRequest(input)) return jsonResponse({ error: "invalid_request" }, 400);
+
+    const webhookUrl = getConfiguredWebhookUrl();
+    if (!webhookUrl) return jsonResponse({ error: "chat_unavailable" }, 503);
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
+
+    try {
+      const upstreamResponse = await fetch(webhookUrl, {
+        method: "POST",
+        headers: {
+          accept: "application/json",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          session_id: input.session_id,
+          mensaje: input.mensaje,
+        }),
+        redirect: "error",
+        signal: controller.signal,
+      });
+
+      if (!upstreamResponse.ok) return jsonResponse({ error: "upstream_error" }, 502);
+      const upstreamContentType = upstreamResponse.headers
+        .get("content-type")
+        ?.split(";", 1)[0]
+        ?.trim()
+        .toLowerCase();
+      if (upstreamContentType !== "application/json" && upstreamContentType !== "text/plain") {
+        return jsonResponse({ error: "invalid_upstream_response" }, 502);
+      }
+
+      let upstreamBody: Uint8Array | null;
       try {
-        upstreamData = JSON.parse(upstreamText);
+        upstreamBody = await readUpstreamBody(upstreamResponse);
       } catch {
-        if (upstreamContentType === "application/json") {
-          return jsonResponse({ error: "invalid_upstream_response" }, 502);
+        if (controller.signal.aborted) return jsonResponse({ error: "upstream_timeout" }, 504);
+        return jsonResponse({ error: "invalid_upstream_response" }, 502);
+      }
+      if (upstreamBody === null) return jsonResponse({ error: "invalid_upstream_response" }, 502);
+
+      const upstreamText = new TextDecoder("utf-8", { fatal: true }).decode(upstreamBody);
+      let upstreamData: unknown = upstreamText;
+      if (upstreamContentType === "application/json" || upstreamText.trimStart().startsWith("{")) {
+        try {
+          upstreamData = JSON.parse(upstreamText);
+        } catch {
+          if (upstreamContentType === "application/json") {
+            return jsonResponse({ error: "invalid_upstream_response" }, 502);
+          }
         }
       }
-    }
 
-    const botResponse = extractBotResponse(upstreamData);
-    if (typeof botResponse === "string" && /^accepted\.?$/i.test(botResponse.trim())) {
-      return jsonResponse({ error: "agent_response_unavailable" }, 502);
-    }
-    if (
-      typeof botResponse !== "string" ||
-      botResponse.trim().length === 0 ||
-      botResponse.length > MAX_REPLY_LENGTH
-    ) {
-      return jsonResponse({ error: "invalid_upstream_response" }, 502);
-    }
+      const botResponse = extractBotResponse(upstreamData);
+      if (typeof botResponse === "string" && /^accepted\.?$/i.test(botResponse.trim())) {
+        return jsonResponse({ error: "agent_response_unavailable" }, 502);
+      }
+      if (
+        typeof botResponse !== "string" ||
+        botResponse.trim().length === 0 ||
+        botResponse.length > MAX_REPLY_LENGTH
+      ) {
+        return jsonResponse({ error: "invalid_upstream_response" }, 502);
+      }
 
-    return jsonResponse({ respuesta_bot: botResponse });
-  } catch {
-    if (controller.signal.aborted) return jsonResponse({ error: "upstream_timeout" }, 504);
-    return jsonResponse({ error: "upstream_error" }, 502);
-  } finally {
-    clearTimeout(timeout);
+      return jsonResponse({ respuesta_bot: botResponse });
+    } catch {
+      if (controller.signal.aborted) return jsonResponse({ error: "upstream_timeout" }, 504);
+      return jsonResponse({ error: "upstream_error" }, 502);
+    } finally {
+      clearTimeout(timeout);
+    }
+  } catch (err) {
+    console.error("Error inesperado en /api/chat:", err);
+    return jsonResponse({ error: "internal_error" }, 500);
   }
 }
 

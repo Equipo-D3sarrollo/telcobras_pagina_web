@@ -29,12 +29,19 @@ function NotFoundComponent() {
         <h1 className="text-7xl font-bold text-foreground">404</h1>
         <h2 className="mt-4 text-xl font-semibold text-foreground">{t.notFoundTitle}</h2>
         <p className="mt-2 text-sm text-muted-foreground">{t.notFoundDescription}</p>
-        <div className="mt-6">
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
           <Link
             to="/"
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
             {t.home}
+          </Link>
+          <Link
+            to="/"
+            hash="servicios"
+            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          >
+            {t.services}
           </Link>
         </div>
       </div>

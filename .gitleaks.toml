@@ -1,0 +1,13 @@
+title = "telcobras-web gitleaks"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Rutas generadas o no versionadas"
+paths = [
+  '''(^|/)node_modules/''',
+  '''(^|/)\.output/''',
+  '''(^|/)dist/''',
+  '''(^|/)\.tanstack/''',
+]

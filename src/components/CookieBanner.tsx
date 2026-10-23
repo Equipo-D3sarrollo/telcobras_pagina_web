@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { PRIVACY_POLICY_URL } from "@/lib/telcobras-data";
 import { useTranslations } from "@/lib/accessibility-preferences-context";
 
@@ -49,12 +50,12 @@ export function CookieBanner() {
     >
       <p className="text-sm leading-relaxed text-slate-100">
         {t.description}{" "}
-        <a
-          href={PRIVACY_POLICY_URL}
+        <Link
+          to={PRIVACY_POLICY_URL}
           className="font-semibold text-[#F3CB35] underline underline-offset-2 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F3CB35]"
         >
           {t.privacyLink}
-        </a>
+        </Link>
         .
       </p>
 

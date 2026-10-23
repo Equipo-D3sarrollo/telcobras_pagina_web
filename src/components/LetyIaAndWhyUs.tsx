@@ -70,6 +70,9 @@ export function LetyIaAndWhyUs() {
             <div className="flex h-32 w-64 items-center justify-center rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <img
                 alt="Xpertic"
+                width={256}
+                height={128}
+                loading="lazy"
                 className="ally-logo-rotation max-h-full max-w-full object-contain"
                 src="/logo_xpertic.png"
               />
@@ -78,6 +81,9 @@ export function LetyIaAndWhyUs() {
             <div className="flex h-32 w-64 items-center justify-center rounded-2xl border border-[#0087C3]/40 bg-[#0A192F] p-4 shadow-sm">
               <img
                 alt="Aquora"
+                width={256}
+                height={128}
+                loading="lazy"
                 className="ally-logo-rotation ally-logo-rotation-delayed max-h-full max-w-full object-contain"
                 src="/logo_aquora.png"
               />

@@ -2,6 +2,8 @@ export const RAZON_SOCIAL = "TELCOBRAS S.A.S.";
 export const NIT = "900281488-1";
 export const CIUDAD = "Cali, Valle del Cauca";
 export const PRIVACY_POLICY_URL = "/politica-de-privacidad";
+export const TERMS_OF_SERVICE_URL = "/terminos-de-servicio";
+export const SLA_URL = "/sla";
 
 export const SOCIAL_LINKS = {
   instagram: "https://www.instagram.com/telcobrascolombia/",

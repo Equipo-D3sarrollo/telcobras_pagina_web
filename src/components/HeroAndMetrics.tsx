@@ -151,6 +151,10 @@ export function HeroAndMetrics() {
                         src={slide}
                         alt=""
                         aria-hidden="true"
+                        width={640}
+                        height={512}
+                        loading={index === 0 ? "eager" : "lazy"}
+                        fetchPriority={index === 0 ? "high" : "auto"}
                         className={`absolute inset-0 h-full w-full object-cover contrast-110 saturate-110 transition-opacity duration-1000 ${
                           index === activeSlide ? "opacity-100" : "opacity-0"
                         }`}

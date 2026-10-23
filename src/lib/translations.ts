@@ -275,6 +275,7 @@ interface Catalog {
     pageErrorDescription: string;
     retry: string;
     home: string;
+    services: string;
   };
   metadata: {
     title: string;
@@ -662,7 +663,7 @@ const es: Catalog = {
     directions: "Cómo llegar",
     footerTagline: "Innovación • Compromiso • Resultados",
     copyright: "{company} | NIT {nit} © {year} — Todos los derechos reservados.",
-    terms: "Términos del servicio",
+    terms: "Términos de Servicio",
     privacy: "Política de tratamiento de datos",
     sla: "SLA y garantías",
     logoAlt: "Logotipo de TELCOBRAS S.A.S.",
@@ -720,6 +721,7 @@ const es: Catalog = {
       "Se produjo un error. Puedes volver a intentarlo o regresar a la página principal.",
     retry: "Intentar de nuevo",
     home: "Ir al inicio",
+    services: "Ver servicios",
   },
   metadata: {
     title: "TELCOBRAS S.A.S. | Una nueva forma de entender las redes",
@@ -1164,6 +1166,7 @@ const en: Catalog = {
     pageErrorDescription: "An error occurred. Try again or return to the home page.",
     retry: "Try again",
     home: "Go to home page",
+    services: "View services",
   },
   metadata: {
     title: "TELCOBRAS S.A.S. | A new way to understand networks",

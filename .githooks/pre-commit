@@ -1,0 +1,13 @@
+#!/bin/sh
+set -eu
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "gitleaks no instalado: se omite el escaneo local (CI lo ejecuta)." >&2
+  exit 0
+fi
+
+if gitleaks git --help >/dev/null 2>&1; then
+  exec gitleaks git --pre-commit --staged --redact --verbose --config .gitleaks.toml
+fi
+
+exec gitleaks protect --staged --redact --verbose --config .gitleaks.toml

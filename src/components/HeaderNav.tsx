@@ -59,6 +59,8 @@ export function HeaderNav() {
             <img
               src={LOGO_URL}
               alt={translations.contact.logoAlt}
+              width={160}
+              height={48}
               className="h-[40px] w-auto max-w-[40vw] object-contain sm:h-[48px]"
             />
           </a>

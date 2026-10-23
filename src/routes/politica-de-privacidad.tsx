@@ -4,16 +4,39 @@ import { ArrowLeft } from "lucide-react";
 import { useAccessibilityPreferences } from "@/lib/accessibility-preferences-context";
 import { CONTACT, NIT, RAZON_SOCIAL } from "@/lib/telcobras-data";
 
+const SITE_URL = "https://telcobras.com";
+const OG_IMAGE =
+  "https://vibe.filesafe.space/1790689453956353174/assets/5634ad24-3ed8-4f8d-a4e2-e41b61113a29.png";
+
 export const Route = createFileRoute("/politica-de-privacidad")({
   head: () => ({
     meta: [
-      { title: `Política de Privacidad | ${RAZON_SOCIAL}` },
+      { title: `Política Privacidad | ${RAZON_SOCIAL}` },
       {
         name: "description",
         content:
-          "Política de privacidad y tratamiento de datos personales de TELCOBRAS S.A.S., conforme a la Ley Estatutaria 1581 de 2012 y, cuando corresponda, al RGPD.",
+          "Política de privacidad y tratamiento de datos personales de TELCOBRAS S.A.S. conforme a la Ley 1581 de 2012 y el RGPD cuando aplica.",
       },
+      { property: "og:title", content: `Política Privacidad | ${RAZON_SOCIAL}` },
+      {
+        property: "og:description",
+        content:
+          "Política de privacidad y tratamiento de datos personales de TELCOBRAS S.A.S. conforme a la Ley 1581 de 2012 y el RGPD cuando aplica.",
+      },
+      { property: "og:image", content: OG_IMAGE },
+      { property: "og:url", content: `${SITE_URL}/politica-de-privacidad` },
+      { property: "og:type", content: "website" },
+      { property: "og:locale", content: "es_CO" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: `Política Privacidad | ${RAZON_SOCIAL}` },
+      {
+        name: "twitter:description",
+        content:
+          "Política de privacidad y tratamiento de datos personales de TELCOBRAS S.A.S. conforme a la Ley 1581 de 2012 y el RGPD cuando aplica.",
+      },
+      { name: "twitter:image", content: OG_IMAGE },
     ],
+    links: [{ rel: "canonical", href: `${SITE_URL}/politica-de-privacidad` }],
   }),
   component: PrivacyPolicyPage,
 });
