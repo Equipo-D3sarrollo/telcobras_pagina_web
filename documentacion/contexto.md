@@ -581,7 +581,9 @@ por la aplicación.
 widget está en `src/components/TurnstileWidget.tsx` y se monta en el formulario; el
 token se resetea tras cada intento. La verificación usa `TURNSTILE_SECRET_KEY` en el
 servidor (y `VITE_TURNSTILE_SITE_KEY` en el cliente); si la clave secreta falta, el
-endpoint usa la clave de prueba de Cloudflare y emite una advertencia. El rate limit es
+endpoint responde `503` con `contacto_unavailable` antes de llamar a `siteverify` o a
+Supabase, sin usar claves de prueba. Si falta la site key, el cliente no carga el widget y
+deshabilita el envío con un aviso. El rate limit es
 un `Map` en memoria: protege por instancia, pero no es un límite distribuido/global.
 La respuesta 500 ya no incluye `error.message` de Supabase: solo se registra el código
 interno en el servidor y el cliente recibe `insert_failed` o `internal_error`.
@@ -1050,15 +1052,15 @@ Solo en servidor (nunca con prefijo `VITE_` ni en el cliente):
 - `SUPABASE_SERVICE_ROLE_KEY`: clave service-role de Supabase; privilegios elevados.
   Solo se usa en el servidor para insertar en `solicitudes_contacto`.
 - `MAKE_CHAT_WEBHOOK_URL`: webhook HTTPS de Make para `/api/chat` (ver sección 8).
-- `TURNSTILE_SECRET_KEY`: clave secreta de Cloudflare Turnstile. Sin ella,
-  `api.contacto.ts` usa la clave de prueba y registra una advertencia; no debe llegar a
-  producción sin configurarla.
+- `TURNSTILE_SECRET_KEY`: clave secreta de Cloudflare Turnstile. Si falta,
+  `api.contacto.ts` responde `503` con `contacto_unavailable` antes de `siteverify` y
+  Supabase, sin usar claves de prueba; debe configurarse antes de desplegar.
 
 Pública de compilación:
 
 - `VITE_TURNSTILE_SITE_KEY`: site key pública del widget (`TurnstileWidget.tsx`). Es
-  pública por diseño; sin ella se usa la site key de prueba. No confundirla con la
-  secreta.
+  pública por diseño; si falta, el widget no se carga y el formulario queda deshabilitado
+  con un aviso. No se usa ninguna site key de prueba. No confundirla con la secreta.
 
 Local: definir estas variables en `.env.local` (ignorado por Git). En Cloudflare,
 guardar las secretas con `wrangler secret put <NOMBRE>`. No hay `.env.example`

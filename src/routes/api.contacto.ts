@@ -6,7 +6,6 @@ const MAX_TURNSTILE_TOKEN_LENGTH = 2048;
 const SUPABASE_TABLE = "solicitudes_contacto";
 
 const TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
-const DEFAULT_TEST_SECRET_KEY = "1x0000000000000000000000000000000AA";
 
 // Rate limiting: máximo 5 envíos por ventana de 10 minutos por IP
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
@@ -64,16 +63,9 @@ function getClientIp(request: Request): string {
 
 async function verifyTurnstileToken(
   token: string,
+  secret: string,
   remoteIp?: string,
 ): Promise<{ success: boolean; errorCodes?: string[] | undefined }> {
-  const secret = process.env["TURNSTILE_SECRET_KEY"]?.trim() || DEFAULT_TEST_SECRET_KEY;
-
-  if (!process.env["TURNSTILE_SECRET_KEY"]) {
-    console.warn(
-      "[api/contacto] TURNSTILE_SECRET_KEY no está configurada; usando llave de prueba de Cloudflare.",
-    );
-  }
-
   const formData = new URLSearchParams();
   formData.append("secret", secret);
   formData.append("response", token);
@@ -273,7 +265,13 @@ async function handlePost(request: Request): Promise<Response> {
       return jsonResponse({ error: "turnstile_token_required" }, 400);
     }
 
-    const turnstileResult = await verifyTurnstileToken(turnstileToken, clientIp);
+    const turnstileSecret = process.env["TURNSTILE_SECRET_KEY"]?.trim();
+    if (!turnstileSecret) {
+      console.error("[api/contacto] Turnstile secret not configured");
+      return jsonResponse({ error: "contacto_unavailable" }, 503);
+    }
+
+    const turnstileResult = await verifyTurnstileToken(turnstileToken, turnstileSecret, clientIp);
     if (!turnstileResult.success) {
       console.warn("[api/contacto] Verificación Turnstile fallida:", turnstileResult.errorCodes);
       return jsonResponse({ error: "turnstile_verification_failed" }, 403);

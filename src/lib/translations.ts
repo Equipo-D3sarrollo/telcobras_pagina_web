@@ -185,6 +185,8 @@ interface Catalog {
     streetAddress: string;
     formTitle: string;
     formDescription: string;
+    formUnavailableTitle: string;
+    formUnavailableDescription: string;
     name: string;
     namePlaceholder: string;
     company: string;
@@ -609,6 +611,9 @@ const es: Catalog = {
     streetAddress: "Carrera 83A # 20 - 20, Cali, Valle del Cauca",
     formTitle: "Solicitud de cotización o diagnóstico",
     formDescription: "Ingresa tus datos corporativos para entregarte una propuesta a la medida.",
+    formUnavailableTitle: "Formulario no disponible temporalmente",
+    formUnavailableDescription:
+      "No podemos recibir solicitudes en este momento. Escríbenos a {email} mientras restablecemos el servicio.",
     name: "Nombre completo *",
     namePlaceholder: "Ej. Carlos Mendoza",
     company: "Nombre de la empresa",
@@ -1055,6 +1060,9 @@ const en: Catalog = {
     streetAddress: "Carrera 83A # 20 - 20, Cali, Valle del Cauca",
     formTitle: "Request a quote or assessment",
     formDescription: "Enter your business details and we'll prepare a tailored proposal.",
+    formUnavailableTitle: "Form temporarily unavailable",
+    formUnavailableDescription:
+      "We can't receive requests right now. Email us at {email} while we restore the service.",
     name: "Full name *",
     namePlaceholder: "e.g., Alex Morgan",
     company: "Company name",

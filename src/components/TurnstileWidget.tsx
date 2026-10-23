@@ -5,7 +5,6 @@ export type TurnstileWidgetHandle = {
 };
 
 export interface TurnstileWidgetProps {
-  siteKey?: string;
   onSuccess: (token: string) => void;
   onError?: (errorCode?: string) => void;
   onExpire?: () => void;
@@ -33,21 +32,16 @@ declare global {
 }
 
 const SCRIPT_ID = "cf-turnstile-script";
-const DEFAULT_TEST_SITE_KEY = "1x00000000000000000000AA";
+export const TURNSTILE_SITE_KEY = (
+  (import.meta.env["VITE_TURNSTILE_SITE_KEY"] as string | undefined) ?? ""
+).trim();
 
 export const TurnstileWidget = forwardRef<TurnstileWidgetHandle, TurnstileWidgetProps>(
-  function TurnstileWidget(
-    { siteKey, onSuccess, onError, onExpire, theme = "dark", className = "" },
-    ref,
-  ) {
+  function TurnstileWidget({ onSuccess, onError, onExpire, theme = "dark", className = "" }, ref) {
     const containerRef = useRef<HTMLDivElement>(null);
     const widgetIdRef = useRef<string | null>(null);
     const [loadError, setLoadError] = useState<string | null>(null);
-
-    const activeSiteKey =
-      siteKey?.trim() ||
-      (import.meta.env["VITE_TURNSTILE_SITE_KEY"] as string | undefined)?.trim() ||
-      DEFAULT_TEST_SITE_KEY;
+    const activeSiteKey = TURNSTILE_SITE_KEY;
 
     useImperativeHandle(
       ref,
@@ -66,6 +60,8 @@ export const TurnstileWidget = forwardRef<TurnstileWidgetHandle, TurnstileWidget
     );
 
     useEffect(() => {
+      if (!activeSiteKey) return;
+
       let isMounted = true;
       let checkInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -148,6 +144,8 @@ export const TurnstileWidget = forwardRef<TurnstileWidgetHandle, TurnstileWidget
         }
       };
     }, [activeSiteKey, theme, onSuccess, onError, onExpire]);
+
+    if (!activeSiteKey) return null;
 
     return (
       <div className={`turnstile-container my-3 min-h-[65px] ${className}`}>

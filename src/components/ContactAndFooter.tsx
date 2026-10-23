@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import { Facebook, Instagram, Linkedin, Music2 } from "lucide-react";
 import { BrandGlowBorder } from "./BrandGlowBorder";
-import { TurnstileWidget, type TurnstileWidgetHandle } from "./TurnstileWidget";
+import { TURNSTILE_SITE_KEY, TurnstileWidget, type TurnstileWidgetHandle } from "./TurnstileWidget";
 import {
   useAccessibilityPreferences,
   useTranslations,
@@ -49,6 +49,7 @@ const INITIAL_FORM_DATA = {
 export function ContactAndFooter() {
   const translations = useTranslations();
   const t = translations.contact;
+  const turnstileConfigured = TURNSTILE_SITE_KEY.length > 0;
   const { preferences } = useAccessibilityPreferences();
   const languageRef = useRef(preferences.language);
   languageRef.current = preferences.language;
@@ -104,6 +105,12 @@ export function ContactAndFooter() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (isSubmitting) return;
+    if (!turnstileConfigured) {
+      toast.error(t.formUnavailableTitle, {
+        description: t.formUnavailableDescription.replace("{email}", CONTACT.emailDisplay),
+      });
+      return;
+    }
     const websiteField = new FormData(e.currentTarget).get("sitio_web");
     if (typeof websiteField === "string" && websiteField.trim()) return;
     if (!formData.nombre || !formData.correo || !formData.telefono) {
@@ -148,6 +155,13 @@ export function ContactAndFooter() {
               ? "Too many requests. Please wait a few minutes before trying again."
               : "Has realizado demasiados intentos. Por favor espera unos minutos antes de volver a intentar.",
           );
+          return;
+        }
+
+        if (errorData?.error === "contacto_unavailable") {
+          toast.error(t.formUnavailableTitle, {
+            description: t.formUnavailableDescription.replace("{email}", CONTACT.emailDisplay),
+          });
           return;
         }
 
@@ -656,17 +670,29 @@ export function ContactAndFooter() {
                       )}
                     </div>
 
-                    <TurnstileWidget
-                      ref={turnstileRef}
-                      theme={preferences.theme === "light" ? "light" : "dark"}
-                      onSuccess={(token) => setTurnstileToken(token)}
-                      onError={() => setTurnstileToken("")}
-                      onExpire={() => setTurnstileToken("")}
-                    />
+                    {turnstileConfigured ? (
+                      <TurnstileWidget
+                        ref={turnstileRef}
+                        theme={preferences.theme === "light" ? "light" : "dark"}
+                        onSuccess={(token) => setTurnstileToken(token)}
+                        onError={() => setTurnstileToken("")}
+                        onExpire={() => setTurnstileToken("")}
+                      />
+                    ) : (
+                      <div
+                        role="alert"
+                        className="rounded-xl border border-[#F3CB35]/40 bg-[#F3CB35]/10 p-4 text-sm text-slate-200"
+                      >
+                        <p className="font-semibold text-[#F3CB35]">{t.formUnavailableTitle}</p>
+                        <p className="mt-1 leading-relaxed">
+                          {t.formUnavailableDescription.replace("{email}", CONTACT.emailDisplay)}
+                        </p>
+                      </div>
+                    )}
 
                     <button
                       type="submit"
-                      disabled={isSubmitting}
+                      disabled={isSubmitting || !turnstileConfigured}
                       className="group flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#0087C3] via-[#39a86f] to-[#88BD4C] text-sm font-extrabold text-[#04121f] shadow-lg shadow-[#0087C3]/25 transition-all hover:brightness-110 hover:shadow-xl hover:shadow-[#88BD4C]/25 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#0087C3]/40 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {isSubmitting ? (
