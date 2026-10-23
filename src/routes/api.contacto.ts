@@ -10,6 +10,7 @@ const TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/sit
 // Rate limiting: máximo 5 envíos por ventana de 10 minutos por IP
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 const MAX_REQUESTS_PER_WINDOW = 5;
+const MAX_RATE_LIMIT_ENTRIES = 10000;
 
 type RateLimitRecord = {
   count: number;
@@ -22,16 +23,26 @@ function checkRateLimit(ip: string): { allowed: boolean; retryAfterSeconds: numb
   const now = Date.now();
 
   // Limpieza periódica para evitar fugas de memoria
-  if (rateLimitMap.size > 1000) {
-    for (const [key, record] of rateLimitMap.entries()) {
+  if (rateLimitMap.size > MAX_RATE_LIMIT_ENTRIES) {
+    for (const [key, record] of Array.from(rateLimitMap.entries())) {
       if (now > record.resetAt) {
         rateLimitMap.delete(key);
+      }
+    }
+    if (rateLimitMap.size > MAX_RATE_LIMIT_ENTRIES) {
+      let deleted = 0;
+      const toDeleteCount = rateLimitMap.size - MAX_RATE_LIMIT_ENTRIES;
+      for (const key of rateLimitMap.keys()) {
+        if (deleted >= toDeleteCount) break;
+        rateLimitMap.delete(key);
+        deleted += 1;
       }
     }
   }
 
   const record = rateLimitMap.get(ip);
   if (!record || now > record.resetAt) {
+    rateLimitMap.delete(ip);
     rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
     return { allowed: true, retryAfterSeconds: 0 };
   }
@@ -45,31 +56,22 @@ function checkRateLimit(ip: string): { allowed: boolean; retryAfterSeconds: numb
   return { allowed: true, retryAfterSeconds: 0 };
 }
 
-function getClientIp(request: Request): string {
+function getClientIp(request: Request): string | null {
   const cfConnectingIp = request.headers.get("cf-connecting-ip");
-  if (cfConnectingIp?.trim()) return cfConnectingIp.trim();
-
-  const xForwardedFor = request.headers.get("x-forwarded-for");
-  if (xForwardedFor) {
-    const firstIp = xForwardedFor.split(",")[0]?.trim();
-    if (firstIp) return firstIp;
-  }
-
-  const xRealIp = request.headers.get("x-real-ip");
-  if (xRealIp?.trim()) return xRealIp.trim();
-
-  return "127.0.0.1";
+  const ip = cfConnectingIp?.trim();
+  if (ip) return ip;
+  return null;
 }
 
 async function verifyTurnstileToken(
   token: string,
   secret: string,
-  remoteIp?: string,
+  remoteIp?: string | null,
 ): Promise<{ success: boolean; errorCodes?: string[] | undefined }> {
   const formData = new URLSearchParams();
   formData.append("secret", secret);
   formData.append("response", token);
-  if (remoteIp && remoteIp !== "127.0.0.1") {
+  if (remoteIp) {
     formData.append("remoteip", remoteIp);
   }
 
@@ -226,7 +228,8 @@ async function handlePost(request: Request): Promise<Response> {
 
     // 1. Rate Limiting por IP
     const clientIp = getClientIp(request);
-    const rateLimit = checkRateLimit(clientIp);
+    const rateLimitKey = clientIp ?? "no-client-ip";
+    const rateLimit = checkRateLimit(rateLimitKey);
     if (!rateLimit.allowed) {
       return jsonResponse({ error: "rate_limit_exceeded" }, 429, {
         "retry-after": String(rateLimit.retryAfterSeconds),
