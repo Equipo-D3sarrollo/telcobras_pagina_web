@@ -982,7 +982,22 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
    legales). `origin/main` sigue en `b299546` (merge del PR #1) y la rama local `main`
    en `680eeb3`, un commit por detrás de `origin/main`. Los dos commits nuevos ya
    están publicados en la rama remota, pero no en `main`; no hace falta reescribir
-   historia. El árbol de trabajo está limpio. El push directo a
+   historia. El árbol de trabajo está limpio.
+   **Origen de los push (investigado el 26-10-2026):** `96e94ec`+`0cef096` y `c1cc050`
+   salieron de este equipo, no de AI Studio. El reflog de
+   `origin/feature/footer-seguridad-alejandro` registra «update by push» a las 13:31:24 y
+   14:38:42 (+01:00). El log de Git de VS Code
+   (`%APPDATA%/Code/logs/20261026T095944/window1/exthost/vscode.git/Git.log`) muestra a
+   esas mismas horas `git pull --tags` seguido de `git push origin
+   feature/footer-seguridad-alejandro`, que es la secuencia del botón «Sincronizar
+   cambios» de VS Code. La configuración de usuario de VS Code tiene `git.confirmSync:
+   false` (sincroniza sin pedir confirmación) y `git.autofetch: true` (este solo hace
+   fetch). No hay hooks que hagan push: `core.hooksPath=.githooks` solo contiene
+   `pre-commit` (gitleaks) y `.git/hooks` solo tiene `*.sample`. No existe
+   `.vscode/settings.json` ni `git.postCommitCommand`. No se pudo consultar la actividad
+   de GitHub porque `gh` no está instalado y el repo es privado. Para retener commits
+   en local, no pulsar «Sincronizar cambios» o poner `git.confirmSync: true`.
+   El push directo a
    `Equipo-D3sarrollo/telcobras_pagina_web` seguía limitado por permisos de la cuenta
    en la última comprobación; `origin` (`guidogonzalez21/telcobras-web`) es el remoto
    operativo.
