@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
+import { createRateLimiter, getClientIp, NO_CLIENT_IP_KEY } from "@/lib/rate-limit";
 
 const MAX_REQUEST_BYTES = 16 * 1024;
 const MAX_TURNSTILE_TOKEN_LENGTH = 2048;
@@ -10,58 +11,12 @@ const TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/sit
 // Rate limiting: máximo 5 envíos por ventana de 10 minutos por IP
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 const MAX_REQUESTS_PER_WINDOW = 5;
-const MAX_RATE_LIMIT_ENTRIES = 10000;
 
-type RateLimitRecord = {
-  count: number;
-  resetAt: number;
-};
-
-const rateLimitMap = new Map<string, RateLimitRecord>();
-
-function checkRateLimit(ip: string): { allowed: boolean; retryAfterSeconds: number } {
-  const now = Date.now();
-
-  // Limpieza periódica para evitar fugas de memoria
-  if (rateLimitMap.size > MAX_RATE_LIMIT_ENTRIES) {
-    for (const [key, record] of Array.from(rateLimitMap.entries())) {
-      if (now > record.resetAt) {
-        rateLimitMap.delete(key);
-      }
-    }
-    if (rateLimitMap.size > MAX_RATE_LIMIT_ENTRIES) {
-      let deleted = 0;
-      const toDeleteCount = rateLimitMap.size - MAX_RATE_LIMIT_ENTRIES;
-      for (const key of rateLimitMap.keys()) {
-        if (deleted >= toDeleteCount) break;
-        rateLimitMap.delete(key);
-        deleted += 1;
-      }
-    }
-  }
-
-  const record = rateLimitMap.get(ip);
-  if (!record || now > record.resetAt) {
-    rateLimitMap.delete(ip);
-    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
-    return { allowed: true, retryAfterSeconds: 0 };
-  }
-
-  if (record.count >= MAX_REQUESTS_PER_WINDOW) {
-    const retryAfterSeconds = Math.ceil((record.resetAt - now) / 1000);
-    return { allowed: false, retryAfterSeconds };
-  }
-
-  record.count += 1;
-  return { allowed: true, retryAfterSeconds: 0 };
-}
-
-function getClientIp(request: Request): string | null {
-  const cfConnectingIp = request.headers.get("cf-connecting-ip");
-  const ip = cfConnectingIp?.trim();
-  if (ip) return ip;
-  return null;
-}
+const contactoRateLimiter = createRateLimiter({
+  windowMs: RATE_LIMIT_WINDOW_MS,
+  maxRequests: MAX_REQUESTS_PER_WINDOW,
+  maxEntries: 10000,
+});
 
 async function verifyTurnstileToken(
   token: string,
@@ -228,8 +183,8 @@ async function handlePost(request: Request): Promise<Response> {
 
     // 1. Rate Limiting por IP
     const clientIp = getClientIp(request);
-    const rateLimitKey = clientIp ?? "no-client-ip";
-    const rateLimit = checkRateLimit(rateLimitKey);
+    const rateLimitKey = clientIp ?? NO_CLIENT_IP_KEY;
+    const rateLimit = contactoRateLimiter.check(rateLimitKey);
     if (!rateLimit.allowed) {
       return jsonResponse({ error: "rate_limit_exceeded" }, 429, {
         "retry-after": String(rateLimit.retryAfterSeconds),

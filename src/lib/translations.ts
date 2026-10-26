@@ -263,7 +263,8 @@ interface Catalog {
       | "upstream_error"
       | "upstream_timeout"
       | "agent_response_unavailable"
-      | "generic",
+      | "generic"
+      | "rate_limit_exceeded",
       string
     >;
     responseParseError: string;
@@ -713,6 +714,8 @@ const es: Catalog = {
       agent_response_unavailable:
         "Make recibió tu mensaje, pero el escenario todavía no devuelve la respuesta del asistente. Revisa el módulo Webhook response.",
       generic: "No se pudo enviar el mensaje. Intenta de nuevo.",
+      rate_limit_exceeded:
+        "Has enviado muchos mensajes seguidos. Espera unos minutos e inténtalo de nuevo.",
     },
     responseParseError: "El servidor devolvió una respuesta que no se pudo interpretar.",
     invalidResponse: "El asistente devolvió una respuesta con un formato no válido.",
@@ -1162,6 +1165,8 @@ const en: Catalog = {
       agent_response_unavailable:
         "Make received your message, but the scenario hasn't returned the assistant's response yet. Check the Webhook response module.",
       generic: "Couldn't send your message. Please try again.",
+      rate_limit_exceeded:
+        "You've sent too many messages in a row. Please wait a few minutes and try again.",
     },
     responseParseError: "The server returned a response that couldn't be interpreted.",
     invalidResponse: "The assistant returned a response in an invalid format.",

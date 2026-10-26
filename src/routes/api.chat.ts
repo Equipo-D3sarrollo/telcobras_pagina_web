@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { createRateLimiter, getClientIp, NO_CLIENT_IP_KEY } from "@/lib/rate-limit";
 
 const MAX_REQUEST_BYTES = 16 * 1024;
 const MAX_SESSION_ID_LENGTH = 128;
@@ -6,6 +7,16 @@ const MAX_MESSAGE_LENGTH = 4000;
 const MAX_UPSTREAM_RESPONSE_BYTES = 64 * 1024;
 const MAX_REPLY_LENGTH = 16_000;
 const UPSTREAM_TIMEOUT_MS = 30_000;
+
+const CHAT_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
+const CHAT_MAX_REQUESTS_PER_WINDOW = 20;
+const CHAT_MAX_RATE_LIMIT_ENTRIES = 10000;
+
+const chatRateLimiter = createRateLimiter({
+  windowMs: CHAT_RATE_LIMIT_WINDOW_MS,
+  maxRequests: CHAT_MAX_REQUESTS_PER_WINDOW,
+  maxEntries: CHAT_MAX_RATE_LIMIT_ENTRIES,
+});
 
 type ChatRequest = {
   session_id: string;
@@ -105,6 +116,15 @@ function getConfiguredWebhookUrl(): string | null {
 
 async function handlePost(request: Request): Promise<Response> {
   try {
+    const clientIp = getClientIp(request);
+    const rateLimitKey = clientIp ?? NO_CLIENT_IP_KEY;
+    const rateLimit = chatRateLimiter.check(rateLimitKey);
+    if (!rateLimit.allowed) {
+      return jsonResponse({ error: "rate_limit_exceeded" }, 429, {
+        "retry-after": String(rateLimit.retryAfterSeconds),
+      });
+    }
+
     const contentType = request.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase();
     if (contentType !== "application/json") {
       return jsonResponse({ error: "unsupported_media_type" }, 415);
