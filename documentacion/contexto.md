@@ -5,8 +5,11 @@ una inteligencia artificial que deba continuar el proyecto. Resume la arquitectu
 los módulos, los flujos de datos, las integraciones, las convenciones y los problemas
 conocidos. Debe actualizarse cuando cambien la arquitectura o las capacidades descritas.
 
-> Última revisión integral: **22-10-2026**. Se verificaron el pipeline de CSS/Tailwind,
-> el build de Nitro/Cloudflare y el estado de Git; ver secciones 7, 9 y 11.
+> Última revisión integral: **26-10-2026**. Auditoría de seguridad, dependencias, pruebas,
+> accesibilidad y páginas legales; se ejecutaron `tsc`, `eslint`, `npm audit`, `npm run build`
+> y una verificación en navegador de `/terminos-de-servicio` y `/sla`. Ver sección 11
+> («Auditoría 26-10-2026»). La revisión anterior (22-10-2026) cubrió el pipeline de
+> CSS/Tailwind, el build de Nitro/Cloudflare y el estado de Git; ver secciones 7 y 9.
 
 ## 1. Instrucciones para quien continúe el proyecto
 
@@ -944,28 +947,57 @@ descargarlas con autorización y migrarlas a `public/`.
 - Sección de contacto con red decorativa animada y tarjetas con borde de marca.
 - `conexion.php`: ejemplo aislado de conexión a MySQL con PDO (no integrado).
 
+### Auditoría 26-10-2026
+
+Resultado de la revisión del 26-10-2026, por prioridad. Los detalles y el estado de cada
+punto están en la lista «Pendiente/por confirmar» (número entre paréntesis).
+
+| Prioridad | Hallazgo | Pendiente |
+|---|---|---|
+| Crítica | `@tanstack/react-start@1.168.32` tiene un XSS reflejado conocido en respuestas de server functions; el proyecto usa una (`getAccessibilityPreferences`) y la CSP no lo mitiga por `'unsafe-inline'` | 20 |
+| Alta (mitigada) | Las páginas `/terminos-de-servicio` y `/sla` ya están en el remoto con textos y valores de SLA pendientes de aprobación; ahora muestran un aviso de borrador y son `noindex` | 7, 24 |
+| Alta | `TurnstileWidget` se destruye y se vuelve a crear en cada render del formulario | 21 |
+| Alta | No hay pruebas: todos los archivos de test y configuración están vacíos | 2 |
+| Alta | `/video_tel.mp4` da 404 | 4 |
+| Media | Rate limit en memoria por isolate; `/api/chat` sin Turnstile | 8 |
+| Media | `conexion.php` de prueba con credenciales por defecto y salida de datos personales | 22 |
+| Media | Videos pesados (`video_agentes.mp4` 49 MB) y duplicados en la raíz | 6 |
+| Media | Videos y animaciones que ignoran `prefers-reduced-motion` | 14 |
+| Media | El banner de cookies dice «al navegar aceptas» aunque ofrece rechazar | 25 |
+| Baja | CSP `connect-src` con dominios que el navegador no usa | 16 |
+| Baja | Metadatos SSR de las páginas legales siempre en español | 26 |
+| Baja | Textos fijos fuera del catálogo en el formulario, `siteverify` sin `hostname`, `sitemap.xml` desactualizado | 27, 28, 29 |
+
+Verificado y correcto en esta revisión: `npx tsc --noEmit` sin errores; `eslint` con 0
+errores (6 avisos en `components/ui`); `npm run build` correcto; las APIs limitan el tamaño
+del cuerpo, validan el content-type, no exponen errores internos y aplican Turnstile en
+modo fail-closed; los secretos están fuera de git (gitleaks en pre-commit y CI). Las
+páginas legales muestran 15 y 10 secciones, un solo `<h1>`, índice funcional, cambio
+ES/EN, SSR correcto y tablas sin desborde a 360 px.
+
 ### Pendiente/por confirmar
 
-1. **Estado Git al 22-10-2026:** `HEAD` y la rama
-   `feature/footer-seguridad-alejandro` están en `680eeb3`; `origin/main` está en
-   `b299546` (merge del PR #1 de esa rama) y `origin/feature/...` en `680eeb3`. La
-   rama local `main` sigue en `680eeb3`, un commit por detrás de `origin/main`; no
-   hace falta reescribir historia. El árbol de trabajo tiene cambios sin commitear
-   (hardening de secretos, CSP, estilos, documentación, Turnstile y rutas legales):
-   revisar `git status` y no descartarlos. El push directo a
+1. **Estado Git al 26-10-2026:** `HEAD` y `origin/feature/footer-seguridad-alejandro`
+   están en `0cef096` (incluye `96e94ec`, limitador compartido, y `0cef096`, páginas
+   legales). `origin/main` sigue en `b299546` (merge del PR #1) y la rama local `main`
+   en `680eeb3`, un commit por detrás de `origin/main`. Los dos commits nuevos ya
+   están publicados en la rama remota, pero no en `main`; no hace falta reescribir
+   historia. El árbol de trabajo está limpio. El push directo a
    `Equipo-D3sarrollo/telcobras_pagina_web` seguía limitado por permisos de la cuenta
    en la última comprobación; `origin` (`guidogonzalez21/telcobras-web`) es el remoto
    operativo.
 2. **Pruebas y validaciones:** `npm exec eslint -- .` pasa con 0 errores y 6
    advertencias de `react-refresh/only-export-components` en componentes UI
-   compartidos; `npx tsc --noEmit` pasa; `gitleaks` revisó 31 commits sin hallazgos.
-   Los archivos `src/components/AccessibilityMenu.test.tsx`,
-   `src/lib/accessibility-preferences.test.ts`, `e2e/accessibility.spec.ts`,
-   `vitest.config.ts` y `playwright.config.ts` siguen vacíos (0 bytes): no hay pruebas
-   efectivas ni script `test`. Existe un build en `.output/` (22-10-2026 13:09), pero
-   es anterior a la última edición de `src/server.ts` (13:21); no se ejecutó un build
-   nuevo en esta revisión por la regla de no levantar servidores/compilar. Reconstruir
-   antes de desplegar.
+   compartidos; `npx tsc --noEmit` pasa; `npm run build` pasa (26-10-2026, con el
+   código de `0cef096`). Siguen vacíos (0 bytes) `vitest.config.ts`,
+   `playwright.config.ts`, `src/components/AccessibilityMenu.test.tsx`,
+   `src/components/ServicesSection.test.tsx`, `src/lib/accessibility-preferences.test.ts`,
+   `src/lib/error-page.test.ts`, `src/hooks/use-reduced-motion.test.tsx`,
+   `e2e/accessibility.spec.ts` y también el hook `src/hooks/use-reduced-motion.ts`.
+   `npx vitest run` falla con «config must export or return an object» y no hay script
+   `test`. Reconstruir la suite o retirar los archivos vacíos para no aparentar
+   cobertura. `gitleaks` no está instalado localmente: el pre-commit lo omite y solo
+   escanea CI.
 3. **Make:** ejecutar una prueba exitosa de extremo a extremo y revisar salida del módulo
    Webhook response; hay históricos de respuestas upstream inválidas.
 4. **Video de Quiénes Somos:** `AboutAndValues.tsx` pide `/video_tel.mp4`, pero solo
@@ -981,11 +1013,15 @@ descargarlas con autorización y migrarlas a `public/`.
    textos completos, pero están pendientes de aprobación de gerencia y revisión
    jurídica, incluidos los valores de `SLA_VALUES` en `src/lib/sla-content.ts`. Revisar también bases
    jurídicas, proveedores/transferencias, retención, acceso y borrado de la política.
-8. **Protección de endpoints HTTP:** `/api/contacto` ya tiene Turnstile y rate limit por
-   IP; este último es en memoria y no distribuido, así que con varias instancias de
-   Worker el límite efectivo se multiplica. `/api/chat` todavía no tiene limitación de
-   tasa y puede disparar llamadas al webhook. Considerar Cloudflare Rate Limiting o un
-   almacén compartido y revisar política de origen/CSRF. Mantener los mensajes de error
+8. **Protección de endpoints HTTP:** `/api/contacto` tiene Turnstile y rate limit por IP
+   (5 envíos cada 10 min) y `/api/chat` tiene rate limit (20 mensajes cada 5 min), ambos
+   con el limitador compartido `src/lib/rate-limit.ts` basado en `cf-connecting-ip`. El
+   límite vive en memoria de cada isolate del Worker: no es global, así que el límite
+   efectivo se multiplica entre isolates y centros de datos. `/api/chat` no tiene
+   Turnstile y cada mensaje consume operaciones de Make. Considerar el binding de
+   Rate Limiting de Cloudflare, una regla WAF o un Durable Object, y valorar Turnstile en
+   el chat. Sin la cabecera `cf-connecting-ip` (dev o preview fuera de Cloudflare) todos
+   los clientes comparten el contador `no-client-ip`. Mantener los mensajes de error
    genéricos sin detalles internos.
 9. **Codificación de README:** `README.md` decodifica como UTF-8, pero contiene 24 bytes
     NUL. Revisar y guardar el documento como UTF-8 limpio; no copiar/re-guardar con una
@@ -1016,8 +1052,10 @@ descargarlas con autorización y migrarlas a `public/`.
     Google Maps incrusta algo adicional o si Turnstile cambia sus dominios) y resolver
     cualquier bloqueo antes de propagarlo al equipo. Siguiente paso de endurecimiento:
     sustituir `'unsafe-inline'` por nonces/hashes en `script-src` y añadir `report-to`
-    con un endpoint de recogida de Reports CSP. El build actual de `.output/` es
-    anterior a la restauración de la CSP bloqueante; reconstruir antes del despliegue.
+    con un endpoint de recogida de Reports CSP. `connect-src` incluye `*.supabase.co`,
+    `*.make.com` e `*.integromat.com`, pero el navegador nunca llama a esos dominios
+    (todo pasa por `/api/*`): se pueden quitar. `.output/` se reconstruyó el 26-10-2026
+    con la CSP bloqueante.
 17. **Empaquetado y despliegue (CSS):** el pipeline está correcto — `src/routes/__root.tsx:14`
     importa `styles.css?url`, `head.links` lo enlaza, Tailwind v4 lo genera en
     `.output/public/assets/styles-<hash>.css` (~162 KB) y el mismo hash está en SSR y
@@ -1033,6 +1071,55 @@ descargarlas con autorización y migrarlas a `public/`.
     `.env.example` en el repo. Crear uno con nombres de variables (sin valores) para
     onboarding: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `MAKE_CHAT_WEBHOOK_URL`,
     `TURNSTILE_SECRET_KEY`, `VITE_TURNSTILE_SITE_KEY`.
+20. **Dependencias vulnerables (crítico):** `npm audit --omit=dev` reporta un XSS
+    reflejado sin autenticación en respuestas de server functions de TanStack Start
+    (`@tanstack/react-start` >=1.143.12 <1.168.60 y `@tanstack/start-server-core`
+    <1.169.39). El proyecto usa `@tanstack/react-start@1.168.32` y un server function
+    (`getAccessibilityPreferences`). Actualizar `@tanstack/react-start`,
+    `@tanstack/react-router` y `@tanstack/router-plugin` a versiones parcheadas y
+    verificar build y SSR. También: `vite@8.1.5` (avisos que afectan solo al servidor de
+    desarrollo) y `zod@3.25.76` (alto, sin impacto en el servidor porque las APIs no
+    usan zod).
+21. **Turnstile se recrea en cada render:** `ContactAndFooter.tsx` pasa `onSuccess`,
+    `onError` y `onExpire` como funciones inline y `TurnstileWidget.tsx` los incluye en
+    las dependencias del `useEffect`. Cada tecla en el formulario ejecuta
+    `turnstile.remove()` y un nuevo `render()`, y `onSuccess` provoca otro render, con
+    riesgo de bucle. Guardar los callbacks en refs dentro del widget y quitarlos de las
+    dependencias.
+22. **`conexion.php`:** script PHP de prueba ajeno al stack. Usa por defecto `root` sin
+    contraseña y, si se ejecuta directamente, devuelve una fila de `solicitudes` (nombre
+    y correo) y el mensaje de la excepción. En Workers no se sirve, pero filtraría datos
+    en un hosting PHP. Eliminarlo o moverlo fuera del repo.
+23. **Peso del repositorio:** unos 70 MB de videos versionados; `video_agentes.mp4`,
+    `video_conectividad.mp4`, `video_inicio.mp4`, `video_seguridad.mp4` y
+    `video_tel.mp4` están también en la raíz, donde no se sirven. Recomprimir, quitar
+    duplicados y valorar Git LFS o un CDN (ver pendientes 4 y 6).
+24. **Páginas legales publicadas sin aprobar:** `0cef096` ya está en
+    `origin/feature/footer-seguridad-alejandro`. Si esa rama se fusiona a `main` o se
+    despliega, `/terminos-de-servicio` y `/sla` quedarán públicas con compromisos
+    (disponibilidad, tiempos y créditos de `SLA_VALUES`) que gerencia y jurídica aún no
+    aprobaron. **Mitigado:** mientras `LEGAL_DOCUMENTS_ARE_DRAFT` sea `true`
+    (`src/lib/legal-status.ts`), ambas páginas muestran un aviso ES/EN «Borrador
+    pendiente de aprobación» no vinculante y se sirven con
+    `<meta name="robots" content="noindex, nofollow">`. Cuando gerencia y jurídica
+    aprueben, poner la constante a `false` y actualizar `sitemap.xml` (pendiente 29). El
+    portafolio cita 99,6 % y +99,7 %: confirmar cuál se compromete.
+25. **Texto del banner de cookies:** dice «Al navegar por este sitio web, aceptas el
+    uso de cookies» («By browsing this website, you accept…»), lo que contradice los
+    botones de rechazar y configurar. El consentimiento implícito no es válido para
+    cookies no esenciales; ajustar el texto en `translations.ts` y revisarlo con jurídica.
+26. **Metadatos de las páginas legales:** `head()` en `sla.tsx` y
+    `terminos-de-servicio.tsx` usa siempre la versión en español. `LegalDocument`
+    actualiza `title` y `description` en el cliente, pero el HTML SSR y las etiquetas
+    Open Graph y Twitter siguen en español para quien tenga el idioma en inglés.
+27. **Textos fuera del catálogo:** `ContactAndFooter.tsx` (envío del formulario) tiene
+    mensajes de Turnstile y de rate limit escritos con `language === "en" ? … : …` en
+    lugar de usar `translations.ts`.
+28. **Validación de Turnstile:** `api.contacto.ts` acepta la respuesta de `siteverify`
+    sin comprobar `hostname` (ni `action`). Comprobar que el hostname corresponde al
+    dominio de producción.
+29. **`sitemap.xml`:** `<lastmod>` de `/terminos-de-servicio` y `/sla` sigue en
+    2026-10-22; actualizarlo cuando se publiquen los textos aprobados.
 
 ## 12. Operación y privacidad del formulario
 

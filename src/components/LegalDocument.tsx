@@ -1,8 +1,9 @@
 import { useEffect } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft } from "lucide-react";
+import { AlertTriangle, ArrowLeft } from "lucide-react";
 import { NIT, RAZON_SOCIAL } from "@/lib/telcobras-data";
 import type { LegalDocumentCopy } from "@/lib/legal-types";
+import { LEGAL_DOCUMENTS_ARE_DRAFT, LEGAL_DRAFT_NOTICE } from "@/lib/legal-status";
 
 const backLinkClass =
   "inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-semibold text-primary underline-offset-4 hover:bg-accent hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
@@ -35,6 +36,21 @@ export function LegalDocument({
           <ArrowLeft aria-hidden="true" className="h-4 w-4" />
           {copy.backToHome}
         </Link>
+
+        {LEGAL_DOCUMENTS_ARE_DRAFT && (
+          <aside
+            aria-labelledby={`${idPrefix}-draft-title`}
+            className="mb-8 flex gap-3 rounded-2xl border-2 border-[#F3CB35] bg-[#F3CB35]/15 p-4 text-foreground sm:p-5"
+          >
+            <AlertTriangle aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0" />
+            <div>
+              <p id={`${idPrefix}-draft-title`} className="font-bold">
+                {LEGAL_DRAFT_NOTICE[language].title}
+              </p>
+              <p className="mt-1 text-sm leading-relaxed">{LEGAL_DRAFT_NOTICE[language].text}</p>
+            </div>
+          </aside>
+        )}
 
         <header className="mb-10 border-b border-border pb-8">
           <p className="mb-3 text-sm font-bold uppercase tracking-wider text-primary">

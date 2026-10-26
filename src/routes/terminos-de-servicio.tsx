@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { LegalDocument } from "@/components/LegalDocument";
+import { LEGAL_DRAFT_META } from "@/lib/legal-status";
 import { useAccessibilityPreferences } from "@/lib/accessibility-preferences-context";
 import { termsContent } from "@/lib/terms-content";
 
@@ -23,6 +24,7 @@ export const Route = createFileRoute("/terminos-de-servicio")({
       { name: "twitter:title", content: metaTitle },
       { name: "twitter:description", content: description },
       { name: "twitter:image", content: OG_IMAGE },
+      ...LEGAL_DRAFT_META,
     ],
     links: [{ rel: "canonical", href: `${SITE_URL}/terminos-de-servicio` }],
   }),
