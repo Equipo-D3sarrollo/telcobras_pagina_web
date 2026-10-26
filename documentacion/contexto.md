@@ -954,7 +954,7 @@ punto están en la lista «Pendiente/por confirmar» (número entre paréntesis)
 
 | Prioridad | Hallazgo | Pendiente |
 |---|---|---|
-| Crítica | `@tanstack/react-start@1.168.32` tiene un XSS reflejado conocido en respuestas de server functions; el proyecto usa una (`getAccessibilityPreferences`) y la CSP no lo mitiga por `'unsafe-inline'` | 20 |
+| Crítica (corregida) | XSS reflejado en TanStack Start (CVE-2026-102989): corregido con `react-start@1.168.60`; el plugin de AI Studio queda en `0.3.3-beta.0` hasta que salga la estable | 20 |
 | Alta (mitigada) | Las páginas `/terminos-de-servicio` y `/sla` ya están en el remoto con textos y valores de SLA pendientes de aprobación; ahora muestran un aviso de borrador y son `noindex` | 7, 24 |
 | Alta | `TurnstileWidget` se destruye y se vuelve a crear en cada render del formulario | 21 |
 | Alta | No hay pruebas: todos los archivos de test y configuración están vacíos | 2 |
@@ -1086,15 +1086,29 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
     `.env.example` en el repo. Crear uno con nombres de variables (sin valores) para
     onboarding: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `MAKE_CHAT_WEBHOOK_URL`,
     `TURNSTILE_SECRET_KEY`, `VITE_TURNSTILE_SITE_KEY`.
-20. **Dependencias vulnerables (crítico):** `npm audit --omit=dev` reporta un XSS
-    reflejado sin autenticación en respuestas de server functions de TanStack Start
-    (`@tanstack/react-start` >=1.143.12 <1.168.60 y `@tanstack/start-server-core`
-    <1.169.39). El proyecto usa `@tanstack/react-start@1.168.32` y un server function
-    (`getAccessibilityPreferences`). Actualizar `@tanstack/react-start`,
-    `@tanstack/react-router` y `@tanstack/router-plugin` a versiones parcheadas y
-    verificar build y SSR. También: `vite@8.1.5` (avisos que afectan solo al servidor de
-    desarrollo) y `zod@3.25.76` (alto, sin impacto en el servidor porque las APIs no
-    usan zod).
+20. **Dependencias y CVE-2026-102989 (corregido el 26-10-2026):** el XSS reflejado en
+    respuestas de server functions de TanStack Start (GHSA-qx66-fv34-fjm8; afecta a
+    `@tanstack/react-start` <1.168.60 y `@tanstack/start-server-core` <1.169.39) está
+    corregido con versiones exactas: `@tanstack/react-start@1.168.60`,
+    `@tanstack/react-router@1.170.41`, `@tanstack/router-plugin@1.168.42` y
+    `@tanstack/start-server-core@1.169.39` (transitiva). `package-lock.json` y
+    `bun.lock` coinciden.
+    **Plugin de AI Studio en beta:** `@leadconnector/vite-tanstack-config` está fijado en
+    **`0.3.3-beta.0`**. La versión estable `0.3.2` modifica en desarrollo
+    `start-server-core/dist/esm/server-functions-handler.js` buscando la línea
+    `const unwrapped = res.result || res.error`, que ya no existe en las versiones con
+    parche, y hace que `npm run dev` devuelva 500 en todas las páginas. La beta reconoce
+    la línea de 1.169.39 (`res.error !== void 0 ? res.error : res.result`). **Pendiente:**
+    pasar el plugin a la versión estable en cuanto salga (0.3.3 o superior) y comprobar
+    `npm run dev`. No subir `@tanstack/react-start` por encima de 1.168.60 sin
+    comprobar antes el plugin: con `react-start@1.169.4` (`start-server-core@1.169.45`,
+    línea `failed ? res.error : res.result`) también falla la beta. El commit
+    `30f0a3b`, hecho y sincronizado desde VS Code, dejó temporalmente esa combinación
+    rota en el remoto.
+    Siguen abiertos: `vite@8.1.5` (alto; afecta solo al servidor de desarrollo;
+    corregido en 8.3.5), `zod@3.25.76` (alto; las APIs no usan zod; solo se corrige en
+    zod 4, que es un cambio mayor), `launch-editor` y `postcss-selector-parser`
+    (desarrollo; se corrigen con `npm audit fix`).
 21. **Turnstile se recrea en cada render:** `ContactAndFooter.tsx` pasa `onSuccess`,
     `onError` y `onExpire` como funciones inline y `TurnstileWidget.tsx` los incluye en
     las dependencias del `useEffect`. Cada tecla en el formulario ejecuta
