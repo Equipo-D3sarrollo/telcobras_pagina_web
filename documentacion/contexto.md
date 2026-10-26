@@ -86,12 +86,15 @@ se montan globalmente; el botón para volver al inicio se monta en la página pr
   catastróficos de rutas `/api/*` a `{ "error": "internal_error" }`.
 - Las rutas legales `/terminos-de-servicio` y `/sla` ya están creadas y registran sus
   propias rutas en el árbol de TanStack (`src/routes/terminos-de-servicio.tsx` y
-  `src/routes/sla.tsx`). Comparten la estructura visual de `/politica-de-privacidad`
-  (main → article → header → section → footer, enlace «Volver al inicio» y metadatos
-  SEO/Open Graph propios), pero su contenido es un marcador «Documento en redacción /
-  Próximamente» a la espera de los textos legales definitivos. Escriben una cookie de
-  idioma y devuelven HTTP 200; el placeholder debe sustituirse cuando existan los
-  textos aprobados.
+  `src/routes/sla.tsx`). Ya no son marcadores: ambas renderizan el documento completo
+  en ES/EN con el componente compartido `src/components/LegalDocument.tsx` (encabezado,
+  índice «Contenido» con anclas, secciones, tablas desplazables y enlaces «Volver al
+  inicio»), con metadatos SEO/Open Graph y `canonical` propios. El contenido vive en
+  `src/lib/terms-content.ts` (15 secciones) y `src/lib/sla-content.ts` (10 secciones);
+  los tipos compartidos están en `src/lib/legal-types.ts`. Los valores numéricos del
+  SLA se centralizan en `SLA_VALUES` (`src/lib/sla-content.ts`) y son una **propuesta
+  pendiente de aprobación de gerencia y revisión jurídica**: no cambiarlos ni la
+  redacción sin esa aprobación.
 - Todos los enlaces legales del footer y del banner de cookies usan `<Link>` de
   `@tanstack/react-router` (navegación SPA sin recarga completa). Las rutas internas se
   resuelven con las constantes `PRIVACY_POLICY_URL`, `TERMS_OF_SERVICE_URL` y
@@ -239,7 +242,11 @@ con excepciones para `*.example`, aunque hoy no existe un `.env.example` version
 - `src/routes/politica-de-privacidad.tsx`: versión legal interna, bilingüe, con
   procedimiento detallado de eliminación de datos.
 - `src/routes/terminos-de-servicio.tsx` y `src/routes/sla.tsx`: páginas legales
-  bilingües con marcador de contenido pendiente.
+  bilingües que renderizan `LegalDocument` con el contenido de
+  `src/lib/terms-content.ts` y `src/lib/sla-content.ts` (valores del SLA en
+  `SLA_VALUES`, pendientes de aprobación).
+- `src/components/LegalDocument.tsx` y `src/lib/legal-types.ts`: componente y tipos
+  compartidos de las páginas legales; el contenido se renderiza como texto, sin HTML.
 - `src/routes/__root.tsx`: shell, metadatos, providers y montajes globales del sitio.
 
 ## 5. Composición de la aplicación y rutas
@@ -385,12 +392,14 @@ con excepciones para `*.example`, aunque hoy no existe un `.env.example` version
 
 - `/politica-de-privacidad` contiene la política bilingüe completa.
 - `/terminos-de-servicio` y `/sla` ya existen como rutas registradas del router
-  (`src/routes/terminos-de-servicio.tsx` y `src/routes/sla.tsx`); reutilizan la
-  estructura visual de la política (main → article → header → section → footer,
-  enlace «Volver al inicio» y metadatos).
-- Ambas rutas nuevas muestran un único bloque semántico con el marcador «Documento en
-  redacción / Próximamente» y un medio de contacto; no contienen todavía texto legal
-  vinculante. Sustituir el marcador cuando existan los textos aprobados.
+  (`src/routes/terminos-de-servicio.tsx` y `src/routes/sla.tsx`) y ambas usan el
+  componente compartido `LegalDocument` (main → article → header → índice → section →
+  footer, un solo `<h1>`, enlaces «Volver al inicio» y metadatos).
+- El contenido bilingüe está en `src/lib/terms-content.ts` (15 secciones) y
+  `src/lib/sla-content.ts` (10 secciones, con tablas de prioridades y de créditos que se
+  desplazan dentro de su caja en móvil). El idioma sigue la preferencia del menú de
+  accesibilidad. Los compromisos del SLA salen de `SLA_VALUES`; son una propuesta
+  pendiente de aprobación de gerencia y revisión jurídica.
 - El footer enlaza a estas páginas con `<Link>` de `@tanstack/react-router` usando
   `TERMS_OF_SERVICE_URL` y `SLA_URL` de `telcobras-data.ts` (igual que
   `PRIVACY_POLICY_URL`). El banner de cookies usa el mismo patrón para la política.
@@ -907,9 +916,10 @@ descargarlas con autorización y migrarlas a `public/`.
 - Cabeceras de seguridad y CSP **activa (bloqueante)** aplicadas desde `src/server.ts`
   a SSR, API y respuestas de error (ver sección 9). La cabecera emitida es
   `Content-Security-Policy`; ya no se envía `Content-Security-Policy-Report-Only`.
-- Rutas legales `/terminos-de-servicio` y `/sla` creadas con diseño consistente y
-  marcador de contenido pendiente; el footer ya navega a ellas con `<Link>`, igual que
-  al resto de enlaces legales y al banner de cookies.
+- Rutas legales `/terminos-de-servicio` y `/sla` con su contenido completo en ES/EN
+  mediante el componente compartido `LegalDocument`; el footer navega a ellas con
+  `<Link>`, igual que al resto de enlaces legales y al banner de cookies. Los valores
+  del SLA (`SLA_VALUES`) siguen pendientes de aprobación.
 - SEO técnico: metadatos por ruta (`title`, `description`, `canonical`), etiquetas
   Open Graph y Twitter Card en las cuatro rutas públicas, datos estructurados JSON-LD
   de `Organization` en la landing y `public/sitemap.xml` referenciado desde
@@ -967,9 +977,9 @@ descargarlas con autorización y migrarlas a `public/`.
 6. **Peso de videos:** revisar compresión, dimensiones, poster, carga diferida y política
    de reproducción móvil, especialmente para `video_agentes.mp4`.
 7. **Privacidad y textos legales:** `/politica-de-privacidad` está implementada y el
-   formulario exige consentimiento. `/terminos-de-servicio` y `/sla` existen, pero solo
-   muestran el marcador «Documento en redacción / Próximamente»; falta redactar y
-   aprobar los textos definitivos con el responsable legal. Revisar también bases
+   formulario exige consentimiento. `/terminos-de-servicio` y `/sla` ya muestran sus
+   textos completos, pero están pendientes de aprobación de gerencia y revisión
+   jurídica, incluidos los valores de `SLA_VALUES` en `src/lib/sla-content.ts`. Revisar también bases
    jurídicas, proveedores/transferencias, retención, acceso y borrado de la política.
 8. **Protección de endpoints HTTP:** `/api/contacto` ya tiene Turnstile y rate limit por
    IP; este último es en memoria y no distribuido, así que con varias instancias de
@@ -984,8 +994,8 @@ descargarlas con autorización y migrarlas a `public/`.
     comandos documentados usan npm. Elegir cuál es la fuente canónica y mantener o retirar
     el otro mediante una decisión coordinada para evitar instalaciones divergentes.
 11. **Formulario:** los enlaces «Términos de Servicio» y «SLA y garantías» del footer ya
-    apuntan con `<Link>` a `/terminos-de-servicio` y `/sla`; esas páginas siguen en
-    estado de marcador hasta que existan los textos definitivos.
+    apuntan con `<Link>` a `/terminos-de-servicio` y `/sla`, que ya muestran el
+    contenido completo (pendiente de aprobación, ver pendiente 7).
 12. **Integración real de proyectos/fotos/redes:** comprobar enlaces sociales e imágenes
     externas antes de publicar en producción.
 13. **Tarjetas invisibles antes de hidratar:** las tarjetas de `#por-que` se renderizan
@@ -1083,7 +1093,8 @@ autorización. Evitar registrar datos personales completos en logs.
 | Contrato y proxy de Make | `src/routes/api.chat.ts` y `README.md` |
 | Formulario, mapa, datos de contacto y footer | `src/components/ContactAndFooter.tsx` |
 | Widget y validación de Turnstile | `src/components/TurnstileWidget.tsx`, `src/routes/api.contacto.ts` |
-| Páginas legales y enlaces del footer | `src/routes/politica-de-privacidad.tsx`, `src/routes/terminos-de-servicio.tsx`, `src/routes/sla.tsx` |
+| Páginas legales y enlaces del footer | `src/routes/politica-de-privacidad.tsx`, `src/routes/terminos-de-servicio.tsx`, `src/routes/sla.tsx`, `src/components/LegalDocument.tsx` |
+| Textos de Términos y SLA (valores del SLA en `SLA_VALUES`) | `src/lib/terms-content.ts`, `src/lib/sla-content.ts` |
 | Datos de marca, catálogo de servicios/proyectos | `src/lib/telcobras-data.ts` |
 | Proyectos: bento, modal, orden de tarjetas | `src/components/ProjectsSection.tsx` |
 | Métricas del hero e iluminación rotativa | `src/components/HeroAndMetrics.tsx` |
