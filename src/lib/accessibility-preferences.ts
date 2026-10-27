@@ -35,6 +35,11 @@ export function isLanguagePreference(value: unknown): value is LanguagePreferenc
   return LANGUAGES.some((language) => language === value);
 }
 
+/** Valor del atributo HTML `lang`: el español del sitio es el de Colombia. */
+export function htmlLang(language: LanguagePreference): "es-CO" | "en" {
+  return language === "es" ? "es-CO" : "en";
+}
+
 export function parseAccessibilityPreferences(value: unknown): AccessibilityPreferences {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return DEFAULT_ACCESSIBILITY_PREFERENCES;

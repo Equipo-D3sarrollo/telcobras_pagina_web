@@ -42,6 +42,9 @@ export const CONTACT = {
   address: "Carrera 83A # 20 - 20, Cali, Valle del Cauca, Colombia",
 };
 
+// Pendiente de confirmar con gerencia; se muestra tal cual en el footer.
+export const HORARIO = "[PENDIENTE: horario de gerencia]";
+
 export const CHATBOT_PHONE = {
   display: "+57 310 677 7412",
   href: "tel:+573106777412",

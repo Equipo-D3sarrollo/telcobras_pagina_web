@@ -9,7 +9,11 @@ import { defineConfig } from "@leadconnector/vite-tanstack-config";
 
 export default defineConfig({
   nitro: {
-    cloudflare: { nodeCompat: true },
+    cloudflare: {
+      nodeCompat: true,
+      // Nombre fijo del Worker; sin esto Nitro lo deriva del remoto de git.
+      wrangler: { name: "telcobras-web" },
+    },
   },
   // Browser errors stay in the trusted parent-frame console-log flow;
   // do not expose the bridge collector on the public sandbox tunnel.

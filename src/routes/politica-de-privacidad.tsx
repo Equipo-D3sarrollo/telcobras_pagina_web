@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { useAccessibilityPreferences } from "@/lib/accessibility-preferences-context";
+import { htmlLang } from "@/lib/accessibility-preferences";
 import { CONTACT, NIT, RAZON_SOCIAL } from "@/lib/telcobras-data";
 
 const SITE_URL = "https://telcobras.com";
@@ -11,29 +12,17 @@ const OG_IMAGE =
 export const Route = createFileRoute("/politica-de-privacidad")({
   head: () => ({
     meta: [
-      { title: `Política Privacidad | ${RAZON_SOCIAL}` },
-      {
-        name: "description",
-        content:
-          "Política de privacidad y tratamiento de datos personales de TELCOBRAS S.A.S. conforme a la Ley 1581 de 2012 y el RGPD cuando aplica.",
-      },
-      { property: "og:title", content: `Política Privacidad | ${RAZON_SOCIAL}` },
-      {
-        property: "og:description",
-        content:
-          "Política de privacidad y tratamiento de datos personales de TELCOBRAS S.A.S. conforme a la Ley 1581 de 2012 y el RGPD cuando aplica.",
-      },
+      { title: policyCopy.es.metaTitle },
+      { name: "description", content: policyCopy.es.metaDescription },
+      { property: "og:title", content: policyCopy.es.metaTitle },
+      { property: "og:description", content: policyCopy.es.metaDescription },
       { property: "og:image", content: OG_IMAGE },
       { property: "og:url", content: `${SITE_URL}/politica-de-privacidad` },
       { property: "og:type", content: "website" },
       { property: "og:locale", content: "es_CO" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: `Política Privacidad | ${RAZON_SOCIAL}` },
-      {
-        name: "twitter:description",
-        content:
-          "Política de privacidad y tratamiento de datos personales de TELCOBRAS S.A.S. conforme a la Ley 1581 de 2012 y el RGPD cuando aplica.",
-      },
+      { name: "twitter:title", content: policyCopy.es.metaTitle },
+      { name: "twitter:description", content: policyCopy.es.metaDescription },
       { name: "twitter:image", content: OG_IMAGE },
     ],
     links: [{ rel: "canonical", href: `${SITE_URL}/politica-de-privacidad` }],
@@ -44,10 +33,13 @@ export const Route = createFileRoute("/politica-de-privacidad")({
 const policyCopy = {
   es: {
     backToHome: "Volver al inicio",
+    metaTitle: "Política de privacidad y tratamiento de datos | TELCOBRAS",
+    metaDescription:
+      "Cómo TELCOBRAS S.A.S. trata tus datos personales según la Ley 1581 de 2012 y el RGPD cuando aplica: finalidades, derechos, conservación y cómo ejercerlos.",
     title: "Política de Privacidad y Tratamiento de Datos Personales",
     description:
       "Política de privacidad y tratamiento de datos personales de TELCOBRAS S.A.S., conforme a la Ley Estatutaria 1581 de 2012 y, cuando corresponda, al RGPD.",
-    updated: "Fecha de actualización: 20 de octubre de 2026",
+    updated: "Fecha de actualización: 27 de octubre de 2026",
     sections: {
       controller: {
         title: "1. Responsable del tratamiento",
@@ -79,7 +71,7 @@ const policyCopy = {
       },
       cookies: {
         title: "6. Cookies y almacenamiento local",
-        text: "El sitio usa una cookie para recordar preferencias de apariencia, tamaño de texto, idioma y refuerzo visual, y utiliza almacenamiento local del navegador para recordar la elección sobre cookies. El banner permite aceptar cookies no esenciales, rechazarlas o configurar la preferencia disponible. La elección se conserva en el dispositivo hasta que se borren sus datos locales.",
+        text: "Esenciales: el almacenamiento local del navegador guarda tu elección sobre cookies y, solo si usas el chat, un identificador de sesión de la conversación; si cambias las preferencias de apariencia, tamaño de texto, idioma o refuerzo visual, una cookie de sesión las conserva mientras navegas y se borra al cerrar el navegador. Opcionales, solo si las aceptas en el banner: esa cookie de preferencias se conserva hasta un año, y el mapa de ubicación de Google se carga automáticamente (Google puede guardar sus propias cookies; sin aceptarlas, el mapa solo se carga si pulsas «Ver mapa»). Puedes cambiar tu elección en cualquier momento desde «Preferencias de cookies», en el pie de página. Los datos locales se conservan en tu dispositivo hasta que los borres.",
       },
       retention: {
         title: "7. Conservación y seguridad",
@@ -131,10 +123,13 @@ const policyCopy = {
   },
   en: {
     backToHome: "Back to home",
+    metaTitle: "Privacy and personal data processing policy | TELCOBRAS",
+    metaDescription:
+      "How TELCOBRAS S.A.S. processes your personal data under Colombian Law 1581 of 2012 and the GDPR where applicable: purposes, rights, retention and requests.",
     title: "Privacy Policy and Personal Data Processing",
     description:
       "TELCOBRAS S.A.S. privacy and personal data processing policy under Colombian Statutory Law 1581 of 2012 and, where applicable, the GDPR.",
-    updated: "Last updated: October 20, 2026",
+    updated: "Last updated: October 27, 2026",
     sections: {
       controller: {
         title: "1. Data controller",
@@ -166,7 +161,7 @@ const policyCopy = {
       },
       cookies: {
         title: "6. Cookies and local storage",
-        text: "The site uses a cookie to remember appearance, text size, language, and visual enhancement preferences, and uses browser local storage to remember your cookie choice. The banner lets you accept non-essential cookies, reject them, or configure the available preference. Your choice remains on your device until its local data is deleted.",
+        text: "Essential: browser local storage keeps your cookie choice and, only if you use the chat, a conversation session identifier; if you change your appearance, text size, language, or visual enhancement preferences, a session cookie keeps them while you browse and is deleted when you close the browser. Optional, only if you accept them in the banner: that preferences cookie is kept for up to one year, and the Google location map loads automatically (Google may store its own cookies; without accepting them, the map only loads if you click “Show map”). You can change your choice at any time from “Cookie preferences” in the footer. Local data remains on your device until you delete it.",
       },
       retention: {
         title: "7. Retention and security",
@@ -228,13 +223,15 @@ function PrivacyPolicyPage() {
   const linkClass = "font-semibold text-primary underline";
 
   useEffect(() => {
-    document.title = `${copy.title} | ${RAZON_SOCIAL}`;
-    document.querySelector('meta[name="description"]')?.setAttribute("content", copy.description);
-  }, [copy.description, copy.title]);
+    document.title = copy.metaTitle;
+    document
+      .querySelector('meta[name="description"]')
+      ?.setAttribute("content", copy.metaDescription);
+  }, [copy.metaDescription, copy.metaTitle]);
 
   return (
     <main
-      lang={language}
+      lang={htmlLang(language)}
       className="min-h-screen bg-background px-4 py-10 font-sans text-foreground sm:px-6 sm:py-16"
     >
       <article className="mx-auto max-w-4xl rounded-3xl border border-border bg-card p-6 shadow-xl sm:p-10 lg:p-14">

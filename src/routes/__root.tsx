@@ -11,6 +11,7 @@ import {
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 import { getAccessibilityPreferences } from "../lib/accessibility-preferences.server";
+import { htmlLang } from "../lib/accessibility-preferences";
 
 import appCss from "../styles.css?url";
 import { reportVibeError } from "../lib/vibe-error-reporting";
@@ -109,6 +110,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         { name: "twitter:description", content: metadata.socialDescription },
       ],
       links: [
+        { rel: "icon", href: "/favicon.ico", sizes: "32x32" },
+        { rel: "apple-touch-icon", href: "/apple-touch-icon.png", sizes: "180x180" },
         {
           rel: "preconnect",
           href: "https://fonts.googleapis.com",
@@ -157,7 +160,7 @@ function RootShell({ children }: { children: ReactNode }) {
 
   return (
     <html
-      lang={accessibilityPreferences.language}
+      lang={htmlLang(accessibilityPreferences.language)}
       data-theme={accessibilityPreferences.theme}
       data-font-size={accessibilityPreferences.fontSize}
       data-colorblind-mode={String(accessibilityPreferences.colorblindMode)}

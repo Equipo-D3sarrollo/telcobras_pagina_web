@@ -1,10 +1,10 @@
-import type { LanguagePreference } from "@/lib/accessibility-preferences";
+import { htmlLang, type LanguagePreference } from "@/lib/accessibility-preferences";
 import { getTranslations } from "@/lib/translations";
 
 export function renderErrorPage(language: LanguagePreference = "es"): string {
   const { errors } = getTranslations(language);
   return `<!doctype html>
-<html lang="${language}">
+<html lang="${htmlLang(language)}">
   <head>
     <meta charset="utf-8" />
     <title>${errors.pageErrorTitle}</title>

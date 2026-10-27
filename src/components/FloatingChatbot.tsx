@@ -4,7 +4,7 @@ import {
   useAccessibilityPreferences,
   useTranslations,
 } from "@/lib/accessibility-preferences-context";
-import type { LanguagePreference } from "@/lib/accessibility-preferences";
+import { htmlLang, type LanguagePreference } from "@/lib/accessibility-preferences";
 import { getTranslations } from "@/lib/translations";
 
 type ChatMessage = {
@@ -26,6 +26,9 @@ function formatBotText(text: string): string {
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
+
+const WELCOME_BUBBLE_MS = 8000;
+const SESSION_STORAGE_KEY = "telcobras_session_id";
 
 export function FloatingChatbot() {
   const { preferences } = useAccessibilityPreferences();
@@ -51,24 +54,38 @@ export function FloatingChatbot() {
   const messageInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Solo se lee una sesión existente; el identificador se crea al enviar el primer
+  // mensaje, para no guardar nada en el navegador de quien no usa el chat.
   useEffect(() => {
-    let currentSessionId: string;
     try {
-      currentSessionId = window.localStorage.getItem("telcobras_session_id") ?? "";
-      if (!currentSessionId) {
-        currentSessionId = window.crypto.randomUUID();
-        window.localStorage.setItem("telcobras_session_id", currentSessionId);
-      }
+      setSessionId(window.localStorage.getItem(SESSION_STORAGE_KEY) ?? "");
+    } catch (error) {
+      console.error("No se pudo leer la sesión del chatbot.", error);
+    }
+  }, []);
+
+  function ensureSessionId(): string {
+    if (sessionId) return sessionId;
+    const newSessionId = window.crypto.randomUUID();
+    try {
+      window.localStorage.setItem(SESSION_STORAGE_KEY, newSessionId);
     } catch (error) {
       console.error("No se pudo persistir la sesión del chatbot.", error);
-      currentSessionId = window.crypto.randomUUID();
     }
-    setSessionId(currentSessionId);
-  }, []);
+    setSessionId(newSessionId);
+    return newSessionId;
+  }
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [isLoading, messages]);
+
+  // La invitación es un aviso temporal: se cierra sola para no tapar contenido (en
+  // móvil quedaba sobre el correo y el horario del footer). El botón del robot sigue.
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setWelcomeVisible(false), WELCOME_BUBBLE_MS);
+    return () => window.clearTimeout(timeout);
+  }, []);
 
   useEffect(() => {
     setMessages((currentMessages) =>
@@ -79,15 +96,16 @@ export function FloatingChatbot() {
   }, [language, t.initialGreeting]);
 
   useEffect(() => {
-    if (isOpen && !isLoading && sessionId) {
+    if (isOpen && !isLoading) {
       messageInputRef.current?.focus();
     }
-  }, [isOpen, isLoading, sessionId]);
+  }, [isOpen, isLoading]);
 
   async function handleSendMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const userText = input.trim();
-    if (!userText || !sessionId || isLoading) return;
+    if (!userText || isLoading) return;
+    const currentSessionId = ensureSessionId();
     let getLocalizedError = () => getTranslations(languageRef.current).chatbot.errors.generic;
 
     setMessages((currentMessages) => [
@@ -102,7 +120,7 @@ export function FloatingChatbot() {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ session_id: sessionId, mensaje: userText }),
+        body: JSON.stringify({ session_id: currentSessionId, mensaje: userText }),
       });
 
       let payload: unknown;
@@ -234,7 +252,7 @@ export function FloatingChatbot() {
                         {t.errorTitle}
                       </span>
                     )}
-                    <span lang={message.language}>
+                    <span lang={htmlLang(message.language)}>
                       {isBotMessage ? formatBotText(message.text) : message.text}
                     </span>
                   </div>
@@ -247,9 +265,9 @@ export function FloatingChatbot() {
                 className="flex items-center gap-1 rounded-2xl rounded-bl-md bg-muted px-4 py-3 text-muted-foreground"
                 role="status"
               >
-                <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground" />
-                <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground [animation-delay:120ms]" />
-                <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground [animation-delay:240ms]" />
+                <span className="h-2 w-2 motion-safe:animate-bounce rounded-full bg-muted-foreground" />
+                <span className="h-2 w-2 motion-safe:animate-bounce rounded-full bg-muted-foreground [animation-delay:120ms]" />
+                <span className="h-2 w-2 motion-safe:animate-bounce rounded-full bg-muted-foreground [animation-delay:240ms]" />
                 <span className="ml-2 text-xs">{t.responding}</span>
               </div>
             )}
@@ -266,7 +284,7 @@ export function FloatingChatbot() {
             <input
               autoComplete="off"
               className="min-w-0 flex-1 rounded-full border border-input bg-muted px-4 py-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20"
-              disabled={isLoading || !sessionId}
+              disabled={isLoading}
               id="telcobras-chat-message"
               name="message"
               onChange={(event) => setInput(event.currentTarget.value)}
@@ -278,7 +296,7 @@ export function FloatingChatbot() {
             <button
               aria-label={t.send}
               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#006BA4] text-white transition-colors hover:bg-[#005888] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2491CC]"
-              disabled={isLoading || !sessionId || !input.trim()}
+              disabled={isLoading || !input.trim()}
               type="submit"
             >
               <Send aria-hidden="true" className="h-5 w-5" />
@@ -342,7 +360,7 @@ export function FloatingChatbot() {
         ) : (
           <span
             aria-hidden="true"
-            className="relative flex h-[124px] w-[112px] scale-[1.15] flex-col items-center justify-end animate-bounce [animation-duration:3s] drop-shadow-lg"
+            className="relative flex h-[124px] w-[112px] scale-[1.15] flex-col items-center justify-end motion-safe:animate-bounce [animation-duration:3s] drop-shadow-lg"
           >
             <span className="z-10 -mb-0.5 flex flex-col items-center">
               <span className="h-2 w-2 rounded-full bg-[#88BD4C] ring-2 ring-emerald-200/70 shadow-[0_0_8px_#88BD4C]" />

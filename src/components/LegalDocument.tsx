@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Link } from "@tanstack/react-router";
 import { AlertTriangle, ArrowLeft } from "lucide-react";
 import { NIT, RAZON_SOCIAL } from "@/lib/telcobras-data";
+import { htmlLang } from "@/lib/accessibility-preferences";
 import type { LegalDocumentCopy } from "@/lib/legal-types";
 import { LEGAL_DOCUMENTS_ARE_DRAFT, LEGAL_DRAFT_NOTICE } from "@/lib/legal-status";
 
@@ -28,7 +29,7 @@ export function LegalDocument({
 
   return (
     <main
-      lang={language}
+      lang={htmlLang(language)}
       className="min-h-screen bg-background px-4 py-10 font-sans text-foreground sm:px-6 sm:py-16"
     >
       <article className="mx-auto max-w-4xl rounded-3xl border border-border bg-card p-6 shadow-xl sm:p-10 lg:p-14">

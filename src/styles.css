@@ -472,6 +472,13 @@
   animation-delay: -2.5s;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .chatbot-robot-vibrate,
+  .ally-logo-rotation {
+    animation: none;
+  }
+}
+
 @keyframes ally-logo-rotation {
   0%,
   100% {

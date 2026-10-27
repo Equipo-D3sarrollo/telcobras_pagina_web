@@ -1,4 +1,5 @@
 import { useEffect, useRef, useImperativeHandle, forwardRef, useState } from "react";
+import { useTranslations } from "@/lib/accessibility-preferences-context";
 
 export type TurnstileWidgetHandle = {
   reset: () => void;
@@ -40,7 +41,8 @@ export const TurnstileWidget = forwardRef<TurnstileWidgetHandle, TurnstileWidget
   function TurnstileWidget({ onSuccess, onError, onExpire, theme = "dark", className = "" }, ref) {
     const containerRef = useRef<HTMLDivElement>(null);
     const widgetIdRef = useRef<string | null>(null);
-    const [loadError, setLoadError] = useState<string | null>(null);
+    const t = useTranslations().contact;
+    const [loadError, setLoadError] = useState<"render" | "script" | null>(null);
     const activeSiteKey = TURNSTILE_SITE_KEY;
     // Los callbacks llegan inline desde el formulario y cambian en cada render; se leen
     // desde refs para que el efecto que monta el widget no lo destruya en cada tecla.
@@ -105,7 +107,7 @@ export const TurnstileWidget = forwardRef<TurnstileWidgetHandle, TurnstileWidget
         } catch (error) {
           console.error("Error al renderizar Cloudflare Turnstile:", error);
           if (isMounted) {
-            setLoadError("No se pudo inicializar la verificación de seguridad.");
+            setLoadError("render");
             onErrorRef.current?.("render_failed");
           }
         }
@@ -123,7 +125,7 @@ export const TurnstileWidget = forwardRef<TurnstileWidgetHandle, TurnstileWidget
           script.defer = true;
           script.onerror = () => {
             if (isMounted) {
-              setLoadError("Error al cargar el script de verificación.");
+              setLoadError("script");
               onErrorRef.current?.("script_load_error");
             }
           };
@@ -157,10 +159,10 @@ export const TurnstileWidget = forwardRef<TurnstileWidgetHandle, TurnstileWidget
 
     return (
       <div className={`turnstile-container my-3 min-h-[65px] ${className}`}>
-        <div ref={containerRef} aria-label="Verificación de seguridad Cloudflare Turnstile" />
+        <div ref={containerRef} aria-label={t.turnstileLabel} />
         {loadError && (
           <p className="mt-1 text-xs text-amber-400" role="alert">
-            {loadError}
+            {loadError === "render" ? t.turnstileRenderError : t.turnstileScriptError}
           </p>
         )}
       </div>

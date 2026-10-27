@@ -1,11 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { PRIVACY_POLICY_URL } from "@/lib/telcobras-data";
 import { useTranslations } from "@/lib/accessibility-preferences-context";
-
-const COOKIE_CONSENT_KEY = "telcobras_cookie_consent";
-
-type CookieConsentChoice = "accepted" | "rejected" | "configured";
+import {
+  COOKIE_CONSENT_KEY,
+  onOpenCookiePreferences,
+  readCookieConsent,
+  saveCookieConsent,
+  type CookieConsentChoice,
+} from "@/lib/cookie-consent";
 
 export function CookieBanner() {
   const t = useTranslations().cookieBanner;
@@ -14,6 +17,8 @@ export function CookieBanner() {
   const [isConfiguring, setIsConfiguring] = useState(false);
   const [allowNonEssential, setAllowNonEssential] = useState(false);
   const [storageError, setStorageError] = useState(false);
+  const [focusPreferences, setFocusPreferences] = useState(false);
+  const nonEssentialRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     try {
@@ -27,12 +32,33 @@ export function CookieBanner() {
     }
   }, []);
 
+  // El enlace «Preferencias de cookies» del footer vuelve a abrir el panel con la
+  // elección guardada y lleva el foco a él.
+  useEffect(
+    () =>
+      onOpenCookiePreferences(() => {
+        try {
+          setAllowNonEssential(readCookieConsent()?.nonEssential ?? false);
+        } catch (error) {
+          console.error("No se pudo leer la preferencia de cookies.", error);
+          setStorageError(true);
+        }
+        setIsConfiguring(true);
+        setIsVisible(true);
+        setFocusPreferences(true);
+      }),
+    [],
+  );
+
+  useEffect(() => {
+    if (!focusPreferences || !isVisible || !isConfiguring) return;
+    nonEssentialRef.current?.focus();
+    setFocusPreferences(false);
+  }, [focusPreferences, isVisible, isConfiguring]);
+
   function saveConsent(choice: CookieConsentChoice, nonEssential: boolean) {
     try {
-      window.localStorage.setItem(
-        COOKIE_CONSENT_KEY,
-        JSON.stringify({ necessary: true, nonEssential, choice }),
-      );
+      saveCookieConsent(choice, nonEssential);
       setStorageError(false);
       setIsVisible(false);
     } catch (error) {
@@ -84,6 +110,7 @@ export function CookieBanner() {
             </label>
             <label className="flex cursor-pointer items-start gap-3">
               <input
+                ref={nonEssentialRef}
                 type="checkbox"
                 checked={allowNonEssential}
                 onChange={(event) => setAllowNonEssential(event.currentTarget.checked)}

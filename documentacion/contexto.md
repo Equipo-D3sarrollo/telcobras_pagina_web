@@ -109,6 +109,23 @@ se montan globalmente; el botón para volver al inicio se monta en la página pr
   `<head>`). El JSON-LD consume `RAZON_SOCIAL`, `LOGO_URL`, `CONTACT` y `SOCIAL_LINKS`
   de `src/lib/telcobras-data.ts` e incluye `name`, `url`, `logo`, `telephone`,
   `address` y `sameAs`.
+- Títulos y descripciones (27-10-2026): palabra clave al inicio y la marca al final,
+  con títulos de 50-60 caracteres y descripciones de 140-160. La landing no define
+  `title`/`description`/`og`/`twitter` propios: los pone el `head` raíz desde
+  `metadata` de `translations.ts` según el idioma de la cookie (una sola fuente para el
+  SSR y para `LocalizedMetadata`). La política de privacidad usa `metaTitle` y
+  `metaDescription` de `policyCopy` (separados del título y la introducción visibles).
+  Términos y SLA usan `metaTitle`/`description` de `terms-content.ts`/`sla-content.ts`.
+- Estructura de la landing: un solo `<main>` (de Hero a Contacto/Ubicación), con
+  `HeaderNav` antes y `SiteFooter` después, y un solo `<h1>` (en `HeroAndMetrics`).
+- `<html lang>` vale `es-CO` en español y `en` en inglés (`htmlLang()` en
+  `src/lib/accessibility-preferences.ts`); se usa también en el `lang` de las páginas
+  legales, los mensajes del chatbot y la página de error. La preferencia y la cookie
+  `telcobras_a11y` siguen guardando `es`/`en`.
+- Iconos: `public/favicon.ico` (32×32, más 16 y 48) y `public/apple-touch-icon.png`
+  (180×180, fondo blanco), generados a partir del isotipo (las tres velas) de
+  `LOGO_URL` y enlazados en `head.links` de `__root.tsx`. No hay `icon.svg` porque no
+  existe una versión vectorial del logo; añadirlo cuando se tenga el SVG oficial.
 - La optimización de imágenes para Core Web Vitals está aplicada en los componentes
   principales: la imagen principal del hero usa `loading="eager"` +
   `fetchPriority="high"` y las demás son `loading="lazy"`; todas declaran `width`/`height`
@@ -120,6 +137,22 @@ se montan globalmente; el botón para volver al inicio se monta en la página pr
   declara `Sitemap: https://telcobras.com/sitemap.xml`.
 - El componente `CookieBanner` persiste la elección del usuario en `localStorage`
   bajo `telcobras_cookie_consent` y no vuelve a renderizar cuando ya existe la clave.
+  El botón «Preferencias de cookies» del footer lo vuelve a abrir con el panel de
+  preferencias y la elección guardada (evento de `src/lib/cookie-consent.ts`).
+- Consentimiento explícito (27-10-2026): el banner pide decidir («Usamos cookies
+  esenciales… y, si lo aceptas, cookies opcionales…»), ya no dice «al navegar
+  aceptas». Lo opcional solo se activa con `nonEssential: true`
+  (`hasNonEssentialConsent()` / `useNonEssentialConsent()`):
+
+  | Almacenamiento | Sin aceptar opcionales | Con opcionales aceptadas |
+  |---|---|---|
+  | `telcobras_cookie_consent` (localStorage) | se guarda al decidir (esencial) | igual |
+  | `telcobras_session_id` (localStorage, chat) | solo al enviar el primer mensaje | igual |
+  | Cookie `telcobras_a11y` (preferencias) | de sesión, solo si se cambia una opción | persistente, 1 año |
+  | Mapa de Google (cookies de terceros) | no se carga; recuadro con «Ver mapa» | se carga |
+
+  Al cambiar la elección, la cookie de preferencias existente pasa a persistente o a
+  sesión en el momento. Turnstile y Google Fonts no dejan cookies en el dominio.
 - El menú de accesibilidad y la preferencia de idioma persisten en una cookie y se
   aplican también durante SSR para evitar flashes de contenido con idioma incorrecto.
 - La documentación legal debe revisarse con el responsable del tratamiento antes de
@@ -222,10 +255,13 @@ con excepciones para `*.example`, aunque hoy no existe un `.env.example` version
 
 - `src/lib/telcobras-data.ts`: contiene datos corporativos oficiales, enlaces de
   redes sociales, URL interna de privacidad y datos de contacto.
-- `src/components/ContactAndFooter.tsx`: footer semántico, redes sociales, consent
-  legal, formulario, mapa, ubicación y enlaces legales.
+- `src/components/ContactAndFooter.tsx`: exporta `ContactSection` (formulario,
+  consentimiento legal, mapa y ubicación) y `SiteFooter` (footer semántico, contacto,
+  redes sociales y enlaces legales).
 - `src/components/CookieBanner.tsx`: aceptación/rechazo de cookies y persistencia en
-  `localStorage`.
+  `localStorage`; se reabre desde el footer.
+- `src/lib/cookie-consent.ts`: clave y lectura del consentimiento guardado, y
+  `openCookiePreferences()` / `onOpenCookiePreferences()` para reabrir el banner.
 - `src/components/TurnstileWidget.tsx`: widget de Cloudflare Turnstile usado por el
   formulario de contacto (carga explícita del script, callback, reset y errores).
 - `src/routes/api.contacto.ts`: endpoint de contacto usado por el formulario. Valida
@@ -256,10 +292,11 @@ con excepciones para `*.example`, aunque hoy no existe un `.env.example` version
   `<HeadContent />`. No hace falta escribir el `<script>` a mano ni usar `dangerouslySetInnerHTML`.
   Los datos (`name`, `url`, `logo`, `telephone`, `address`, `sameAs`) salen de
   `src/lib/telcobras-data.ts`.
-- Compone la landing en este orden: `HeaderNav`, `HeroAndMetrics`,
-  `AboutAndValues`, `ServicesSection`, `LetyIaAndWhyUs`,
-  `ContactAndFooter` y `ScrollToTopButton`.
-- El formulario, ubicación y footer están juntos dentro de `ContactAndFooter`.
+- Compone la landing en este orden: `HeaderNav`; dentro de `<main>`,
+  `HeroAndMetrics`, `AboutAndValues`, `ServicesSection`, `LetyIaAndWhyUs` y
+  `ContactSection`; después `SiteFooter` y `ScrollToTopButton`.
+- El formulario y la ubicación están en `ContactSection`; el footer es `SiteFooter`
+  (ambos en `ContactAndFooter.tsx`).
 
 ### `src/routes/__root.tsx`
 
@@ -285,12 +322,16 @@ con excepciones para `*.example`, aunque hoy no existe un `.env.example` version
   `errors.services` de `src/lib/translations.ts` (ES/EN).
 - El loader raíz obtiene las preferencias de accesibilidad desde la cookie
   `telcobras_a11y` en el servidor y las aplica a los atributos de `<html>`, incluido
-  `lang`, antes de renderizar. El idioma predeterminado es `es`.
+  `lang` (`es-CO` o `en`, vía `htmlLang()`), antes de renderizar. El idioma
+  predeterminado es `es`.
 - `src/components/CookieBanner.tsx` se monta desde el shell global. Guarda la elección
   en `localStorage` bajo `telcobras_cookie_consent` (esenciales siempre activas y una
   preferencia booleana para las no esenciales); si la clave existe, no vuelve a mostrar
-  el banner. El control registra la preferencia, pero la carga/ejecución de cookies de
-  terceros debe conectarse a esa preferencia si se incorporan esas integraciones.
+  el banner, salvo que se pulse «Preferencias de cookies» en el footer, que lo abre con
+  el panel de preferencias, la elección guardada y el foco en él. La elección se guarda
+  con `saveCookieConsent()`, que avisa del cambio (evento y `storage` entre pestañas).
+  Cualquier integración nueva que deje cookies de terceros debe condicionarse a
+  `useNonEssentialConsent()`, como el mapa de Google.
 - Si se añaden rutas, no eliminar `<Outlet />`.
 
 ### Preferencias de accesibilidad
@@ -460,8 +501,8 @@ o Remix: la guía local está en `src/routes/README.md`.
   - `colaboracion` → `/video_colaboracion.mp4`
   - `nube` → `/video_nuve.mp4`
   - `agentes-ia` → `/video_agentes.mp4`
-- Usa `<video autoPlay loop muted playsInline>`; la `key` por ID ayuda a recrear
-  el reproductor al cambiar de pestaña. Overlay oscuro (`bg-slate-950/75`) para
+- Usa `BackgroundVideo` (ver «Videos de fondo»), con el mapa `SERVICE_VIDEOS`; la
+  `key` por ID recrea el reproductor al cambiar de pestaña. Overlay oscuro (`bg-slate-950/75`) para
   mantener contraste.
 - Interfaz con dos formas de selección sincronizadas: una barra de pestañas
   (`services-tabs` / `services-tab` / `services-tab-indicator`) y una cuadrícula de
@@ -556,7 +597,8 @@ las tarjetas del formulario de contacto (`ContactAndFooter`).
 
 ### `src/components/ContactAndFooter.tsx`
 
-Reúne tres bloques en un solo componente: `#contacto`, `#ubicacion` y el pie de página.
+Exporta dos componentes: `ContactSection` (`#contacto` y `#ubicacion`, dentro del
+`<main>` de la landing) y `SiteFooter` (el pie de página, fuera de `<main>`).
 
 - Contacto con teléfono, correo, dirección y redes sociales (Facebook, Instagram,
   LinkedIn; los `href` son genéricos `facebook.com`/`instagram.com`/`linkedin.com` sin
@@ -564,9 +606,17 @@ Reúne tres bloques en un solo componente: `#contacto`, `#ubicacion` y el pie de
 - Formulario «Solicitud de Cotización o Diagnóstico». El `<select>` de servicio ofrece
   las opciones del portafolio (Conectividad, Seguridad, Colaboración, Nube híbrida,
   IA integrada, Agentes con IA, Solución integral).
-- `#ubicacion`: mapa de Google embebido de la sede en Cali y botón «Cómo llegar» con
-  enlace de indicaciones.
-- Footer con logo, eslogan, copyright dinámico y enlaces informativos.
+- `#ubicacion`: mapa de Google de la sede en Cali (`LocationMap`; solo se carga con
+  cookies opcionales aceptadas o al pulsar «Ver mapa») y botón «Cómo llegar» con enlace
+  de indicaciones.
+- Footer con logo, eslogan y copyright dinámico. Debajo, una rejilla (1 columna en
+  móvil, 2 en tablet, 3 en escritorio) con: `<address>` con la dirección
+  (`CONTACT.address`), el teléfono (`<a href="tel:…">`) y el correo
+  (`<a href="mailto:…">`), y debajo el horario de atención (`HORARIO`); las redes
+  sociales; y los enlaces legales (Términos, Política de datos, SLA) más el botón
+  «Preferencias de cookies», que reabre `CookieBanner`. Verificado sin desborde a 360,
+  768 y 1440 px; en tablet las redes van a la izquierda para no quedar bajo el robot
+  flotante del chat.
 - Fondo decorativo: SVG de red (`network-flow`, `contact-node-pulse`) sobre la imagen de
   Cali; se pausa con `data-animations-paused` controlado por `IntersectionObserver`
   (`sectionRef`/`isInView`), con el mismo criterio que `WhyUsSection`.
@@ -591,7 +641,10 @@ La respuesta 500 ya no incluye `error.message` de Supabase: solo se registra el 
 interno en el servidor y el cliente recibe `insert_failed` o `internal_error`.
 Las etiquetas visibles de nombre, empresa, cargo, correo, teléfono, servicio y mensaje
 están asociadas mediante `htmlFor`/`id`; los límites HTML y los del endpoint están
-alineados para esos campos.
+alineados para esos campos. Los campos tienen `autoComplete` (`name`, `organization`,
+`organization-title`, `email`, `tel`). Todos los textos del formulario y de
+`TurnstileWidget` (avisos de verificación, rate limit, errores de carga y
+`aria-label`) vienen de `translations.ts`.
 
 El formulario recopila nombre, empresa, cargo, correo, teléfono, servicio, mensaje y
 consentimiento; nombre, correo y teléfono son obligatorios en cliente y servidor.
@@ -602,14 +655,17 @@ política legal aprobada.
 
 ### `src/components/FloatingChatbot.tsx`
 
-- Chat flotante con bienvenida cerrable, botón de robot, historial en memoria mientras
+- Chat flotante con bienvenida cerrable (se cierra sola a los 8 s, `WELCOME_BUBBLE_MS`,
+  para no tapar contenido como el correo y el horario del footer en móvil), botón de robot, historial en memoria mientras
   está montado, mensajes de usuario/asistente, loading indicator (tres puntos) y
   mensajes de error.
-- El botón colapsado es un robot animado (`chatbot-robot-vibrate` + `animate-bounce`) y
+- El botón colapsado es un robot animado (`chatbot-robot-vibrate` +
+  `motion-safe:animate-bounce`, ambos quietos con movimiento reducido) y
   la invitación («¡Hola! ¿Necesitas ayuda?») usa `chatbot-invite-animation`.
-- La sesión se guarda en `localStorage` bajo `telcobras_session_id`; si falta se crea
-  con `crypto.randomUUID()`. Si el acceso a `localStorage` falla, usa un UUID
-  temporal y registra el error.
+- La sesión se guarda en `localStorage` bajo `telcobras_session_id`. Al cargar solo se
+  lee una existente; si no hay, se crea con `crypto.randomUUID()` al enviar el primer
+  mensaje (`ensureSessionId`), así quien no usa el chat no guarda nada. Si el acceso a
+  `localStorage` falla, usa el UUID en memoria y registra el error.
 - Al abrir el panel y al terminar la petición enfoca el input; desplaza el log al
   mensaje más reciente.
 - Enviar mensaje hace `POST /api/chat` con JSON `{ session_id, mensaje }`; espera
@@ -647,6 +703,8 @@ Fuente de verdad para:
   `#F3CB35`, gris `#888D91`, navy `#0A192F`).
 - Datos de contacto (`CONTACT`: teléfono, WhatsApp, correo, dirección) y el teléfono
   del chatbot (`CHATBOT_PHONE`).
+- `HORARIO`: horario de atención que muestra el footer. Hoy vale
+  `"[PENDIENTE: horario de gerencia]"` (pendiente 30).
 - Tipo `ServiceItem` y catálogo `SERVICIOS_DATA`.
 - Tipo `ProyectoItem` y catálogo `PROYECTOS_DATA`. Cada proyecto tiene `categoria`,
   `ubicacion` (opcional; el chatbot de la ESPY no la tiene porque ningún texto la
@@ -711,6 +769,31 @@ Los textos de los diferenciales de «¿Por qué TELCOBRAS?» no están aquí: vi
   del viewport. Opciones: `resumeDelayMs` y `onTouchActivate(index, pauseMs)`. No usa
   `window` durante el render (SSR seguro). Lo usan las métricas y los diferenciales.
 
+### Videos de fondo
+
+- Los cinco `<video>` de la landing (Hero, Quiénes Somos, Servicios, Inteligencia
+  Artificial y «¿Por qué TELCOBRAS?») usan `src/components/BackgroundVideo.tsx`:
+  silenciado, en bucle, `playsInline`, `poster` `.webp` (primer fotograma, mismo nombre
+  que el `.mp4` en `public/`), `preload="none"` y **sin `autoPlay`**. Se reproduce desde
+  el cliente con `play()` salvo con `prefers-reduced-motion: reduce`, en cuyo caso se
+  queda en el poster y ni siquiera descarga el video. `playing` permite pausarlo fuera
+  de pantalla (lo usa `WhyUsSection`).
+- La preferencia se lee con `useReducedMotion()` / `prefersReducedMotion()` de
+  `src/hooks/use-reduced-motion.ts`.
+- Compresión (27-10-2026, `ffmpeg` 9.0.2): H.264 `-preset veryfast -crf 28`, sin audio,
+  máximo 1280×720 y `-movflags +faststart`. Excepciones: `video_agentes.mp4` a 960×540
+  para bajar de 5 MB, y `video_seguridad.mp4` sin recodificar (con CRF 28 crecía), solo
+  sin audio y con `+faststart`. Se comprobó fotograma a fotograma que no hay pérdida
+  visible y que cada video conserva su número de fotogramas. Para volver a comprimir:
+  `ffmpeg -i in.mp4 -an -c:v libx264 -preset veryfast -crf 28 -pix_fmt yuv420p -vf
+  "scale='min(1280,iw)':'min(720,ih)':force_original_aspect_ratio=decrease,scale=trunc(iw/2)*2:trunc(ih/2)*2"
+  -movflags +faststart out.mp4`; poster: `ffmpeg -i in.mp4 -frames:v 1 -c:v libwebp
+  -quality 75 in.webp` (para `video_nuve` añadir `-ss 3` antes de `-i`). Bucle de
+  `video_tel` con fundido, a partir del original (`git show ab17f5a~1:public/video_tel.mp4`):
+  `ffmpeg -ss 101 -t 21 -i original.mp4 -filter_complex
+  "[0:v]split[x][y];[x]trim=start=1:end=21,setpts=PTS-STARTPTS[a];[y]trim=end=1,setpts=PTS-STARTPTS[b];[a][b]xfade=transition=fade:duration=1:offset=19,format=yuv420p[v]"
+  -map "[v]" -an -c:v libx264 -preset veryfast -crf 28 -movflags +faststart video_tel.mp4`.
+
 ### Convenciones de movimiento
 
 - Con `prefers-reduced-motion` no se elimina un efecto: se conservan los ciclos y los
@@ -724,6 +807,11 @@ Los textos de los diferenciales de «¿Por qué TELCOBRAS?» no están aquí: vi
 - Para verificar en navegador, emular ambos modos (`reducedMotion: "reduce"` y
   `"no-preference"`). No usar capturas de un elemento más alto que el viewport
   mientras se mide una rotación: alteran el área visible y el observer la pausa.
+- Excepciones explícitas (27-10-2026): con movimiento reducido los videos de fondo no
+  se reproducen (se ve el poster), y se detienen del todo el rebote y la vibración del
+  robot del chat, los puntos de carga del chat (`motion-safe:animate-bounce`) y la
+  rotación de logos de aliados (`.chatbot-robot-vibrate` y `.ally-logo-rotation` con
+  `animation: none` en `styles.css`).
 
 ## 8. Integración del chatbot con Make
 
@@ -785,10 +873,14 @@ exitosa y repetible con el módulo Webhook response configurado correctamente.
   No duplicar plugins manualmente. El wrapper añade `@tailwindcss/vite` siempre; el
   `componentTagger` solo en `serve` + `development`.
 - El destino Nitro es Cloudflare: el wrapper lo usa como target por defecto
-  (`cloudflare-module`) y `vite.config.ts:11-13` solo activa
-  `nitro.cloudflare.nodeCompat`. No existe `nitro.json`; el
-  `.output/server/wrangler.json` generado fija `compatibility_date: 2026-10-22`
-  (coincide con la fecha de ese build).
+  (`cloudflare-module`). `vite.config.ts` activa `nitro.cloudflare.nodeCompat` y fija
+  el nombre del Worker con `nitro.cloudflare.wrangler.name: "telcobras-web"` (desde el
+  27-10-2026; antes Nitro lo derivaba del remoto de git y, al cambiar `origin` al repo
+  del equipo, pasó a `equipo-d3sarrollo-telcobras-pagina-web`). No existe
+  `nitro.json`; el `.output/server/wrangler.json` generado lleva ese `name` y una
+  `compatibility_date` igual a la fecha del build. Si un Wrangler local no admite la
+  fecha del día, para probar en local se puede pasar `--compatibility-date` con una
+  anterior sin tocar archivos.
 - `npm run build` escribe el artefacto canónico en `.output/` (cliente en
   `.output/public/`, servidor en `.output/server/`). `dist/` es un build legado del
   7-10-2026 y no debe desplegarse.
@@ -874,19 +966,21 @@ En `public/` se encontraron:
 | `video_nuve.mp4` | Servicio Nube (nombre exacto del archivo, «nuve») |
 | `video_agentes.mp4` | Servicio Agentes IA |
 | `video_tel.mp4` | Fondo de «Quiénes Somos» (`AboutAndValues.tsx`) |
+| `video_*.webp` | Poster (primer fotograma) de cada video, mismo nombre que el `.mp4` |
 | `logo_aquora.png` | Aliado Aquora |
 | `logo_xpertic.png` | Aliado Xpertic |
+| `favicon.ico` | Favicon (32×32, más 16 y 48), isotipo de TELCOBRAS |
+| `apple-touch-icon.png` | Icono de iOS (180×180, fondo blanco) |
 | `robots.txt` | Reglas básicas para rastreo + referencia al sitemap |
-| `sitemap.xml` | Mapa del sitio con las cuatro URLs públicas (`/`, `/politica-de-privacidad`, `/terminos-de-servicio`, `/sla`) bajo `https://telcobras.com`, con `<lastmod>` |
+| `sitemap.xml` | Mapa del sitio con las cuatro URLs públicas (`/`, `/politica-de-privacidad`, `/terminos-de-servicio`, `/sla`) bajo `https://telcobras.com`, con `<lastmod>` (2026-10-27) |
 
 **Versionado:** al auditar el repositorio, todos los recursos de la tabla de `public/`
 estaban versionados en Git. `video_tel.mp4`, que antes estaba solo en la raíz y daba
 404, se movió a `public/` con `git mv` el 27-10-2026.
 
 Los archivos de la carpeta `public/` se sirven desde raíz (por ejemplo,
-`public/video_inicio.mp4` se solicita como `/video_inicio.mp4`). También existen
-copias originales de algunos medios en la raíz del repositorio; el código de navegador
-no debería apuntar a esos archivos raíz.
+`public/video_inicio.mp4` se solicita como `/video_inicio.mp4`). Ya no hay copias de
+medios en la raíz del repositorio (se eliminaron el 27-10-2026, ver pendiente 23).
 
 Las fotos de hero, sede y otras secciones usan URLs externas alojadas en
 `vibe.filesafe.space`. Si la entrega debe funcionar sin ese proveedor, habrá que
@@ -916,7 +1010,9 @@ descargarlas con autorización y migrarlas a `public/`.
 - SEO técnico: metadatos por ruta (`title`, `description`, `canonical`), etiquetas
   Open Graph y Twitter Card en las cuatro rutas públicas, datos estructurados JSON-LD
   de `Organization` en la landing y `public/sitemap.xml` referenciado desde
-  `robots.txt`.
+  `robots.txt`. Desde el 27-10-2026: títulos de 50-60 y descripciones de 140-160
+  caracteres, `<main>` único en la landing, `lang="es-CO"`, favicon y
+  apple-touch-icon.
 - Optimización de imágenes para Core Web Vitals: `loading`/`decoding`/`fetchPriority`
   explícitos y `width`/`height` declarados para evitar CLS y priorizar el LCP.
 - `preconnect` a Google Fonts y `fonts.gstatic.com` en el shell global (`head.links`).
@@ -950,12 +1046,12 @@ punto están en la lista «Pendiente/por confirmar» (número entre paréntesis)
 | Alta (corregida) | `/video_tel.mp4` daba 404: se movió a `public/` | 4 |
 | Media | Rate limit en memoria por isolate; `/api/chat` sin Turnstile | 8 |
 | Media (resuelta) | `conexion.php` de prueba con credenciales por defecto y salida de datos personales: eliminado | 22 |
-| Media | Videos pesados (`video_agentes.mp4` 49 MB) y duplicados en la raíz | 6 |
-| Media | Videos y animaciones que ignoran `prefers-reduced-motion` | 14 |
-| Media | El banner de cookies dice «al navegar aceptas» aunque ofrece rechazar | 25 |
-| Baja | CSP `connect-src` con dominios que el navegador no usa | 16 |
+| Media (corregida) | Videos pesados: comprimidos de 76,9 MB a 11,9 MB en total (`video_agentes.mp4` 49 → 3,5 MB); duplicados de la raíz eliminados | 6, 23 |
+| Media (corregida) | Videos y animaciones que ignoraban `prefers-reduced-motion` | 14 |
+| Media (corregida) | El banner de cookies decía «al navegar aceptas»; ahora pide decisión y lo opcional depende de ella | 25 |
+| Baja (corregida) | CSP `connect-src` con dominios que el navegador no usa | 16 |
 | Baja | Metadatos SSR de las páginas legales siempre en español | 26 |
-| Baja | Textos fijos fuera del catálogo en el formulario, `siteverify` sin `hostname`, `sitemap.xml` desactualizado | 27, 28, 29 |
+| Baja (27 y 28 corregidas) | Textos fijos fuera del catálogo en el formulario (corregido), `siteverify` sin `hostname` (corregido), `sitemap.xml` desactualizado | 27, 28, 29 |
 
 Verificado y correcto en esta revisión: `npx tsc --noEmit` sin errores; `eslint` con 0
 errores (6 avisos en `components/ui`); `npm run build` correcto; las APIs limitan el tamaño
@@ -1007,8 +1103,9 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
    código de `0cef096`). Siguen vacíos (0 bytes) `vitest.config.ts`,
    `playwright.config.ts`, `src/components/AccessibilityMenu.test.tsx`,
    `src/components/ServicesSection.test.tsx`, `src/lib/accessibility-preferences.test.ts`,
-   `src/lib/error-page.test.ts`, `src/hooks/use-reduced-motion.test.tsx`,
-   `e2e/accessibility.spec.ts` y también el hook `src/hooks/use-reduced-motion.ts`.
+   `src/lib/error-page.test.ts`, `src/hooks/use-reduced-motion.test.tsx` y
+   `e2e/accessibility.spec.ts` (el hook `src/hooks/use-reduced-motion.ts` ya tiene
+   implementación desde el 27-10-2026).
    `npx vitest run` falla con «config must export or return an object» y no hay script
    `test`. Reconstruir la suite o retirar los archivos vacíos para no aparentar
    cobertura. `gitleaks` no está instalado localmente: el pre-commit lo omite y solo
@@ -1021,13 +1118,38 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
 5. **Rotación automática de Servicios:** rota incluso sin interacción y cambia también
    si el visitante seleccionó manualmente una pestaña. Si UX requiere pausar/reiniciar
    el reloj tras interacción o al salir de viewport, implementar explícitamente.
-6. **Peso de videos:** revisar compresión, dimensiones, poster, carga diferida y política
-   de reproducción móvil, especialmente para `video_agentes.mp4`.
+6. **Peso de videos — corregido (27-10-2026):** los 7 videos de `public/` se
+   comprimieron (ver «Videos de fondo»):
+
+   | Video | Antes | Después | Duración |
+   |---|---|---|---|
+   | `video_agentes.mp4` | 49,04 MB | 3,51 MB | 40,87 s |
+   | `video_colaboracion.mp4` | 1,40 MB | 0,66 MB | 12,80 s |
+   | `video_conectividad.mp4` | 1,14 MB | 0,60 MB | 10,08 s |
+   | `video_inicio.mp4` | 2,99 MB | 0,74 MB | 10,00 s |
+   | `video_nuve.mp4` | 4,62 MB | 4,07 MB | 20,16 s |
+   | `video_seguridad.mp4` | 2,33 MB | 2,08 MB | 15,00 s |
+   | `video_tel.mp4` | 15,34 MB | 0,24 MB | 20,00 s (bucle, ver abajo) |
+
+   Todos tienen poster `.webp` y `preload="none"`. Total en `public/`: 11,9 MB (antes
+   76,9 MB).
+   - `video_tel.mp4` (fondo de «Quiénes Somos») se recortó de 346 s a un bucle de 20 s
+     desde el original sin comprimir: tramo de 101 a 122 s (plano de una mesa de
+     reunión con portátiles), elegido sin cambios de plano ni franjas negras laterales
+     (el tramo 206-294 s las tiene). Como ningún tramo coincidía al inicio y al final,
+     el último segundo se funde con el primero (`xfade` de 1 s): el video termina en el
+     fotograma con el que empieza y el bucle no salta. Poster: su primer fotograma.
+   - El poster de `video_nuve.mp4` usa el fotograma del segundo 3, porque el video
+     empieza con un fundido desde negro.
 7. **Privacidad y textos legales:** `/politica-de-privacidad` está implementada y el
    formulario exige consentimiento. `/terminos-de-servicio` y `/sla` ya muestran sus
    textos completos, pero están pendientes de aprobación de gerencia y revisión
    jurídica, incluidos los valores de `SLA_VALUES` en `src/lib/sla-content.ts`. Revisar también bases
    jurídicas, proveedores/transferencias, retención, acceso y borrado de la política.
+   El 27-10-2026 se reescribió la sección 6 («Cookies y almacenamiento local») de la
+   política, ES/EN, para que describa el funcionamiento real (esencial frente a
+   opcional, sesión del chat, mapa de Google) y se cambió su fecha de actualización:
+   **pendiente de revisión jurídica**, igual que el texto nuevo del banner.
 8. **Protección de endpoints HTTP:** `/api/contacto` tiene Turnstile y rate limit por IP
    (5 envíos cada 10 min) y `/api/chat` tiene rate limit (20 mensajes cada 5 min), ambos
    con el limitador compartido `src/lib/rate-limit.ts` basado en `cf-connecting-ip`. El
@@ -1054,10 +1176,10 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
     sin movimiento reducido) y aparecen cuando el JavaScript hidrata y el observer las
     revela. En modo dev eso tarda unos 10 s; con conexión lenta se vería un
     hueco. Propuesta: renderizarlas visibles y aplicar la animación solo tras el montaje.
-14. **Accesibilidad del movimiento:** el robot y los puntos de carga del chatbot usan
-    `animate-bounce` sin `motion-safe:`. `chatbot-robot-vibrate` y `ally-logo-rotation`
-    tampoco tienen regla de movimiento reducido; la invitación del chatbot sí tiene un
-    tratamiento específico en `styles.css`.
+14. **Accesibilidad del movimiento — corregido (27-10-2026):** con
+    `prefers-reduced-motion: reduce` los videos de fondo se quedan en el poster y se
+    detienen el robot del chat, sus puntos de carga y la rotación de logos de aliados
+    (ver «Convenciones de movimiento»).
 15. **Por confirmar con el cliente:** textos nuevos de los diferenciales, colores por
     tarjeta, si con movimiento reducido la tarjeta activa debe seguir creciendo, y
     categorías/subtítulo de Proyectos.
@@ -1067,10 +1189,13 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
     Google Maps incrusta algo adicional o si Turnstile cambia sus dominios) y resolver
     cualquier bloqueo antes de propagarlo al equipo. Siguiente paso de endurecimiento:
     sustituir `'unsafe-inline'` por nonces/hashes en `script-src` y añadir `report-to`
-    con un endpoint de recogida de Reports CSP. `connect-src` incluye `*.supabase.co`,
-    `*.make.com` e `*.integromat.com`, pero el navegador nunca llama a esos dominios
-    (todo pasa por `/api/*`): se pueden quitar. `.output/` se reconstruyó el 26-10-2026
-    con la CSP bloqueante.
+    con un endpoint de recogida de Reports CSP. Desde el 27-10-2026 `connect-src` es
+    `'self' https://challenges.cloudflare.com` (más `ws:`/localhost solo en desarrollo):
+    se quitaron Supabase, Make e Integromat porque el navegador solo llama a `/api/*`.
+    Verificado: ninguna violación de CSP recorriendo landing, formulario con Turnstile,
+    chat, mapa y páginas legales, y un `fetch` del navegador a Make queda bloqueado.
+    `img-src` tampoco incluye ya `*.supabase.co` (27-10-2026): las imágenes vienen de
+    `'self'` y `https://vibe.filesafe.space`.
 17. **Empaquetado y despliegue (CSS):** el pipeline está correcto — `src/routes/__root.tsx:14`
     importa `styles.css?url`, `head.links` lo enlaza, Tailwind v4 lo genera en
     `.output/public/assets/styles-<hash>.css` (~162 KB) y el mismo hash está en SSR y
@@ -1082,10 +1207,10 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
 18. **Ruta base del CSS:** los assets se referencian como `/assets/...`. Si el deploy
     final vive bajo un subpath (por ejemplo `https://dominio/app/`), configurar `base`
     en Vite o servir la app en la raíz; hoy no hay `base` configurado.
-19. **`.env.example`:** `.gitignore` ya permite versionar `*.example`, pero no existe un
-    `.env.example` en el repo. Crear uno con nombres de variables (sin valores) para
-    onboarding: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `MAKE_CHAT_WEBHOOK_URL`,
-    `TURNSTILE_SECRET_KEY`, `VITE_TURNSTILE_SITE_KEY`.
+19. **`.env.example` — creado (27-10-2026):** contiene los nombres (sin valores) y un
+    comentario de las 6 variables que lee el código: `SUPABASE_URL`,
+    `SUPABASE_SERVICE_ROLE_KEY`, `MAKE_CHAT_WEBHOOK_URL`, `TURNSTILE_SECRET_KEY`,
+    `VITE_TURNSTILE_SITE_KEY` y `TURNSTILE_ALLOWED_HOSTNAMES`.
 20. **Dependencias y CVE-2026-102989 (corregido el 26-10-2026):** el XSS reflejado en
     respuestas de server functions de TanStack Start (GHSA-qx66-fv34-fjm8; afecta a
     `@tanstack/react-start` <1.168.60 y `@tanstack/start-server-core` <1.169.39) está
@@ -1124,10 +1249,16 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
     Se eliminó con `git rm` tras comprobar que nada en el código, la configuración ni el
     build lo referenciaba. Sigue en el historial de Git; no contenía secretos (las
     credenciales venían de variables de entorno).
-23. **Peso del repositorio:** unos 70 MB de videos versionados; `video_agentes.mp4`,
-    `video_conectividad.mp4`, `video_inicio.mp4` y `video_seguridad.mp4` están también
-    en la raíz, donde no se sirven (`video_tel.mp4` ya se movió a `public/`). Recomprimir, quitar
-    duplicados y valorar Git LFS o un CDN (ver pendientes 4 y 6).
+23. **Peso del repositorio — duplicados eliminados (27-10-2026):** los videos de
+    `public/` están comprimidos (pendiente 6) y se eliminaron con `git rm` las copias sin
+    usar de la raíz (`video_agentes.mp4`, `video_conectividad.mp4`, `video_inicio.mp4` y
+    `video_seguridad.mp4`, 53 MiB; `video_tel.mp4` ya se había movido a `public/`). Los
+    originales siguen en el historial de Git, así que el clon no adelgaza: reducirlo
+    exigiría reescribir historia, que no se hace en este repo.
+    **Recuperar un original** (los de la raíz eran idénticos a los de `public/` antes de
+    comprimir): `git show f5b2d90:video_agentes.mp4 > video_agentes.mp4` (mismo patrón
+    para los otros tres), o la versión de `public/` previa a la compresión:
+    `git show ab17f5a~1:public/video_tel.mp4 > video_tel_original.mp4`.
 24. **Páginas legales publicadas sin aprobar:** `0cef096` ya está en el `main` del
     repo personal (PR #2) y en la rama que se sube al repo oficial. Si se despliega, `/terminos-de-servicio` y `/sla` quedarán públicas con compromisos
     (disponibilidad, tiempos y créditos de `SLA_VALUES`) que gerencia y jurídica aún no
@@ -1137,22 +1268,35 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
     `<meta name="robots" content="noindex, nofollow">`. Cuando gerencia y jurídica
     aprueben, poner la constante a `false` y actualizar `sitemap.xml` (pendiente 29). El
     portafolio cita 99,6 % y +99,7 %: confirmar cuál se compromete.
-25. **Texto del banner de cookies:** dice «Al navegar por este sitio web, aceptas el
-    uso de cookies» («By browsing this website, you accept…»), lo que contradice los
-    botones de rechazar y configurar. El consentimiento implícito no es válido para
-    cookies no esenciales; ajustar el texto en `translations.ts` y revisarlo con jurídica.
-26. **Metadatos de las páginas legales:** `head()` en `sla.tsx` y
-    `terminos-de-servicio.tsx` usa siempre la versión en español. `LegalDocument`
-    actualiza `title` y `description` en el cliente, pero el HTML SSR y las etiquetas
-    Open Graph y Twitter siguen en español para quien tenga el idioma en inglés.
-27. **Textos fuera del catálogo:** `ContactAndFooter.tsx` (envío del formulario) tiene
-    mensajes de Turnstile y de rate limit escritos con `language === "en" ? … : …` en
-    lugar de usar `translations.ts`.
-28. **Validación de Turnstile:** `api.contacto.ts` acepta la respuesta de `siteverify`
-    sin comprobar `hostname` (ni `action`). Comprobar que el hostname corresponde al
-    dominio de producción.
-29. **`sitemap.xml`:** `<lastmod>` de `/terminos-de-servicio` y `/sla` sigue en
-    2026-10-22; actualizarlo cuando se publiquen los textos aprobados.
+25. **Banner de cookies — corregido (27-10-2026):** pide una decisión explícita en lugar
+    de «al navegar aceptas», y lo opcional (cookie de preferencias de 1 año y mapa de
+    Google) solo se activa si se acepta (ver la tabla de consentimiento en la sección
+    2). Queda la revisión jurídica del texto (pendiente 7).
+26. **Metadatos de las páginas legales:** `head()` en `sla.tsx`,
+    `terminos-de-servicio.tsx` y `politica-de-privacidad.tsx` usa siempre la versión en
+    español. Las páginas actualizan `title` y `description` en el cliente, pero el HTML
+    SSR y las etiquetas Open Graph y Twitter siguen en español para quien tenga el
+    idioma en inglés (la landing ya no tiene este problema: usa el `head` raíz).
+27. **Textos fuera del catálogo — corregido (27-10-2026):** los mensajes de Turnstile y
+    de rate limit del envío del formulario (antes `language === "en" ? … : …`) y los
+    textos de `TurnstileWidget.tsx` (errores de carga y `aria-label`, antes solo en
+    español) ahora vienen de `contact.*` en `translations.ts`.
+28. **Validación de Turnstile — corregido (27-10-2026):** `api.contacto.ts` exige que
+    el `hostname` de `siteverify` esté en `TURNSTILE_ALLOWED_HOSTNAMES` (en desarrollo
+    se añaden `localhost` y `127.0.0.1`). En producción, sin esa variable responde 503
+    (fail-closed) y una respuesta obtenida con clave de prueba de Cloudflare
+    (`metadata.result_with_testing_key`) se rechaza con 403; en desarrollo las claves de
+    prueba se aceptan sin mirar el hostname (siempre es `example.com`). Verificado con
+    el build de producción en Wrangler local (503 y 403) y en `vite dev` (pasa). No se
+    comprueba `action` porque el widget no la define. **Antes de desplegar:** configurar
+    `TURNSTILE_ALLOWED_HOSTNAMES` en Cloudflare con el dominio real.
+29. **`sitemap.xml`:** `<lastmod>` de las cuatro URLs se actualizó a 2026-10-27.
+    Volver a actualizar el de `/terminos-de-servicio` y `/sla` cuando se publiquen los
+    textos aprobados.
+30. **Horario de atención:** `HORARIO` en `src/lib/telcobras-data.ts` vale
+    `"[PENDIENTE: horario de gerencia]"` y el footer lo muestra tal cual. Sustituirlo por
+    el horario que confirme gerencia; si debe variar por idioma, moverlo a
+    `translations.ts`.
 
 ## 12. Operación y privacidad del formulario
 
@@ -1179,6 +1323,10 @@ Solo en servidor (nunca con prefijo `VITE_` ni en el cliente):
 - `TURNSTILE_SECRET_KEY`: clave secreta de Cloudflare Turnstile. Si falta,
   `api.contacto.ts` responde `503` con `contacto_unavailable` antes de `siteverify` y
   Supabase, sin usar claves de prueba; debe configurarse antes de desplegar.
+- `TURNSTILE_ALLOWED_HOSTNAMES`: hostnames permitidos para el token de Turnstile,
+  separados por comas (p. ej. `telcobras.com,www.telcobras.com`). Si falta en
+  producción, `api.contacto.ts` responde `503` (fail-closed); en desarrollo se añaden
+  `localhost` y `127.0.0.1`.
 
 Pública de compilación:
 
@@ -1187,8 +1335,8 @@ Pública de compilación:
   con un aviso. No se usa ninguna site key de prueba. No confundirla con la secreta.
 
 Local: definir estas variables en `.env.local` (ignorado por Git). En Cloudflare,
-guardar las secretas con `wrangler secret put <NOMBRE>`. No hay `.env.example`
-versionado todavía (ver pendiente 19).
+guardar las secretas con `wrangler secret put <NOMBRE>`. `.env.example` lista todas las
+variables con un comentario (sin valores).
 
 No crear un endpoint público para listar todas las solicitudes sin autenticación y
 autorización. Evitar registrar datos personales completos en logs.

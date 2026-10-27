@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import {
   CALI_PHOTO,
   CONTACT,
+  HORARIO,
   LOGO_URL,
   NIT,
   PRIVACY_POLICY_URL,
@@ -25,6 +26,7 @@ import {
   Navigation,
   Loader2,
   ShieldAlert,
+  Clock,
 } from "lucide-react";
 import { Facebook, Instagram, Linkedin, Music2 } from "lucide-react";
 import { BrandGlowBorder } from "./BrandGlowBorder";
@@ -34,6 +36,11 @@ import {
   useTranslations,
 } from "@/lib/accessibility-preferences-context";
 import { getTranslations } from "@/lib/translations";
+import { openCookiePreferences } from "@/lib/cookie-consent";
+import { useNonEssentialConsent } from "@/hooks/use-cookie-consent";
+
+const footerLinkClass =
+  "rounded-sm text-left transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F3CB35]";
 
 const INITIAL_FORM_DATA = {
   nombre: "",
@@ -46,7 +53,7 @@ const INITIAL_FORM_DATA = {
   consentimiento: false,
 };
 
-export function ContactAndFooter() {
+export function ContactSection() {
   const translations = useTranslations();
   const t = translations.contact;
   const turnstileConfigured = TURNSTILE_SITE_KEY.length > 0;
@@ -125,11 +132,7 @@ export function ContactAndFooter() {
       return;
     }
     if (!turnstileToken) {
-      toast.error(
-        preferences.language === "en"
-          ? "Please complete the security verification."
-          : "Por favor complete la verificación de seguridad.",
-      );
+      toast.error(t.turnstileRequired);
       return;
     }
 
@@ -150,11 +153,7 @@ export function ContactAndFooter() {
         setTurnstileToken("");
 
         if (response.status === 429) {
-          toast.error(
-            preferences.language === "en"
-              ? "Too many requests. Please wait a few minutes before trying again."
-              : "Has realizado demasiados intentos. Por favor espera unos minutos antes de volver a intentar.",
-          );
+          toast.error(getTranslations(languageRef.current).contact.tooManyRequests);
           return;
         }
 
@@ -166,11 +165,7 @@ export function ContactAndFooter() {
         }
 
         if (errorData?.error === "turnstile_verification_failed") {
-          toast.error(
-            preferences.language === "en"
-              ? "Security verification failed. Please try again."
-              : "La verificación de seguridad falló. Por favor intente nuevamente.",
-          );
+          toast.error(getTranslations(languageRef.current).contact.turnstileFailed);
           return;
         }
 
@@ -213,6 +208,8 @@ export function ContactAndFooter() {
             alt=""
             width={1200}
             height={800}
+            loading="lazy"
+            decoding="async"
             className="w-full h-full object-cover"
           />
         </div>
@@ -462,6 +459,7 @@ export function ContactAndFooter() {
                           <User aria-hidden="true" className={fieldIconClass} />
                           <input
                             id="contact-name"
+                            autoComplete="name"
                             type="text"
                             maxLength={100}
                             required
@@ -481,6 +479,7 @@ export function ContactAndFooter() {
                           <Building2 aria-hidden="true" className={fieldIconClass} />
                           <input
                             id="contact-company"
+                            autoComplete="organization"
                             type="text"
                             maxLength={100}
                             placeholder={t.companyPlaceholder}
@@ -501,6 +500,7 @@ export function ContactAndFooter() {
                           <Briefcase aria-hidden="true" className={fieldIconClass} />
                           <input
                             id="contact-position"
+                            autoComplete="organization-title"
                             type="text"
                             maxLength={100}
                             placeholder={t.positionPlaceholder}
@@ -519,6 +519,7 @@ export function ContactAndFooter() {
                           <Mail aria-hidden="true" className={fieldIconClass} />
                           <input
                             id="contact-email"
+                            autoComplete="email"
                             type="email"
                             maxLength={200}
                             required
@@ -540,6 +541,7 @@ export function ContactAndFooter() {
                           <Phone aria-hidden="true" className={fieldIconClass} />
                           <input
                             id="contact-phone"
+                            autoComplete="tel"
                             type="tel"
                             maxLength={20}
                             required
@@ -797,17 +799,7 @@ export function ContactAndFooter() {
           </div>
 
           <div className="location-map-frame rounded-3xl overflow-hidden border border-slate-200 shadow-xl shadow-slate-200/60">
-            <iframe
-              title={t.mapTitle}
-              src="https://www.google.com/maps?q=Carrera+83A+%23+20+-+20,+Cali,+Colombia&output=embed"
-              width="100%"
-              height="400"
-              style={{ border: 0 }}
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              allowFullScreen
-              className="h-[300px] md:h-[400px] w-full block"
-            />
+            <LocationMap />
           </div>
 
           <div className="mt-8 text-center">
@@ -822,92 +814,172 @@ export function ContactAndFooter() {
           </div>
         </div>
       </section>
+    </>
+  );
+}
 
-      {/* 10. PIE DE PÁGINA */}
-      <footer className="bg-[#0A192F] text-slate-400 border-t border-slate-800 pt-12 pb-32">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-8 border-b border-slate-800">
-            {/* Logo oficial transparente sobre fondo oscuro */}
-            <div className="inline-flex items-center">
-              <img
-                src={LOGO_URL}
-                alt={t.logoAlt}
-                width={160}
-                height={48}
-                className="h-12 w-auto object-contain"
-              />
-            </div>
+/**
+ * Mapa de Google de la sede. Deja cookies de terceros, así que solo se carga con las
+ * cookies opcionales aceptadas o cuando el usuario lo pide con «Ver mapa».
+ */
+function LocationMap() {
+  const t = useTranslations().contact;
+  const hasConsent = useNonEssentialConsent();
+  const [requested, setRequested] = useState(false);
 
-            <div className="text-center md:text-right">
-              <p className="text-xs sm:text-sm font-extrabold text-white tracking-widest uppercase">
-                {t.footerTagline}
-              </p>
-              <p className="text-xs text-slate-400 mt-1">
-                {t.copyright
-                  .replace("{company}", RAZON_SOCIAL)
-                  .replace("{nit}", NIT)
-                  .replace("{year}", String(new Date().getFullYear()))}
-              </p>
-            </div>
+  if (hasConsent || requested) {
+    return (
+      <iframe
+        title={t.mapTitle}
+        src="https://www.google.com/maps?q=Carrera+83A+%23+20+-+20,+Cali,+Colombia&output=embed"
+        width="100%"
+        height="400"
+        style={{ border: 0 }}
+        loading="lazy"
+        referrerPolicy="no-referrer-when-downgrade"
+        allowFullScreen
+        className="h-[300px] md:h-[400px] w-full block"
+      />
+    );
+  }
+
+  return (
+    <div className="flex h-[300px] w-full flex-col items-center justify-center gap-4 bg-slate-100 px-6 text-center md:h-[400px]">
+      <MapPin aria-hidden="true" className="h-10 w-10 text-[#88BD4C]" />
+      <p className="font-bold text-slate-800">{CONTACT.address}</p>
+      <p className="max-w-md text-sm text-slate-600">{t.mapConsentNote}</p>
+      <button
+        type="button"
+        onClick={() => setRequested(true)}
+        className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#006BA4] px-6 text-sm font-bold text-white transition-colors hover:bg-[#005888] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0A5F8F]"
+      >
+        {t.mapLoad}
+      </button>
+    </div>
+  );
+}
+
+/** Pie de página del sitio; va fuera de <main> en la landing. */
+export function SiteFooter() {
+  const t = useTranslations().contact;
+
+  return (
+    <footer className="bg-[#0A192F] text-slate-400 border-t border-slate-800 pt-12 pb-32">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-8 border-b border-slate-800">
+          {/* Logo oficial transparente sobre fondo oscuro */}
+          <div className="inline-flex items-center">
+            <img
+              src={LOGO_URL}
+              alt={t.logoAlt}
+              width={160}
+              height={48}
+              loading="lazy"
+              decoding="async"
+              className="h-12 w-auto object-contain"
+            />
           </div>
 
-          <div className="flex flex-col gap-6 pt-6 text-xs text-slate-400 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-            <address className="not-italic">{t.streetAddress}</address>
-            <nav aria-label={t.socialTitle} className="flex items-center gap-3">
-              <a
-                href={SOCIAL_LINKS.facebook}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={t.socialLabels.facebook}
-                className="rounded-lg p-2 text-slate-300 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F3CB35]"
-              >
-                <Facebook aria-hidden="true" className="h-5 w-5" />
-              </a>
-              <a
-                href={SOCIAL_LINKS.instagram}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={t.socialLabels.instagram}
-                className="rounded-lg p-2 text-slate-300 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F3CB35]"
-              >
-                <Instagram aria-hidden="true" className="h-5 w-5" />
-              </a>
-              <a
-                href={SOCIAL_LINKS.linkedin}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={t.socialLabels.linkedin}
-                className="rounded-lg p-2 text-slate-300 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F3CB35]"
-              >
-                <Linkedin aria-hidden="true" className="h-5 w-5" />
-              </a>
-              <a
-                href={SOCIAL_LINKS.tiktok}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={t.socialLabels.tiktok}
-                className="rounded-lg p-2 text-slate-300 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F3CB35]"
-              >
-                <Music2 aria-hidden="true" className="h-5 w-5" />
-              </a>
-            </nav>
-            <nav
-              aria-label={t.legalLinksLabel}
-              className="flex flex-wrap gap-x-6 gap-y-3 sm:ml-auto"
-            >
-              <Link to={TERMS_OF_SERVICE_URL} className="hover:text-white transition-colors">
-                {t.terms}
-              </Link>
-              <Link to={PRIVACY_POLICY_URL} className="hover:text-white transition-colors">
-                {t.privacy}
-              </Link>
-              <Link to={SLA_URL} className="hover:text-white transition-colors">
-                {t.sla}
-              </Link>
-            </nav>
+          <div className="text-center md:text-right">
+            <p className="text-xs sm:text-sm font-extrabold text-white tracking-widest uppercase">
+              {t.footerTagline}
+            </p>
+            <p className="text-xs text-slate-400 mt-1">
+              {t.copyright
+                .replace("{company}", RAZON_SOCIAL)
+                .replace("{nit}", NIT)
+                .replace("{year}", String(new Date().getFullYear()))}
+            </p>
           </div>
         </div>
-      </footer>
-    </>
+
+        <div className="grid gap-8 pt-8 text-xs text-slate-400 sm:text-sm md:grid-cols-2 lg:grid-cols-3">
+          <div className="space-y-3">
+            <address className="space-y-3 not-italic">
+              <p className="flex items-start gap-2.5">
+                <MapPin aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-[#88BD4C]" />
+                <span>{CONTACT.address}</span>
+              </p>
+              <p className="flex items-center gap-2.5">
+                <Phone aria-hidden="true" className="h-4 w-4 shrink-0 text-[#88BD4C]" />
+                <a href={CONTACT.phoneHref} className={footerLinkClass}>
+                  {CONTACT.phoneDisplay}
+                </a>
+              </p>
+              <p className="flex items-center gap-2.5">
+                <Mail aria-hidden="true" className="h-4 w-4 shrink-0 text-[#88BD4C]" />
+                <a href={CONTACT.emailHref} className={`${footerLinkClass} break-all`}>
+                  {CONTACT.emailDisplay}
+                </a>
+              </p>
+            </address>
+            <p className="flex items-start gap-2.5">
+              <Clock aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-[#88BD4C]" />
+              <span>
+                <span className="font-semibold text-slate-300">{t.hoursLabel}:</span> {HORARIO}
+              </span>
+            </p>
+          </div>
+          <nav
+            aria-label={t.socialTitle}
+            className="flex items-center gap-3 lg:justify-center lg:self-start"
+          >
+            <a
+              href={SOCIAL_LINKS.facebook}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={t.socialLabels.facebook}
+              className="rounded-lg p-2 text-slate-300 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F3CB35]"
+            >
+              <Facebook aria-hidden="true" className="h-5 w-5" />
+            </a>
+            <a
+              href={SOCIAL_LINKS.instagram}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={t.socialLabels.instagram}
+              className="rounded-lg p-2 text-slate-300 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F3CB35]"
+            >
+              <Instagram aria-hidden="true" className="h-5 w-5" />
+            </a>
+            <a
+              href={SOCIAL_LINKS.linkedin}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={t.socialLabels.linkedin}
+              className="rounded-lg p-2 text-slate-300 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F3CB35]"
+            >
+              <Linkedin aria-hidden="true" className="h-5 w-5" />
+            </a>
+            <a
+              href={SOCIAL_LINKS.tiktok}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={t.socialLabels.tiktok}
+              className="rounded-lg p-2 text-slate-300 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F3CB35]"
+            >
+              <Music2 aria-hidden="true" className="h-5 w-5" />
+            </a>
+          </nav>
+          <nav
+            aria-label={t.legalLinksLabel}
+            className="flex flex-wrap gap-x-6 gap-y-3 md:col-span-2 lg:col-span-1 lg:justify-end lg:self-start"
+          >
+            <Link to={TERMS_OF_SERVICE_URL} className={footerLinkClass}>
+              {t.terms}
+            </Link>
+            <Link to={PRIVACY_POLICY_URL} className={footerLinkClass}>
+              {t.privacy}
+            </Link>
+            <Link to={SLA_URL} className={footerLinkClass}>
+              {t.sla}
+            </Link>
+            <button type="button" onClick={openCookiePreferences} className={footerLinkClass}>
+              {t.cookiePreferences}
+            </button>
+          </nav>
+        </div>
+      </div>
+    </footer>
   );
 }
