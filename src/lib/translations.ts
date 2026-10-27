@@ -236,6 +236,14 @@ interface Catalog {
       tiktok: string;
     };
     legalLinksLabel: string;
+    hoursLabel: string;
+    cookiePreferences: string;
+    turnstileRequired: string;
+    tooManyRequests: string;
+    turnstileFailed: string;
+    turnstileLabel: string;
+    turnstileRenderError: string;
+    turnstileScriptError: string;
   };
   chatbot: {
     initialGreeting: string;
@@ -684,6 +692,15 @@ const es: Catalog = {
       tiktok: "TELCOBRAS en TikTok",
     },
     legalLinksLabel: "Enlaces legales",
+    hoursLabel: "Horario de atención",
+    cookiePreferences: "Preferencias de cookies",
+    turnstileRequired: "Por favor complete la verificación de seguridad.",
+    tooManyRequests:
+      "Has realizado demasiados intentos. Por favor espera unos minutos antes de volver a intentar.",
+    turnstileFailed: "La verificación de seguridad falló. Por favor intente nuevamente.",
+    turnstileLabel: "Verificación de seguridad Cloudflare Turnstile",
+    turnstileRenderError: "No se pudo inicializar la verificación de seguridad.",
+    turnstileScriptError: "Error al cargar el script de verificación.",
   },
   chatbot: {
     initialGreeting: "¡Hola! Soy el asistente de TELCOBRAS. ¿En qué puedo ayudarte?",
@@ -1135,6 +1152,14 @@ const en: Catalog = {
       tiktok: "TELCOBRAS on TikTok",
     },
     legalLinksLabel: "Legal links",
+    hoursLabel: "Business hours",
+    cookiePreferences: "Cookie preferences",
+    turnstileRequired: "Please complete the security verification.",
+    tooManyRequests: "Too many requests. Please wait a few minutes before trying again.",
+    turnstileFailed: "Security verification failed. Please try again.",
+    turnstileLabel: "Cloudflare Turnstile security verification",
+    turnstileRenderError: "The security verification could not be initialized.",
+    turnstileScriptError: "The verification script failed to load.",
   },
   chatbot: {
     initialGreeting: "Hello! I'm the TELCOBRAS assistant. How can I help you?",

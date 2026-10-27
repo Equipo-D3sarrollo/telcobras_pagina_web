@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import {
   CALI_PHOTO,
   CONTACT,
+  HORARIO,
   LOGO_URL,
   NIT,
   PRIVACY_POLICY_URL,
@@ -25,6 +26,7 @@ import {
   Navigation,
   Loader2,
   ShieldAlert,
+  Clock,
 } from "lucide-react";
 import { Facebook, Instagram, Linkedin, Music2 } from "lucide-react";
 import { BrandGlowBorder } from "./BrandGlowBorder";
@@ -34,6 +36,7 @@ import {
   useTranslations,
 } from "@/lib/accessibility-preferences-context";
 import { getTranslations } from "@/lib/translations";
+import { openCookiePreferences } from "@/lib/cookie-consent";
 
 const INITIAL_FORM_DATA = {
   nombre: "",
@@ -97,6 +100,8 @@ export function ContactAndFooter() {
   }, []);
 
   const labelClass = "mb-2 block text-sm font-semibold text-slate-200";
+  const footerLinkClass =
+    "rounded-sm text-left transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F3CB35]";
   const fieldIconClass =
     "pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-[#0087C3]";
   const fieldClass =
@@ -125,11 +130,7 @@ export function ContactAndFooter() {
       return;
     }
     if (!turnstileToken) {
-      toast.error(
-        preferences.language === "en"
-          ? "Please complete the security verification."
-          : "Por favor complete la verificación de seguridad.",
-      );
+      toast.error(t.turnstileRequired);
       return;
     }
 
@@ -150,11 +151,7 @@ export function ContactAndFooter() {
         setTurnstileToken("");
 
         if (response.status === 429) {
-          toast.error(
-            preferences.language === "en"
-              ? "Too many requests. Please wait a few minutes before trying again."
-              : "Has realizado demasiados intentos. Por favor espera unos minutos antes de volver a intentar.",
-          );
+          toast.error(getTranslations(languageRef.current).contact.tooManyRequests);
           return;
         }
 
@@ -166,11 +163,7 @@ export function ContactAndFooter() {
         }
 
         if (errorData?.error === "turnstile_verification_failed") {
-          toast.error(
-            preferences.language === "en"
-              ? "Security verification failed. Please try again."
-              : "La verificación de seguridad falló. Por favor intente nuevamente.",
-          );
+          toast.error(getTranslations(languageRef.current).contact.turnstileFailed);
           return;
         }
 
@@ -462,6 +455,7 @@ export function ContactAndFooter() {
                           <User aria-hidden="true" className={fieldIconClass} />
                           <input
                             id="contact-name"
+                            autoComplete="name"
                             type="text"
                             maxLength={100}
                             required
@@ -481,6 +475,7 @@ export function ContactAndFooter() {
                           <Building2 aria-hidden="true" className={fieldIconClass} />
                           <input
                             id="contact-company"
+                            autoComplete="organization"
                             type="text"
                             maxLength={100}
                             placeholder={t.companyPlaceholder}
@@ -501,6 +496,7 @@ export function ContactAndFooter() {
                           <Briefcase aria-hidden="true" className={fieldIconClass} />
                           <input
                             id="contact-position"
+                            autoComplete="organization-title"
                             type="text"
                             maxLength={100}
                             placeholder={t.positionPlaceholder}
@@ -519,6 +515,7 @@ export function ContactAndFooter() {
                           <Mail aria-hidden="true" className={fieldIconClass} />
                           <input
                             id="contact-email"
+                            autoComplete="email"
                             type="email"
                             maxLength={200}
                             required
@@ -540,6 +537,7 @@ export function ContactAndFooter() {
                           <Phone aria-hidden="true" className={fieldIconClass} />
                           <input
                             id="contact-phone"
+                            autoComplete="tel"
                             type="tel"
                             maxLength={20}
                             required
@@ -851,9 +849,37 @@ export function ContactAndFooter() {
             </div>
           </div>
 
-          <div className="flex flex-col gap-6 pt-6 text-xs text-slate-400 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-            <address className="not-italic">{t.streetAddress}</address>
-            <nav aria-label={t.socialTitle} className="flex items-center gap-3">
+          <div className="grid gap-8 pt-8 text-xs text-slate-400 sm:text-sm md:grid-cols-2 lg:grid-cols-3">
+            <div className="space-y-3">
+              <address className="space-y-3 not-italic">
+                <p className="flex items-start gap-2.5">
+                  <MapPin aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-[#88BD4C]" />
+                  <span>{CONTACT.address}</span>
+                </p>
+                <p className="flex items-center gap-2.5">
+                  <Phone aria-hidden="true" className="h-4 w-4 shrink-0 text-[#88BD4C]" />
+                  <a href={CONTACT.phoneHref} className={footerLinkClass}>
+                    {CONTACT.phoneDisplay}
+                  </a>
+                </p>
+                <p className="flex items-center gap-2.5">
+                  <Mail aria-hidden="true" className="h-4 w-4 shrink-0 text-[#88BD4C]" />
+                  <a href={CONTACT.emailHref} className={`${footerLinkClass} break-all`}>
+                    {CONTACT.emailDisplay}
+                  </a>
+                </p>
+              </address>
+              <p className="flex items-start gap-2.5">
+                <Clock aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-[#88BD4C]" />
+                <span>
+                  <span className="font-semibold text-slate-300">{t.hoursLabel}:</span> {HORARIO}
+                </span>
+              </p>
+            </div>
+            <nav
+              aria-label={t.socialTitle}
+              className="flex items-center gap-3 lg:justify-center lg:self-start"
+            >
               <a
                 href={SOCIAL_LINKS.facebook}
                 target="_blank"
@@ -893,17 +919,20 @@ export function ContactAndFooter() {
             </nav>
             <nav
               aria-label={t.legalLinksLabel}
-              className="flex flex-wrap gap-x-6 gap-y-3 sm:ml-auto"
+              className="flex flex-wrap gap-x-6 gap-y-3 md:col-span-2 lg:col-span-1 lg:justify-end lg:self-start"
             >
-              <Link to={TERMS_OF_SERVICE_URL} className="hover:text-white transition-colors">
+              <Link to={TERMS_OF_SERVICE_URL} className={footerLinkClass}>
                 {t.terms}
               </Link>
-              <Link to={PRIVACY_POLICY_URL} className="hover:text-white transition-colors">
+              <Link to={PRIVACY_POLICY_URL} className={footerLinkClass}>
                 {t.privacy}
               </Link>
-              <Link to={SLA_URL} className="hover:text-white transition-colors">
+              <Link to={SLA_URL} className={footerLinkClass}>
                 {t.sla}
               </Link>
+              <button type="button" onClick={openCookiePreferences} className={footerLinkClass}>
+                {t.cookiePreferences}
+              </button>
             </nav>
           </div>
         </div>

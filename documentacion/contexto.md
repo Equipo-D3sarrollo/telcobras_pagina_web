@@ -120,6 +120,8 @@ se montan globalmente; el botón para volver al inicio se monta en la página pr
   declara `Sitemap: https://telcobras.com/sitemap.xml`.
 - El componente `CookieBanner` persiste la elección del usuario en `localStorage`
   bajo `telcobras_cookie_consent` y no vuelve a renderizar cuando ya existe la clave.
+  El botón «Preferencias de cookies» del footer lo vuelve a abrir con el panel de
+  preferencias y la elección guardada (evento de `src/lib/cookie-consent.ts`).
 - El menú de accesibilidad y la preferencia de idioma persisten en una cookie y se
   aplican también durante SSR para evitar flashes de contenido con idioma incorrecto.
 - La documentación legal debe revisarse con el responsable del tratamiento antes de
@@ -225,7 +227,9 @@ con excepciones para `*.example`, aunque hoy no existe un `.env.example` version
 - `src/components/ContactAndFooter.tsx`: footer semántico, redes sociales, consent
   legal, formulario, mapa, ubicación y enlaces legales.
 - `src/components/CookieBanner.tsx`: aceptación/rechazo de cookies y persistencia en
-  `localStorage`.
+  `localStorage`; se reabre desde el footer.
+- `src/lib/cookie-consent.ts`: clave y lectura del consentimiento guardado, y
+  `openCookiePreferences()` / `onOpenCookiePreferences()` para reabrir el banner.
 - `src/components/TurnstileWidget.tsx`: widget de Cloudflare Turnstile usado por el
   formulario de contacto (carga explícita del script, callback, reset y errores).
 - `src/routes/api.contacto.ts`: endpoint de contacto usado por el formulario. Valida
@@ -289,7 +293,8 @@ con excepciones para `*.example`, aunque hoy no existe un `.env.example` version
 - `src/components/CookieBanner.tsx` se monta desde el shell global. Guarda la elección
   en `localStorage` bajo `telcobras_cookie_consent` (esenciales siempre activas y una
   preferencia booleana para las no esenciales); si la clave existe, no vuelve a mostrar
-  el banner. El control registra la preferencia, pero la carga/ejecución de cookies de
+  el banner, salvo que se pulse «Preferencias de cookies» en el footer, que lo abre con
+  el panel de preferencias, la elección guardada y el foco en él. El control registra la preferencia, pero la carga/ejecución de cookies de
   terceros debe conectarse a esa preferencia si se incorporan esas integraciones.
 - Si se añaden rutas, no eliminar `<Outlet />`.
 
@@ -566,7 +571,14 @@ Reúne tres bloques en un solo componente: `#contacto`, `#ubicacion` y el pie de
   IA integrada, Agentes con IA, Solución integral).
 - `#ubicacion`: mapa de Google embebido de la sede en Cali y botón «Cómo llegar» con
   enlace de indicaciones.
-- Footer con logo, eslogan, copyright dinámico y enlaces informativos.
+- Footer con logo, eslogan y copyright dinámico. Debajo, una rejilla (1 columna en
+  móvil, 2 en tablet, 3 en escritorio) con: `<address>` con la dirección
+  (`CONTACT.address`), el teléfono (`<a href="tel:…">`) y el correo
+  (`<a href="mailto:…">`), y debajo el horario de atención (`HORARIO`); las redes
+  sociales; y los enlaces legales (Términos, Política de datos, SLA) más el botón
+  «Preferencias de cookies», que reabre `CookieBanner`. Verificado sin desborde a 360,
+  768 y 1440 px; en tablet las redes van a la izquierda para no quedar bajo el robot
+  flotante del chat.
 - Fondo decorativo: SVG de red (`network-flow`, `contact-node-pulse`) sobre la imagen de
   Cali; se pausa con `data-animations-paused` controlado por `IntersectionObserver`
   (`sectionRef`/`isInView`), con el mismo criterio que `WhyUsSection`.
@@ -591,7 +603,10 @@ La respuesta 500 ya no incluye `error.message` de Supabase: solo se registra el 
 interno en el servidor y el cliente recibe `insert_failed` o `internal_error`.
 Las etiquetas visibles de nombre, empresa, cargo, correo, teléfono, servicio y mensaje
 están asociadas mediante `htmlFor`/`id`; los límites HTML y los del endpoint están
-alineados para esos campos.
+alineados para esos campos. Los campos tienen `autoComplete` (`name`, `organization`,
+`organization-title`, `email`, `tel`). Todos los textos del formulario y de
+`TurnstileWidget` (avisos de verificación, rate limit, errores de carga y
+`aria-label`) vienen de `translations.ts`.
 
 El formulario recopila nombre, empresa, cargo, correo, teléfono, servicio, mensaje y
 consentimiento; nombre, correo y teléfono son obligatorios en cliente y servidor.
@@ -647,6 +662,8 @@ Fuente de verdad para:
   `#F3CB35`, gris `#888D91`, navy `#0A192F`).
 - Datos de contacto (`CONTACT`: teléfono, WhatsApp, correo, dirección) y el teléfono
   del chatbot (`CHATBOT_PHONE`).
+- `HORARIO`: horario de atención que muestra el footer. Hoy vale
+  `"[PENDIENTE: horario de gerencia]"` (pendiente 30).
 - Tipo `ServiceItem` y catálogo `SERVICIOS_DATA`.
 - Tipo `ProyectoItem` y catálogo `PROYECTOS_DATA`. Cada proyecto tiene `categoria`,
   `ubicacion` (opcional; el chatbot de la ESPY no la tiene porque ningún texto la
@@ -955,7 +972,7 @@ punto están en la lista «Pendiente/por confirmar» (número entre paréntesis)
 | Media | El banner de cookies dice «al navegar aceptas» aunque ofrece rechazar | 25 |
 | Baja | CSP `connect-src` con dominios que el navegador no usa | 16 |
 | Baja | Metadatos SSR de las páginas legales siempre en español | 26 |
-| Baja | Textos fijos fuera del catálogo en el formulario, `siteverify` sin `hostname`, `sitemap.xml` desactualizado | 27, 28, 29 |
+| Baja (27 corregida) | Textos fijos fuera del catálogo en el formulario (corregido: ahora en `translations.ts`), `siteverify` sin `hostname`, `sitemap.xml` desactualizado | 27, 28, 29 |
 
 Verificado y correcto en esta revisión: `npx tsc --noEmit` sin errores; `eslint` con 0
 errores (6 avisos en `components/ui`); `npm run build` correcto; las APIs limitan el tamaño
@@ -1145,14 +1162,19 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
     `terminos-de-servicio.tsx` usa siempre la versión en español. `LegalDocument`
     actualiza `title` y `description` en el cliente, pero el HTML SSR y las etiquetas
     Open Graph y Twitter siguen en español para quien tenga el idioma en inglés.
-27. **Textos fuera del catálogo:** `ContactAndFooter.tsx` (envío del formulario) tiene
-    mensajes de Turnstile y de rate limit escritos con `language === "en" ? … : …` en
-    lugar de usar `translations.ts`.
+27. **Textos fuera del catálogo — corregido (27-10-2026):** los mensajes de Turnstile y
+    de rate limit del envío del formulario (antes `language === "en" ? … : …`) y los
+    textos de `TurnstileWidget.tsx` (errores de carga y `aria-label`, antes solo en
+    español) ahora vienen de `contact.*` en `translations.ts`.
 28. **Validación de Turnstile:** `api.contacto.ts` acepta la respuesta de `siteverify`
     sin comprobar `hostname` (ni `action`). Comprobar que el hostname corresponde al
     dominio de producción.
 29. **`sitemap.xml`:** `<lastmod>` de `/terminos-de-servicio` y `/sla` sigue en
     2026-10-22; actualizarlo cuando se publiquen los textos aprobados.
+30. **Horario de atención:** `HORARIO` en `src/lib/telcobras-data.ts` vale
+    `"[PENDIENTE: horario de gerencia]"` y el footer lo muestra tal cual. Sustituirlo por
+    el horario que confirme gerencia; si debe variar por idioma, moverlo a
+    `translations.ts`.
 
 ## 12. Operación y privacidad del formulario
 
