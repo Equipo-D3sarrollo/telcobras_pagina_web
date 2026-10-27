@@ -770,7 +770,11 @@ Los textos de los diferenciales de «¿Por qué TELCOBRAS?» no están aquí: vi
   `ffmpeg -i in.mp4 -an -c:v libx264 -preset veryfast -crf 28 -pix_fmt yuv420p -vf
   "scale='min(1280,iw)':'min(720,ih)':force_original_aspect_ratio=decrease,scale=trunc(iw/2)*2:trunc(ih/2)*2"
   -movflags +faststart out.mp4`; poster: `ffmpeg -i in.mp4 -frames:v 1 -c:v libwebp
-  -quality 75 in.webp`.
+  -quality 75 in.webp` (para `video_nuve` añadir `-ss 3` antes de `-i`). Bucle de
+  `video_tel` con fundido, a partir del original (`git show ab17f5a~1:public/video_tel.mp4`):
+  `ffmpeg -ss 101 -t 21 -i original.mp4 -filter_complex
+  "[0:v]split[x][y];[x]trim=start=1:end=21,setpts=PTS-STARTPTS[a];[y]trim=end=1,setpts=PTS-STARTPTS[b];[a][b]xfade=transition=fade:duration=1:offset=19,format=yuv420p[v]"
+  -map "[v]" -an -c:v libx264 -preset veryfast -crf 28 -movflags +faststart video_tel.mp4`.
 
 ### Convenciones de movimiento
 
@@ -1020,7 +1024,7 @@ punto están en la lista «Pendiente/por confirmar» (número entre paréntesis)
 | Alta (corregida) | `/video_tel.mp4` daba 404: se movió a `public/` | 4 |
 | Media | Rate limit en memoria por isolate; `/api/chat` sin Turnstile | 8 |
 | Media (resuelta) | `conexion.php` de prueba con credenciales por defecto y salida de datos personales: eliminado | 22 |
-| Media (corregida) | Videos pesados: comprimidos de 76,9 MB a 16,5 MB en total (`video_agentes.mp4` 49 → 3,5 MB); duplicados de la raíz eliminados | 6, 23 |
+| Media (corregida) | Videos pesados: comprimidos de 76,9 MB a 11,9 MB en total (`video_agentes.mp4` 49 → 3,5 MB); duplicados de la raíz eliminados | 6, 23 |
 | Media (corregida) | Videos y animaciones que ignoraban `prefers-reduced-motion` | 14 |
 | Media | El banner de cookies dice «al navegar aceptas» aunque ofrece rechazar | 25 |
 | Baja | CSP `connect-src` con dominios que el navegador no usa | 16 |
@@ -1103,11 +1107,18 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
    | `video_inicio.mp4` | 2,99 MB | 0,74 MB | 10,00 s |
    | `video_nuve.mp4` | 4,62 MB | 4,07 MB | 20,16 s |
    | `video_seguridad.mp4` | 2,33 MB | 2,08 MB | 15,00 s |
-   | `video_tel.mp4` | 15,34 MB | 4,84 MB | 345,90 s |
+   | `video_tel.mp4` | 15,34 MB | 0,24 MB | 20,00 s (bucle, ver abajo) |
 
-   Todos tienen poster `.webp` y `preload="none"`. Queda abierto: `video_tel.mp4` dura
-   casi 6 minutos para un fondo en bucle (recortarlo requiere decisión de contenido), y
-   el poster de `video_nuve.mp4` es casi negro porque el video empieza con un fundido.
+   Todos tienen poster `.webp` y `preload="none"`. Total en `public/`: 11,9 MB (antes
+   76,9 MB).
+   - `video_tel.mp4` (fondo de «Quiénes Somos») se recortó de 346 s a un bucle de 20 s
+     desde el original sin comprimir: tramo de 101 a 122 s (plano de una mesa de
+     reunión con portátiles), elegido sin cambios de plano ni franjas negras laterales
+     (el tramo 206-294 s las tiene). Como ningún tramo coincidía al inicio y al final,
+     el último segundo se funde con el primero (`xfade` de 1 s): el video termina en el
+     fotograma con el que empieza y el bucle no salta. Poster: su primer fotograma.
+   - El poster de `video_nuve.mp4` usa el fotograma del segundo 3, porque el video
+     empieza con un fundido desde negro.
 7. **Privacidad y textos legales:** `/politica-de-privacidad` está implementada y el
    formulario exige consentimiento. `/terminos-de-servicio` y `/sla` ya muestran sus
    textos completos, pero están pendientes de aprobación de gerencia y revisión
