@@ -17,9 +17,15 @@ dist-ssr
 *.local
 src/tailwind.config.vibe.json
 
+# Entorno / secretos
+.env
+.env.*
+!.env.example
+!.env.*.example
+
 # Wrangler / Cloudflare
 .wrangler/
-.dev.vars
+.dev.vars*
 
 # Editor directories and files
 .vscode/*

@@ -1,17 +1,72 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
+import { createRateLimiter, getClientIp, NO_CLIENT_IP_KEY } from "@/lib/rate-limit";
 
 const MAX_REQUEST_BYTES = 16 * 1024;
+const MAX_TURNSTILE_TOKEN_LENGTH = 2048;
 const SUPABASE_TABLE = "solicitudes_contacto";
 
+const TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
+
+// Rate limiting: máximo 5 envíos por ventana de 10 minutos por IP
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+const MAX_REQUESTS_PER_WINDOW = 5;
+
+const contactoRateLimiter = createRateLimiter({
+  windowMs: RATE_LIMIT_WINDOW_MS,
+  maxRequests: MAX_REQUESTS_PER_WINDOW,
+  maxEntries: 10000,
+});
+
+async function verifyTurnstileToken(
+  token: string,
+  secret: string,
+  remoteIp?: string | null,
+): Promise<{ success: boolean; errorCodes?: string[] | undefined }> {
+  const formData = new URLSearchParams();
+  formData.append("secret", secret);
+  formData.append("response", token);
+  if (remoteIp) {
+    formData.append("remoteip", remoteIp);
+  }
+
+  try {
+    const res = await fetch(TURNSTILE_VERIFY_URL, {
+      method: "POST",
+      body: formData,
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+      },
+    });
+
+    if (!res.ok) {
+      console.error("[api/contacto] Turnstile siteverify respondió HTTP", res.status);
+      return { success: false, errorCodes: [`http_${res.status}`] };
+    }
+
+    const data = (await res.json()) as {
+      success: boolean;
+      "error-codes"?: string[];
+    };
+
+    return {
+      success: Boolean(data.success),
+      errorCodes: data["error-codes"],
+    };
+  } catch (err) {
+    console.error("[api/contacto] Error al conectar con Cloudflare Turnstile:", err);
+    return { success: false, errorCodes: ["network_error"] };
+  }
+}
+
 const LIMITS = {
-  nombre: 120,
-  empresa: 160,
-  cargo: 120,
-  correo: 254,
-  telefono: 40,
+  nombre: 100,
+  empresa: 100,
+  cargo: 100,
+  correo: 200,
+  telefono: 20,
   servicio: 120,
-  mensaje: 4000,
+  mensaje: 2000,
 } as const;
 
 type ContactoRequest = {
@@ -120,47 +175,93 @@ function getSupabaseConfig(): { url: string; serviceRoleKey: string } | null {
 }
 
 async function handlePost(request: Request): Promise<Response> {
-  const contentType = request.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase();
-  if (contentType !== "application/json") {
-    return jsonResponse({ error: "unsupported_media_type" }, 415);
-  }
-
-  let body: Uint8Array | null;
   try {
-    body = await readLimitedBody(request, MAX_REQUEST_BYTES);
-  } catch {
-    return jsonResponse({ error: "invalid_request" }, 400);
-  }
-  if (body === null) return jsonResponse({ error: "payload_too_large" }, 413);
-
-  let input: unknown;
-  try {
-    input = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(body));
-  } catch {
-    return jsonResponse({ error: "invalid_request" }, 400);
-  }
-
-  const contacto = parseContacto(input);
-  if (!contacto) return jsonResponse({ error: "invalid_request" }, 400);
-
-  const config = getSupabaseConfig();
-  if (!config) return jsonResponse({ error: "contacto_unavailable" }, 503);
-
-  const supabase = createClient(config.url, config.serviceRoleKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-
-  try {
-    const { error } = await supabase.from(SUPABASE_TABLE).insert(contacto);
-    if (error) {
-      console.error("Error al persistir la solicitud de contacto.", error.code);
-      return jsonResponse({ error: "insert_failed", detail: error.message }, 500);
+    const contentType = request.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase();
+    if (contentType !== "application/json") {
+      return jsonResponse({ error: "unsupported_media_type" }, 415);
     }
-  } catch {
-    return jsonResponse({ error: "insert_failed" }, 500);
-  }
 
-  return jsonResponse({ status: "success" });
+    // 1. Rate Limiting por IP
+    const clientIp = getClientIp(request);
+    const rateLimitKey = clientIp ?? NO_CLIENT_IP_KEY;
+    const rateLimit = contactoRateLimiter.check(rateLimitKey);
+    if (!rateLimit.allowed) {
+      return jsonResponse({ error: "rate_limit_exceeded" }, 429, {
+        "retry-after": String(rateLimit.retryAfterSeconds),
+      });
+    }
+
+    let body: Uint8Array | null;
+    try {
+      body = await readLimitedBody(request, MAX_REQUEST_BYTES);
+    } catch {
+      return jsonResponse({ error: "invalid_request" }, 400);
+    }
+    if (body === null) return jsonResponse({ error: "payload_too_large" }, 413);
+
+    let input: unknown;
+    try {
+      input = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(body));
+    } catch {
+      return jsonResponse({ error: "invalid_request" }, 400);
+    }
+
+    // 2. Honeypot check (descarta bots directos sin consultar Turnstile)
+    if (isRecord(input) && typeof input["sitio_web"] === "string" && input["sitio_web"].trim()) {
+      return jsonResponse({ error: "invalid_request" }, 400);
+    }
+
+    // 3. Verificación de Cloudflare Turnstile
+    const turnstileToken =
+      isRecord(input) && typeof input["turnstile_token"] === "string"
+        ? input["turnstile_token"].trim()
+        : isRecord(input) && typeof input["turnstileToken"] === "string"
+          ? (input["turnstileToken"] as string).trim()
+          : "";
+
+    if (!turnstileToken || !isBoundedString(turnstileToken, MAX_TURNSTILE_TOKEN_LENGTH)) {
+      return jsonResponse({ error: "turnstile_token_required" }, 400);
+    }
+
+    const turnstileSecret = process.env["TURNSTILE_SECRET_KEY"]?.trim();
+    if (!turnstileSecret) {
+      console.error("[api/contacto] Turnstile secret not configured");
+      return jsonResponse({ error: "contacto_unavailable" }, 503);
+    }
+
+    const turnstileResult = await verifyTurnstileToken(turnstileToken, turnstileSecret, clientIp);
+    if (!turnstileResult.success) {
+      console.warn("[api/contacto] Verificación Turnstile fallida:", turnstileResult.errorCodes);
+      return jsonResponse({ error: "turnstile_verification_failed" }, 403);
+    }
+
+    // 4. Validación de campos del formulario
+    const contacto = parseContacto(input);
+    if (!contacto) return jsonResponse({ error: "invalid_request" }, 400);
+
+    // 5. Inserción en Supabase con manejo de error seguro (sin exponer error.message interno)
+    const config = getSupabaseConfig();
+    if (!config) return jsonResponse({ error: "contacto_unavailable" }, 503);
+
+    const supabase = createClient(config.url, config.serviceRoleKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+
+    try {
+      const { error } = await supabase.from(SUPABASE_TABLE).insert(contacto);
+      if (error) {
+        console.error("Error al persistir la solicitud de contacto.", error.code);
+        return jsonResponse({ error: "insert_failed" }, 500);
+      }
+    } catch {
+      return jsonResponse({ error: "insert_failed" }, 500);
+    }
+
+    return jsonResponse({ status: "success" });
+  } catch (err) {
+    console.error("Error inesperado en /api/contacto:", err);
+    return jsonResponse({ error: "internal_error" }, 500);
+  }
 }
 
 function methodNotAllowed(): Response {

@@ -1,10 +1,18 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Bot, Send, X } from "lucide-react";
+import { AlertTriangle, Bot, Maximize2, Minimize2, Send, X } from "lucide-react";
+import {
+  useAccessibilityPreferences,
+  useTranslations,
+} from "@/lib/accessibility-preferences-context";
+import type { LanguagePreference } from "@/lib/accessibility-preferences";
+import { getTranslations } from "@/lib/translations";
 
 type ChatMessage = {
   id: number;
   sender: "bot" | "user";
   text: string;
+  kind?: "error";
+  language: LanguagePreference;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -20,7 +28,13 @@ function formatBotText(text: string): string {
 }
 
 export function FloatingChatbot() {
+  const { preferences } = useAccessibilityPreferences();
+  const t = useTranslations().chatbot;
+  const language = preferences.language;
+  const languageRef = useRef(language);
+  languageRef.current = language;
   const [isOpen, setIsOpen] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [welcomeVisible, setWelcomeVisible] = useState(true);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -29,7 +43,8 @@ export function FloatingChatbot() {
     {
       id: 0,
       sender: "bot",
-      text: "¡Hola! Soy el asistente de Telcobras. ¿En qué puedo ayudarte?",
+      text: t.initialGreeting,
+      language,
     },
   ]);
   const [nextMessageId, setNextMessageId] = useState(1);
@@ -56,6 +71,14 @@ export function FloatingChatbot() {
   }, [isLoading, messages]);
 
   useEffect(() => {
+    setMessages((currentMessages) =>
+      currentMessages.map((message) =>
+        message.id === 0 ? { ...message, text: t.initialGreeting, language } : message,
+      ),
+    );
+  }, [language, t.initialGreeting]);
+
+  useEffect(() => {
     if (isOpen && !isLoading && sessionId) {
       messageInputRef.current?.focus();
     }
@@ -65,10 +88,11 @@ export function FloatingChatbot() {
     event.preventDefault();
     const userText = input.trim();
     if (!userText || !sessionId || isLoading) return;
+    let getLocalizedError = () => getTranslations(languageRef.current).chatbot.errors.generic;
 
     setMessages((currentMessages) => [
       ...currentMessages,
-      { id: nextMessageId, sender: "user", text: userText },
+      { id: nextMessageId, sender: "user", text: userText, language },
     ]);
     setNextMessageId((currentId) => currentId + 1);
     setInput("");
@@ -85,44 +109,45 @@ export function FloatingChatbot() {
       try {
         payload = await response.json();
       } catch {
-        throw new Error("El servidor devolvió una respuesta que no se pudo interpretar.");
+        getLocalizedError = () => getTranslations(languageRef.current).chatbot.responseParseError;
+        throw new Error(t.responseParseError);
       }
 
       if (!response.ok) {
         const errorCode = isRecord(payload) ? payload["error"] : undefined;
-        const errorMessages: Record<string, string> = {
-          chat_unavailable: "El chat no está disponible por el momento. Intenta más tarde.",
-          invalid_request: "No se pudo enviar el mensaje. Revisa el texto e inténtalo de nuevo.",
-          invalid_upstream_response:
-            "El asistente recibió una respuesta inesperada. Intenta de nuevo más tarde.",
-          upstream_error: "No logramos conectar con el asistente. Intenta de nuevo en un momento.",
-          upstream_timeout: "El asistente está tardando en responder. Intenta de nuevo.",
-          agent_response_unavailable:
-            "Make recibió tu mensaje, pero el escenario todavía no devuelve la respuesta del asistente. Revisa el módulo Webhook response.",
+        getLocalizedError = () => {
+          const currentCopy = getTranslations(languageRef.current).chatbot;
+          return typeof errorCode === "string" && Object.hasOwn(currentCopy.errors, errorCode)
+            ? currentCopy.errors[errorCode as keyof typeof currentCopy.errors]
+            : currentCopy.errors.generic;
         };
-        const message =
-          typeof errorCode === "string"
-            ? (errorMessages[errorCode] ?? "No se pudo enviar el mensaje. Intenta de nuevo.")
-            : "No se pudo enviar el mensaje. Intenta de nuevo.";
-        throw new Error(message);
+        throw new Error(t.errors.generic);
       }
 
       if (!isRecord(payload) || typeof payload["respuesta_bot"] !== "string") {
-        throw new Error("El asistente devolvió una respuesta con un formato no válido.");
+        getLocalizedError = () => getTranslations(languageRef.current).chatbot.invalidResponse;
+        throw new Error(t.invalidResponse);
       }
 
+      const botResponse = payload["respuesta_bot"];
       setMessages((currentMessages) => [
         ...currentMessages,
-        { id: nextMessageId + 1, sender: "bot", text: payload["respuesta_bot"] },
+        { id: nextMessageId + 1, sender: "bot", text: botResponse, language },
       ]);
       setNextMessageId((currentId) => currentId + 1);
     } catch (error) {
       console.error("Falló el envío del mensaje al asistente.", error);
-      const errorText =
-        error instanceof Error ? error.message : "No se pudo enviar el mensaje. Intenta de nuevo.";
+      const errorLanguage = languageRef.current;
+      const errorText = getLocalizedError();
       setMessages((currentMessages) => [
         ...currentMessages,
-        { id: nextMessageId + 1, sender: "bot", text: errorText },
+        {
+          id: nextMessageId + 1,
+          sender: "bot",
+          text: errorText,
+          kind: "error",
+          language: errorLanguage,
+        },
       ]);
       setNextMessageId((currentId) => currentId + 1);
     } finally {
@@ -134,34 +159,52 @@ export function FloatingChatbot() {
     <>
       {isOpen && (
         <section
-          aria-label="Chat con el asistente Telcobras"
+          aria-label={t.title}
           aria-modal="false"
-          className="fixed inset-x-3 bottom-16 top-12 z-50 flex flex-col overflow-hidden rounded-2xl bg-white text-slate-900 shadow-2xl shadow-slate-950/25 sm:inset-auto sm:bottom-36 sm:right-5 sm:h-[min(720px,calc(100vh-10rem))] sm:w-[380px]"
+          className={`fixed z-50 flex flex-col overflow-hidden rounded-2xl bg-card text-card-foreground shadow-2xl shadow-slate-950/25 ${
+            isExpanded
+              ? "inset-x-2 top-2 bottom-[4.5rem] sm:inset-x-4 sm:top-4 sm:bottom-[4.5rem]"
+              : "inset-x-3 bottom-16 top-12 sm:inset-auto sm:bottom-36 sm:right-5 sm:h-[min(720px,calc(100vh-10rem))] sm:w-[380px]"
+          }`}
           role="dialog"
         >
-          <header className="flex shrink-0 items-center justify-between bg-[#2491CC] px-5 py-4 text-white">
+          <header className="flex shrink-0 items-center justify-between bg-[#006BA4] px-5 py-4 text-white">
             <div className="flex items-center gap-3">
               <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20">
                 <Bot aria-hidden="true" className="h-6 w-6" />
               </span>
               <div>
-                <h2 className="font-bold leading-tight">Asistente Telcobras</h2>
-                <p className="text-xs text-white/85">Estamos aquí para ayudarte</p>
+                <h2 className="font-bold leading-tight">{t.title}</h2>
+                <p className="text-xs text-white/85">{t.subtitle}</p>
               </div>
             </div>
-            <button
-              aria-label="Cerrar chat"
-              className="rounded-full p-2 transition-colors hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-              onClick={() => setIsOpen(false)}
-              type="button"
-            >
-              <X aria-hidden="true" className="h-5 w-5" />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                aria-label={isExpanded ? t.restore : t.expand}
+                className="rounded-full p-2 transition-colors hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                onClick={() => setIsExpanded((expanded) => !expanded)}
+                type="button"
+              >
+                {isExpanded ? (
+                  <Minimize2 aria-hidden="true" className="h-5 w-5" />
+                ) : (
+                  <Maximize2 aria-hidden="true" className="h-5 w-5" />
+                )}
+              </button>
+              <button
+                aria-label={t.close}
+                className="rounded-full p-2 transition-colors hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                onClick={() => setIsOpen(false)}
+                type="button"
+              >
+                <X aria-hidden="true" className="h-5 w-5" />
+              </button>
+            </div>
           </header>
 
           <div
             aria-live="polite"
-            className="flex-1 space-y-4 overflow-y-auto bg-white p-4"
+            className="flex-1 space-y-4 overflow-y-auto bg-background p-4"
             role="log"
           >
             {messages.map((message) => {
@@ -172,54 +215,69 @@ export function FloatingChatbot() {
                   key={message.id}
                   className={`flex ${isBotMessage ? "justify-start" : "justify-end"}`}
                 >
-                  <p
+                  <div
                     className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                      isBotMessage
-                        ? "whitespace-pre-line break-words rounded-bl-md bg-[#F3F4F6] text-slate-800"
-                        : "rounded-br-md bg-[#2491CC] text-white"
+                      message.kind === "error"
+                        ? "chat-message--error rounded-bl-md border-2 border-dashed border-destructive bg-muted text-foreground"
+                        : isBotMessage
+                          ? "whitespace-pre-line break-words rounded-bl-md bg-muted text-foreground"
+                          : "rounded-br-md bg-[#006BA4] text-white"
                     }`}
+                    role={message.kind === "error" ? "alert" : undefined}
                   >
-                    {isBotMessage ? formatBotText(message.text) : message.text}
-                  </p>
+                    <span className="sr-only">
+                      {isBotMessage ? `${t.assistant}: ` : `${t.user}: `}
+                    </span>
+                    {message.kind === "error" && (
+                      <span className="mb-1 flex items-center gap-1.5 font-bold text-destructive">
+                        <AlertTriangle aria-hidden="true" className="h-4 w-4 shrink-0" />
+                        {t.errorTitle}
+                      </span>
+                    )}
+                    <span lang={message.language}>
+                      {isBotMessage ? formatBotText(message.text) : message.text}
+                    </span>
+                  </div>
                 </div>
               );
             })}
             {isLoading && (
               <div
-                aria-label="El asistente está respondiendo"
-                className="flex items-center gap-1 rounded-2xl rounded-bl-md bg-[#F3F4F6] px-4 py-3 text-slate-500"
+                aria-label={t.responding}
+                className="flex items-center gap-1 rounded-2xl rounded-bl-md bg-muted px-4 py-3 text-muted-foreground"
                 role="status"
               >
-                <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400" />
-                <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400 [animation-delay:120ms]" />
-                <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400 [animation-delay:240ms]" />
+                <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground" />
+                <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground [animation-delay:120ms]" />
+                <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground [animation-delay:240ms]" />
+                <span className="ml-2 text-xs">{t.responding}</span>
               </div>
             )}
             <div ref={messagesEndRef} />
           </div>
 
           <form
-            className="flex shrink-0 items-center gap-2 border-t border-slate-200 bg-white p-3"
+            className="flex shrink-0 items-center gap-2 border-t border-border bg-card p-3"
             onSubmit={handleSendMessage}
           >
             <label className="sr-only" htmlFor="telcobras-chat-message">
-              Escribe tu mensaje
+              {t.messageLabel}
             </label>
             <input
               autoComplete="off"
-              className="min-w-0 flex-1 rounded-full border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#2491CC] focus:ring-2 focus:ring-[#2491CC]/20"
+              className="min-w-0 flex-1 rounded-full border border-input bg-muted px-4 py-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20"
               disabled={isLoading || !sessionId}
               id="telcobras-chat-message"
               name="message"
               onChange={(event) => setInput(event.currentTarget.value)}
-              placeholder="Escribe tu mensaje..."
+              placeholder={t.placeholder}
               ref={messageInputRef}
               value={input}
               type="text"
             />
             <button
-              aria-label="Enviar mensaje"
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#2491CC] text-white transition-colors hover:bg-[#1d7ead] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2491CC]"
+              aria-label={t.send}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#006BA4] text-white transition-colors hover:bg-[#005888] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2491CC]"
               disabled={isLoading || !sessionId || !input.trim()}
               type="submit"
             >
@@ -231,12 +289,12 @@ export function FloatingChatbot() {
 
       {welcomeVisible && !isOpen && (
         <div
-          className="chatbot-invite-animation fixed bottom-[17rem] right-4 z-50 w-[min(12rem,calc(100vw-2rem))] rounded-2xl border border-[#2491CC]/25 bg-white/70 p-2.5 pr-8 text-slate-900 shadow-xl shadow-slate-950/15 backdrop-blur-sm"
+          className="chatbot-invite-animation fixed bottom-[17rem] right-4 z-50 w-[min(12rem,calc(100vw-2rem))] rounded-2xl border border-[#2491CC]/25 bg-card p-2.5 pr-8 text-card-foreground shadow-xl shadow-slate-950/15 backdrop-blur-sm"
           role="status"
         >
           <span
             aria-hidden="true"
-            className="absolute -bottom-1.5 right-10 h-3 w-3 rotate-45 border-b border-r border-[#2491CC]/25 bg-white/70"
+            className="absolute -bottom-1.5 right-10 h-3 w-3 rotate-45 border-b border-r border-[#2491CC]/25 bg-card"
           />
           <button
             className="block text-left"
@@ -246,17 +304,17 @@ export function FloatingChatbot() {
             }}
             type="button"
           >
-            <span className="block text-xs font-extrabold">¡Hola! ¿Necesitas ayuda?</span>
-            <span className="mt-0.5 block text-[11px] leading-relaxed text-slate-600">
-              Estoy aquí para ayudarte.
+            <span className="block text-xs font-extrabold">{t.welcomeTitle}</span>
+            <span className="mt-0.5 block text-[0.6875rem] leading-relaxed text-muted-foreground">
+              {t.welcomeDescription}
             </span>
-            <span className="mt-1 inline-block text-[11px] font-extrabold text-[#0087C3]">
-              Hablemos →
+            <span className="mt-1 inline-block text-[0.6875rem] font-extrabold text-[var(--brand-link)]">
+              {t.welcomeCta}
             </span>
           </button>
           <button
-            aria-label="Cerrar saludo"
-            className="absolute right-2 top-2 rounded-full p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#2491CC]"
+            aria-label={t.dismissWelcome}
+            className="absolute right-2 top-2 rounded-full p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-1"
             onClick={() => setWelcomeVisible(false)}
             type="button"
           >
@@ -267,10 +325,10 @@ export function FloatingChatbot() {
 
       <button
         aria-expanded={isOpen}
-        aria-label={isOpen ? "Cerrar asistente Telcobras" : "Abrir asistente Telcobras"}
+        aria-label={isOpen ? t.close : t.open}
         className={`fixed right-0 z-50 flex items-center justify-center rounded-2xl transition-transform duration-300 hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2491CC] ${
           isOpen
-            ? "bottom-24 h-[60px] w-[60px] bg-[#2491CC] text-white shadow-xl shadow-[#2491CC]/40"
+            ? "bottom-24 h-[60px] w-[60px] bg-[#006BA4] text-white shadow-xl shadow-[#2491CC]/40"
             : "bottom-32 h-[128px] w-[116px]"
         }`}
         onClick={() => {

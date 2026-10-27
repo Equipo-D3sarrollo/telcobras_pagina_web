@@ -1,8 +1,10 @@
 import { Sparkles, ArrowRight } from "lucide-react";
 import { ProjectsSection } from "./ProjectsSection";
 import { WhyUsSection } from "./WhyUsSection";
+import { useTranslations } from "@/lib/accessibility-preferences-context";
 
 export function LetyIaAndWhyUs() {
+  const t = useTranslations().ai;
   return (
     <>
       {/* 6. INTELIGENCIA ARTIFICIAL INTEGRADA */}
@@ -29,26 +31,21 @@ export function LetyIaAndWhyUs() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="max-w-3xl space-y-6">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-[#0087C3]/30 to-[#88BD4C]/30 border border-sky-400/30 text-xs font-extrabold text-sky-300">
-              <Sparkles className="w-4 h-4 text-[#88BD4C]" /> Inteligencia Artificial
+              <Sparkles className="w-4 h-4 text-[#88BD4C]" /> {t.badge}
             </div>
 
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-white leading-tight">
-              Inteligencia Artificial integrada a tus procesos
+              {t.title}
             </h2>
 
-            <p className="text-slate-300 text-base sm:text-lg leading-relaxed">
-              Integramos tecnología, conectividad e Inteligencia Artificial para ayudar a las
-              empresas a optimizar sus procesos, mejorar la atención y potenciar sus resultados.
-              Diseñamos soluciones adaptadas a las necesidades de cada organización, desde la
-              automatización y la telemetría hasta la atención inteligente de clientes.
-            </p>
+            <p className="text-slate-300 text-base sm:text-lg leading-relaxed">{t.description}</p>
 
             <div className="pt-2">
               <a
                 href="#contacto"
                 className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full text-xs sm:text-sm font-extrabold text-slate-900 bg-[#88BD4C] hover:bg-[#78a841] shadow-lg shadow-emerald-500/20 transition-all transform hover:-translate-y-0.5"
               >
-                Conversemos sobre tu proyecto
+                {t.cta}
                 <ArrowRight className="w-4 h-4" />
               </a>
             </div>
@@ -66,13 +63,16 @@ export function LetyIaAndWhyUs() {
       <section className="py-16 border-y border-slate-200 bg-slate-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-lg sm:text-xl font-black uppercase tracking-wide text-slate-900 mb-8">
-            Alianzas y Ecosistema Tecnológico
+            {t.partners}
           </h2>
 
           <div className="flex flex-wrap items-center justify-center gap-8 sm:gap-16">
             <div className="flex h-32 w-64 items-center justify-center rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <img
                 alt="Xpertic"
+                width={256}
+                height={128}
+                loading="lazy"
                 className="ally-logo-rotation max-h-full max-w-full object-contain"
                 src="/logo_xpertic.png"
               />
@@ -81,6 +81,9 @@ export function LetyIaAndWhyUs() {
             <div className="flex h-32 w-64 items-center justify-center rounded-2xl border border-[#0087C3]/40 bg-[#0A192F] p-4 shadow-sm">
               <img
                 alt="Aquora"
+                width={256}
+                height={128}
+                loading="lazy"
                 className="ally-logo-rotation ally-logo-rotation-delayed max-h-full max-w-full object-contain"
                 src="/logo_aquora.png"
               />

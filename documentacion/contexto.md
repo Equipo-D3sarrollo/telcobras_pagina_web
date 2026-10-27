@@ -5,6 +5,12 @@ una inteligencia artificial que deba continuar el proyecto. Resume la arquitectu
 los módulos, los flujos de datos, las integraciones, las convenciones y los problemas
 conocidos. Debe actualizarse cuando cambien la arquitectura o las capacidades descritas.
 
+> Última revisión integral: **26-10-2026**. Auditoría de seguridad, dependencias, pruebas,
+> accesibilidad y páginas legales; se ejecutaron `tsc`, `eslint`, `npm audit`, `npm run build`
+> y una verificación en navegador de `/terminos-de-servicio` y `/sla`. Ver sección 11
+> («Auditoría 26-10-2026»). La revisión anterior (22-10-2026) cubrió el pipeline de
+> CSS/Tailwind, el build de Nitro/Cloudflare y el estado de Git; ver secciones 7 y 9.
+
 ## 1. Instrucciones para quien continúe el proyecto
 
 - Leer este documento y `AGENTS.md` antes de modificar código.
@@ -13,20 +19,28 @@ conocidos. Debe actualizarse cuando cambien la arquitectura o las capacidades de
 - Revisar `git status` antes de editar. Puede haber cambios locales no relacionados;
   no descartarlos ni incluirlos accidentalmente.
 - `src/routeTree.gen.ts` es generado por TanStack Router. No modificarlo manualmente.
-- `conexion.php` (raíz) es un ejemplo aislado de conexión a MySQL con PDO. No forma
-  parte de la aplicación TanStack/Nitro y el despliegue en Cloudflare no lo ejecuta.
-  Mantener sus credenciales solo en variables de entorno del servidor.
 - Mantener la URL y cualquier credencial de Make exclusivamente en configuración de
   servidor. Nunca leerlas a la consola, pegarlas en documentación ni incluirlas en
   variables `VITE_*`, código cliente o capturas.
 - Los cambios visuales del sitio suelen hacerse en los componentes de `src/components/`
   y los estilos globales en `src/styles.css`.
 - Ejecutar `npm exec eslint -- <archivos-modificados>` y `npm run build` cuando
-  corresponda. El proyecto no define actualmente un script de pruebas automatizadas.
+  corresponda. Hay archivos de pruebas/configuración vacíos en el árbol de trabajo,
+  pero no constituyen una suite ejecutable ni hay scripts `test` en `package.json`.
 - Mantener la interfaz, mensajes y documentación del producto principalmente en español.
 - No ejecutar `npm run build` con el servidor de desarrollo activo: en Windows Vite
   vigila `.output/` y se cae con `EBUSY`. Detener el servidor, compilar y volver a
   levantarlo.
+- El artefacto desplegable canónico es **`.output/`** (Nitro/Cloudflare). `dist/` es un
+  build antiguo (7-10-2026) y no debe desplegarse; si producción sirve `dist/` o HTML
+  cacheado, el diseño puede quedar desfasado aunque el código fuente sea correcto.
+- Reconstruir siempre antes de desplegar si se tocó `src/styles.css`,
+  `src/routes/__root.tsx`, `src/server.ts` o cualquier componente: el build no se
+  actualiza solo. El build actual de `.output/` es anterior a la última edición de
+  `src/server.ts`; ver sección 9.
+- No existe `index.html` ni `src/main.tsx`: el documento HTML lo genera `RootShell` en
+  `src/routes/__root.tsx`. El CSS global se importa con `import appCss from
+  "../styles.css?url"` y se inyecta en `head.links`; no añadir otra hoja global.
 - En Windows, detener la tarea `npm run dev` puede dejar vivo el proceso hijo
   `node …vite.js dev`. Si Vite avisa «Port 8080 is in use» y arranca en 8081/8082,
   hay instancias huérfanas: cerrarlas (por PID) y dejar una sola. Varias instancias
@@ -46,57 +60,149 @@ La ruta visual principal es `/`. Las secciones se enlazan mediante anclas HTML
 (por ejemplo `#inicio`, `#servicios` y `#contacto`). El chatbot y el botón de WhatsApp
 se montan globalmente; el botón para volver al inicio se monta en la página principal.
 
+### Estado actual del proyecto
+
+- El sitio ya dispone de un shell global en `src/routes/__root.tsx` con gestión de
+  accesibilidad, idioma, cookie banner, chatbot flotante y botón de WhatsApp.
+- La ruta interna `/politica-de-privacidad` quedó implementada en
+  `src/routes/politica-de-privacidad.tsx` y está conectada con `PRIVACY_POLICY_URL`.
+- La política es bilingüe (`es`/`en`) y contiene una sección detallada de eliminación
+  de datos personales con referencia a la Ley 1581/2012 y al RGPD.
+- Los enlaces legales y el consentimiento del formulario apuntan a la política local,
+  no a un enlace externo de la web corporativa.
+- El formulario de contacto y el footer incluyen controles de seguridad básicos: IDs
+  por campo, límites de longitud, honeypot y validación del lado servidor en
+  `src/routes/api.contacto.ts`.
+- Cloudflare Turnstile está implementado en el formulario de contacto. El widget vive
+  en `src/components/TurnstileWidget.tsx` y se monta desde `ContactAndFooter.tsx`; el
+  token se envía como `turnstile_token` y el servidor lo valida contra
+  `siteverify` antes de persistir en Supabase.
+- El endpoint `/api/contacto` aplica limitación de tasa por IP (5 envíos por ventana
+  de 10 minutos) y responde `429` con cabecera `retry-after`. El contador es en
+  memoria del proceso, por lo que no es un límite distribuido entre instancias.
+- La higiene de errores evita exponer mensajes crudos de Supabase: el endpoint
+  devuelve códigos genéricos (`insert_failed`, `internal_error`, etc.) y solo registra
+  el código interno en logs. `src/server.ts` también normaliza errores SSR
+  catastróficos de rutas `/api/*` a `{ "error": "internal_error" }`.
+- Las rutas legales `/terminos-de-servicio` y `/sla` ya están creadas y registran sus
+  propias rutas en el árbol de TanStack (`src/routes/terminos-de-servicio.tsx` y
+  `src/routes/sla.tsx`). Ya no son marcadores: ambas renderizan el documento completo
+  en ES/EN con el componente compartido `src/components/LegalDocument.tsx` (encabezado,
+  índice «Contenido» con anclas, secciones, tablas desplazables y enlaces «Volver al
+  inicio»), con metadatos SEO/Open Graph y `canonical` propios. El contenido vive en
+  `src/lib/terms-content.ts` (15 secciones) y `src/lib/sla-content.ts` (10 secciones);
+  los tipos compartidos están en `src/lib/legal-types.ts`. Los valores numéricos del
+  SLA se centralizan en `SLA_VALUES` (`src/lib/sla-content.ts`) y son una **propuesta
+  pendiente de aprobación de gerencia y revisión jurídica**: no cambiarlos ni la
+  redacción sin esa aprobación.
+- Todos los enlaces legales del footer y del banner de cookies usan `<Link>` de
+  `@tanstack/react-router` (navegación SPA sin recarga completa). Las rutas internas se
+  resuelven con las constantes `PRIVACY_POLICY_URL`, `TERMS_OF_SERVICE_URL` y
+  `SLA_URL` de `src/lib/telcobras-data.ts`. Ningún enlace legal apunta a un dominio
+  externo.
+- El SEO técnico está implementado en las cuatro rutas públicas: metadatos por ruta
+  (`title`, `description`, `canonical`), etiquetas Open Graph y Twitter Card
+  (`og:title`, `og:description`, `og:image`, `og:url`, `og:type`, `og:locale`,
+  `twitter:card`, `twitter:title`, `twitter:description`, `twitter:image`) y datos
+  estructurados JSON-LD de tipo `Organization` en la landing (`script:ld+json` de
+  TanStack Router, que se serializa a `<script type="application/ld+json">` en el
+  `<head>`). El JSON-LD consume `RAZON_SOCIAL`, `LOGO_URL`, `CONTACT` y `SOCIAL_LINKS`
+  de `src/lib/telcobras-data.ts` e incluye `name`, `url`, `logo`, `telephone`,
+  `address` y `sameAs`.
+- La optimización de imágenes para Core Web Vitals está aplicada en los componentes
+  principales: la imagen principal del hero usa `loading="eager"` +
+  `fetchPriority="high"` y las demás son `loading="lazy"`; todas declaran `width`/`height`
+  explícitos (evita CLS) y `decoding="async"`. Las imágenes de proyecto, aliados y
+  ubicación se cargan de forma diferida.
+- `public/sitemap.xml` está generado con las cuatro URLs públicas (`/`,
+  `/politica-de-privacidad`, `/terminos-de-servicio`, `/sla`) bajo
+  `https://telcobras.com`, con `<lastmod>` y código HTTP 200. `public/robots.txt`
+  declara `Sitemap: https://telcobras.com/sitemap.xml`.
+- El componente `CookieBanner` persiste la elección del usuario en `localStorage`
+  bajo `telcobras_cookie_consent` y no vuelve a renderizar cuando ya existe la clave.
+- El menú de accesibilidad y la preferencia de idioma persisten en una cookie y se
+  aplican también durante SSR para evitar flashes de contenido con idioma incorrecto.
+- La documentación legal debe revisarse con el responsable del tratamiento antes de
+  considerarse una política aprobada para publicación formal.
+- El pipeline de CSS/Tailwind está verificado de punta a punta (22-10-2026): el CSS
+  global se importa en `src/routes/__root.tsx:14`, se enlaza desde `head.links`
+  (`:120-127`) dentro de `<head>`, Tailwind v4 lo genera en
+  `.output/public/assets/styles-<hash>.css` y el mismo hash aparece en los bundles
+  cliente y SSR. No se encontró una «fuga de estilos» en el código ni en el build.
+- El único desfase real está en los artefactos: `dist/` es un build del 7-10-2026 con
+  otro CSS (`styles-CwhTlhtd.css`) y el deploy apunta a `.output/`
+  (`.wrangler/deploy/config.json` → `.output/server/wrangler.json`). Reconstruir y
+  desplegar solo `.output/`; ver secciones 9 y 11.
+
 ## 3. Stack y ejecución
 
-- React 19 y TypeScript.
-- TanStack Start y TanStack Router (rutas basadas en archivos).
-- Vite 8 como servidor de desarrollo y compilador.
-- Tailwind CSS 4, `tw-animate-css`, Radix UI y `lucide-react`.
+- React 19 y TypeScript 5.8 (modo estricto).
+- TanStack Start 1.168.32 y TanStack Router 1.170.18 (rutas basadas en archivos).
+- Vite 8.1.5 como servidor de desarrollo y compilador; Rolldown fijado a 1.2.1 por
+  `overrides` en `package.json`.
+- Tailwind CSS 4 (`package.json` declara `^4.2.1`; el lock/build resuelve 4.3.3),
+  `tw-animate-css`, Radix UI y `lucide-react`.
 - TanStack Query está configurado en el contexto del router.
-- Nitro genera el despliegue para Cloudflare; `nodeCompat` está habilitado.
+- Nitro 3 (beta) genera el despliegue para Cloudflare con preset `cloudflare-module`;
+  `nodeCompat` está habilitado.
 - Tipografía principal: Nunito, cargada desde Google Fonts en el shell raíz.
-- `conexion.php` es un ejemplo independiente en PHP (MySQL con PDO, `mysql:`), ajeno
-  al stack React/TanStack. No hay relación con `src/routes/api.chat.ts` ni con el
-  formulario de contacto.
+- `vitest`, `jsdom`, Testing Library, `axe-core` y Playwright están instalados, pero
+  sus archivos de configuración y pruebas siguen vacíos (0 bytes); no hay suite
+  ejecutable ni script `test`.
 
 ### Comandos del proyecto
 
 ```powershell
-npm install
+npm install                     # ejecuta prepare -> scripts/install-hooks.mjs
 npm run dev
-npm run build
+npm run build                   # cliente + servidor -> .output/
+npm run build:dev               # build con modo development
 npm run preview
-npm run lint
+npm run lint                    # eslint .
+npm run format                  # prettier --write .
+npm run secrets:scan            # gitleaks sobre todo el historial
 npm exec eslint -- src/components/NombreComponente.tsx
 ```
 
 `npm run dev` muestra en consola la URL local disponible, habitualmente
 `http://localhost:8080/`. No abrir un HTML local directamente: la aplicación requiere
 el servidor de desarrollo. `npm run build` compila cliente y servidor y genera
-artefactos en `.output/`.
+artefactos en `.output/`; `dist/` es un directorio legado de un build anterior y no es
+el artefacto de despliegue.
+
+`npm install` activa el hook de pre-commit (`core.hooksPath=.githooks`) mediante
+`prepare`. `npm run secrets:scan` requiere `gitleaks` instalado en el `PATH`. La CI
+repite el escaneo en `.github/workflows/gitleaks.yml`.
 
 No hay script `test` en `package.json` ni se encontró una suite de pruebas del producto.
-Usar lint, build y comprobaciones manuales/navegador hasta que se agreguen pruebas.
+Usar lint, build, `tsc --noEmit` y comprobaciones manuales/navegador hasta que se
+agreguen pruebas.
 
 ## 4. Estructura del repositorio
 
 ```text
 .
+├── .github/workflows/gitleaks.yml  # CI: escaneo de secretos en todo el historial
+├── .githooks/pre-commit            # Hook local: gitleaks sobre archivos staged
+├── .gitattributes                  # EOL LF para hooks, CI y configuración
+├── .gitleaks.toml                  # Reglas de gitleaks + allowlist de artefactos
 ├── documentacion/
 │   └── contexto.md                 # Esta guía de traspaso
+├── e2e/                            # Placeholder de Playwright (spec vacío)
 ├── public/                         # Recursos estáticos servidos desde /
+├── scripts/
+│   └── install-hooks.mjs           # Activa core.hooksPath en npm install
 ├── src/
 │   ├── components/                 # Secciones y controles de la interfaz
 │   │   └── ui/                     # Primitivas reutilizables estilo shadcn/Radix
 │   ├── hooks/                      # Hooks compartidos (móvil, rotación de resaltado)
-│   ├── lib/                        # Datos, utilidades y manejo de errores
+│   ├── lib/                        # Datos, preferencias, utilidades y manejo de errores
 │   ├── routes/                     # Rutas TanStack Start
 │   ├── routeTree.gen.ts            # Generado automáticamente; no editar
 │   ├── router.tsx                  # Crea router y QueryClient
-│   ├── server.ts                   # Adaptador SSR y normalización de errores
+│   ├── server.ts                   # Adaptador SSR, CSP y normalización de errores
 │   ├── start.ts                    # Middleware de servidor y CSRF para server functions
 │   └── styles.css                  # Tema, tokens y estilos globales/animaciones
-├── conexion.php                    # Ejemplo aislado de conexión a MySQL con PDO (PHP)
 ├── vite.config.ts                  # Configuración del wrapper de Vite/Nitro/Cloudflare
 ├── package.json                    # Dependencias y scripts
 ├── tsconfig.json                   # TypeScript estricto y alias @/*
@@ -105,15 +211,51 @@ Usar lint, build y comprobaciones manuales/navegador hasta que se agreguen prueb
 └── README.md                       # Inicio rápido y contrato del endpoint de chat
 ```
 
-`node_modules/`, `dist/` y `.output/` son dependencias/artefactos generados. No editar
-ni versionar esos directorios. `*.local` está ignorado por Git; `.env.local` puede
-contener configuración privada, así que no debe abrirse ni reproducirse en informes.
+`node_modules/` y `.output/` son dependencias/artefactos generados; no editar ni
+versionar `.output/`. `dist/` también está ignorado, pero es un build legado
+(7-10-2026): el artefacto canónico es `.output/`. `*.local` está ignorado por Git;
+`.env.local` puede contener configuración privada, así que no debe abrirse ni
+reproducirse en informes. `.gitignore` ya contempla `.env`, `.env.*` y `.dev.vars*`
+con excepciones para `*.example`, aunque hoy no existe un `.env.example` versionado.
+
+### Archivos críticos del negocio y la integración
+
+- `src/lib/telcobras-data.ts`: contiene datos corporativos oficiales, enlaces de
+  redes sociales, URL interna de privacidad y datos de contacto.
+- `src/components/ContactAndFooter.tsx`: footer semántico, redes sociales, consent
+  legal, formulario, mapa, ubicación y enlaces legales.
+- `src/components/CookieBanner.tsx`: aceptación/rechazo de cookies y persistencia en
+  `localStorage`.
+- `src/components/TurnstileWidget.tsx`: widget de Cloudflare Turnstile usado por el
+  formulario de contacto (carga explícita del script, callback, reset y errores).
+- `src/routes/api.contacto.ts`: endpoint de contacto usado por el formulario. Valida
+  honeypot, longitudes de campos, estructura de payload, Turnstile y limitación de tasa
+  por IP antes de persistir en Supabase.
+- `src/routes/api.chat.ts`: integración con Make/WhatsApp y respuesta del chatbot.
+- `src/lib/translations.ts`: catálogos ES/EN para UI, SEO, formulario y chatbot.
+- `src/lib/accessibility-preferences.ts`: configuración de idioma/tema/tamaño y
+  validación del almacenamiento local.
+- `src/routes/politica-de-privacidad.tsx`: versión legal interna, bilingüe, con
+  procedimiento detallado de eliminación de datos.
+- `src/routes/terminos-de-servicio.tsx` y `src/routes/sla.tsx`: páginas legales
+  bilingües que renderizan `LegalDocument` con el contenido de
+  `src/lib/terms-content.ts` y `src/lib/sla-content.ts` (valores del SLA en
+  `SLA_VALUES`, pendientes de aprobación).
+- `src/components/LegalDocument.tsx` y `src/lib/legal-types.ts`: componente y tipos
+  compartidos de las páginas legales; el contenido se renderiza como texto, sin HTML.
+- `src/routes/__root.tsx`: shell, metadatos, providers y montajes globales del sitio.
 
 ## 5. Composición de la aplicación y rutas
 
 ### `src/routes/index.tsx`
 
 - Define la ruta `/` y metadatos SEO/Open Graph.
+- Publica los datos estructurados JSON-LD de `Organization` usando la clave
+  `script:ld+json` del array `meta` de TanStack Router: el router la serializa y la
+  escapa como `<script type="application/ld+json">` dentro del `<head>` a través de
+  `<HeadContent />`. No hace falta escribir el `<script>` a mano ni usar `dangerouslySetInnerHTML`.
+  Los datos (`name`, `url`, `logo`, `telephone`, `address`, `sameAs`) salen de
+  `src/lib/telcobras-data.ts`.
 - Compone la landing en este orden: `HeaderNav`, `HeroAndMetrics`,
   `AboutAndValues`, `ServicesSection`, `LetyIaAndWhyUs`,
   `ContactAndFooter` y `ScrollToTopButton`.
@@ -121,16 +263,105 @@ contener configuración privada, así que no debe abrirse ni reproducirse en inf
 
 ### `src/routes/__root.tsx`
 
-- Es el shell de todas las rutas: define `<html>`, metadatos, hojas de estilo,
-  `<Scripts />` y `<Outlet />`.
+- Es el shell de todas las rutas: `RootShell` define `<html>`, `<head>` con
+  `<HeadContent />`, `<body>` con los children y `<Scripts />`; `RootComponent` monta
+  `<Outlet />`, los providers y los controles globales.
+- Importa el CSS global con `import appCss from "../styles.css?url"` (línea 14) y lo
+  publica en `head.links` como `{ rel: "stylesheet", href: appCss }` (líneas 120-127).
+  En el build, `appCss` resuelve a `/assets/styles-<hash>.css`; el mismo hash debe
+  aparecer en el bundle cliente y en el SSR. No hay `index.html` ni `src/main.tsx`.
 - Monta globalmente `FloatingChatbot` y `WhatsAppFloatingButton` (enlace flotante a
   `wa.me` con el número comercial de `CONTACT`). Ambos viven en este archivo.
-- Carga la tipografía Nunito desde Google Fonts (`preconnect` + `stylesheet`) además
-  de `styles.css`.
+- Carga la tipografía Nunito desde Google Fonts: las etiquetas `<link rel="preconnect">`
+  a `https://fonts.googleapis.com` y `https://fonts.gstatic.com` (esta última con
+  `crossOrigin="anonymous"`), más el `<link rel="stylesheet">` de la familia Nunito y
+  `styles.css`. Las `preconnect` se declaran en `head.links` del shell raíz, que es la
+  forma de inyectar `<link>` en el `<head>` con TanStack Router; no deben duplicarse
+  como JSX dentro del `<body>`. La CSP de `src/server.ts` permite ambos orígenes.
 - Tiene los componentes raíz de error (`ErrorComponent`, con `reportVibeError`) y 404.
-- El atributo `<html lang>` sigue en `"en"` aunque el contenido es español: revisar
-  si se busca SEO/accesibilidad en español.
+- El 404 (`NotFoundComponent`) ofrece dos salidas claras: «Ir al inicio» (`<Link to="/">`)
+  y «Ver servicios» (`<Link to="/" hash="servicios">`, que produce `/#servicios` y
+  desplaza a la sección de servicios). Los textos salen de `errors.home` y
+  `errors.services` de `src/lib/translations.ts` (ES/EN).
+- El loader raíz obtiene las preferencias de accesibilidad desde la cookie
+  `telcobras_a11y` en el servidor y las aplica a los atributos de `<html>`, incluido
+  `lang`, antes de renderizar. El idioma predeterminado es `es`.
+- `src/components/CookieBanner.tsx` se monta desde el shell global. Guarda la elección
+  en `localStorage` bajo `telcobras_cookie_consent` (esenciales siempre activas y una
+  preferencia booleana para las no esenciales); si la clave existe, no vuelve a mostrar
+  el banner. El control registra la preferencia, pero la carga/ejecución de cookies de
+  terceros debe conectarse a esa preferencia si se incorporan esas integraciones.
 - Si se añaden rutas, no eliminar `<Outlet />`.
+
+### Preferencias de accesibilidad
+
+- `src/lib/accessibility-preferences.ts` define el esquema, los valores por defecto y la
+  validación de las preferencias recibidas desde la cookie.
+- `src/lib/accessibility-preferences.server.ts` lee la cookie con las utilidades de
+  petición de TanStack Start; el loader de la ruta raíz comparte el resultado con el
+  shell SSR y la interfaz.
+- `src/components/AccessibilityMenu.tsx` proporciona el estado global y un control
+  flotante inferior izquierdo con opciones de apariencia (sistema/claro/oscuro), tamaño
+  de texto (100/125/150/200 %), idioma (español/inglés), modo daltonismo y restauración
+  de valores predeterminados.
+- `src/lib/accessibility-preferences-context.ts` y
+  `src/lib/accessibility-preferences-provider.tsx` exponen las preferencias existentes
+  al árbol React; no se debe crear un segundo estado de idioma.
+- `src/lib/translations.ts` contiene los catálogos tipados `es` y `en`, agrupados por
+  navegación, contenido, formulario, chatbot, accesibilidad, errores y metadatos. Los
+  componentes consultan el catálogo mediante `useTranslations()`.
+- El idioma guardado se usa durante el SSR para `lang`, título, descripción y metadatos
+  Open Graph; los metadatos del navegador también se actualizan al cambiar la preferencia.
+  Los mensajes previos del chatbot conservan su idioma mediante `lang` en cada mensaje.
+- El cambio de idioma solo cambia cadenas visibles: no desmonta ni reinicia el estado del
+  formulario o del chat. Las opciones de servicio conservan sus valores originales en
+  español al enviar la solicitud para mantener compatible el contrato del endpoint.
+- Los fuentes deben permanecer en UTF-8. Mantener tildes y caracteres españoles como
+  texto Unicode real; evitar conversiones que produzcan secuencias mojibake.
+- Los cambios se guardan en una cookie `SameSite=Lax` durante un año para que el
+  servidor pueda producir el idioma y el tema iniciales sin esperar a la hidratación.
+  El contenido de la cookie no es información sensible ni se usa para autorización.
+- La escala de contenido se apoya en el zoom nativo del navegador y no se persiste como
+  una preferencia propia; no se aplica `transform: scale()` ni se añade otro control de
+  escala. El selector de texto conserva los niveles 100/125/150/200 % y sus tamaños
+  tipográficos relativos crecen sin escalar las imágenes ni el mapa.
+- A tamaños grandes, el menú de navegación se repliega para evitar desbordamiento y las
+  etiquetas largas pueden redistribuirse. En ventanas de menos de 400 px, el botón
+  flotante de accesibilidad muestra el icono y conserva su nombre accesible para no
+  competir por espacio con WhatsApp y el chatbot. Las descripciones truncadas en tarjetas
+  se muestran completas al ampliar el texto; el menú móvil limita su altura y permite
+  desplazamiento vertical propio.
+- Los tokens semánticos cubren fondo, texto, tarjetas, superficies, bordes, controles,
+  foco y estados. Las secciones de marca con fondo azul marino conservan su identidad;
+  se ajustan los controles superpuestos, tarjetas y enlaces para mantener legibilidad
+  en ambas apariencias.
+- Los botones de acción que usan verde o azul de marca emplean variantes más oscuras
+  cuando necesitan texto o iconos blancos. El amarillo y el verde claros conservan texto
+  azul marino de alto contraste. Los títulos con degradado usan tonos de marca ajustados
+  para conservar contraste sobre superficies claras y oscuras. El foco visible se refuerza
+  globalmente y los controles nativos siguen `color-scheme` de la apariencia seleccionada.
+- El modo daltonismo subraya los enlaces, resalta las pestañas y tarjetas de servicio
+  seleccionadas con un borde doble, y mantiene la distinción de enlaces continuos/
+  punteados y nodos circulares/romboidales en el diagrama de red. Los errores del formulario
+  y del chatbot incluyen texto e icono además del color y reciben un borde reforzado. No se
+  aplican filtros cromáticos a imágenes ni videos.
+- El panel de accesibilidad, la navegación, el formulario, las tarjetas, el chatbot y los
+  diálogos consumen los colores semánticos o sus variantes compatibles con el tema.
+  El mapa es un `iframe` de Google Maps y, por ser contenido externo de otro origen,
+  conserva los colores propios del proveedor; su contenedor y los controles circundantes
+  sí se adaptan al tema.
+- La landing y los controles principales consumen los catálogos ES/EN de
+  `src/lib/translations.ts`; header, formulario, ubicación, footer, chatbot, proyectos,
+  nombres accesibles, metadatos SSR y páginas de error usan el idioma seleccionado.
+  La dirección física se mantiene como dato geográfico propio (no se traduce), pero se
+  obtiene del catálogo locale. Los campos visibles del formulario están asociados a sus
+  controles mediante `htmlFor`/`id`.
+- Cambiar de idioma conserva los valores del formulario y el historial/chat escrito. El
+  saludo inicial del chatbot se actualiza y los mensajes anteriores mantienen su atributo
+  `lang` original. La página HTML de contingencia también lee el idioma de la cookie.
+- `formatLocalizedNumber` y `formatLocalizedDate` están disponibles en `translations.ts`;
+  el año del pie usa el helper numérico. Aplicar estos helpers a futuras fechas y cifras
+  que se incorporen a la interfaz.
 
 ### `src/routes/api.chat.ts`
 
@@ -150,6 +381,27 @@ contener configuración privada, así que no debe abrirse ni reproducirse en inf
   `upstream_timeout` (504), `invalid_upstream_response` (502) y
   `agent_response_unavailable` (502).
 - Se establece `cache-control: no-store` y se responde JSON UTF-8.
+- La higiene de errores responde `internal_error` (500) sin incluir mensajes crudos de
+  excepciones ni detalles del upstream.
+
+### Rutas legales internas
+
+- `/politica-de-privacidad` contiene la política bilingüe completa.
+- `/terminos-de-servicio` y `/sla` ya existen como rutas registradas del router
+  (`src/routes/terminos-de-servicio.tsx` y `src/routes/sla.tsx`) y ambas usan el
+  componente compartido `LegalDocument` (main → article → header → índice → section →
+  footer, un solo `<h1>`, enlaces «Volver al inicio» y metadatos).
+- El contenido bilingüe está en `src/lib/terms-content.ts` (15 secciones) y
+  `src/lib/sla-content.ts` (10 secciones, con tablas de prioridades y de créditos que se
+  desplazan dentro de su caja en móvil). El idioma sigue la preferencia del menú de
+  accesibilidad. Los compromisos del SLA salen de `SLA_VALUES`; son una propuesta
+  pendiente de aprobación de gerencia y revisión jurídica.
+- El footer enlaza a estas páginas con `<Link>` de `@tanstack/react-router` usando
+  `TERMS_OF_SERVICE_URL` y `SLA_URL` de `telcobras-data.ts` (igual que
+  `PRIVACY_POLICY_URL`). El banner de cookies usa el mismo patrón para la política.
+- Cada ruta legal declara sus propios metadatos SEO/Open Graph y `canonical`
+  (`https://telcobras.com/<ruta>`), por lo que el SEO técnico es homogéneo en las cuatro
+  URLs públicas del sitemap.
 
 ### Rutas generadas
 
@@ -194,10 +446,8 @@ o Remix: la guía local está en `src/routes/README.md`.
   siete valores.
 - El título utiliza degradado azul/verde/amarillo; el contenido se organiza en grid
   adaptable.
-- Referencia `/video_tel.mp4` como fondo. **Estado de recurso a revisar:** al revisar
-  `public/`, ese archivo no aparecía allí, aunque existe `video_tel.mp4` en la raíz
-  del repositorio. Los recursos estáticos deben residir en `public/`; comprobar y
-  copiarlo allí si se desea que el fondo cargue.
+- Referencia `/video_tel.mp4` como fondo; el archivo está en `public/video_tel.mp4`
+  (movido desde la raíz el 27-10-2026, antes daba 404).
 - Las animaciones de borde de Misión/Visión usan clases `motion-safe:`; considerar
   accesibilidad al modificarlas.
 
@@ -321,14 +571,34 @@ Reúne tres bloques en un solo componente: `#contacto`, `#ubicacion` y el pie de
   Cali; se pausa con `data-animations-paused` controlado por `IntersectionObserver`
   (`sectionRef`/`isInView`), con el mismo criterio que `WhyUsSection`.
 
-**Limitación funcional importante:** el formulario todavía no persiste ni envía datos.
-`handleSubmit` solo revisa nombre/correo/teléfono en el cliente, establece
-`formSubmitted` y muestra toast de éxito. No hace `fetch`, no hay endpoint de contacto.
-Existe un `conexion.php` de ejemplo (PHP + MySQL/PDO) en la raíz, pero no está conectado
-a este formulario ni a la aplicación. Antes de implementar almacenamiento, decidir
-D1/PostgreSQL/Firebase, consentimiento de tratamiento de datos, retención, anti-spam y
-canal de notificación. El formulario recopila nombre, empresa, cargo, correo, teléfono,
-servicio y mensaje; nombre, correo y teléfono son obligatorios en UI.
+El formulario hace `POST /api/contacto` y muestra éxito solo si el endpoint responde
+con estado HTTP exitoso. El servidor valida el JSON y longitudes, exige
+`consentimiento: true` y persiste el registro en Supabase, tabla
+`solicitudes_contacto`, usando `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` del entorno
+de servidor.
+
+**Seguridad del formulario implementada:** el endpoint aplica limitación de tasa por IP
+(5 envíos por ventana de 10 minutos, con `429` y `retry-after`), descarta el honeypot
+`sitio_web` y exige un token de Cloudflare Turnstile válido antes de persistir. El
+widget está en `src/components/TurnstileWidget.tsx` y se monta en el formulario; el
+token se resetea tras cada intento. La verificación usa `TURNSTILE_SECRET_KEY` en el
+servidor (y `VITE_TURNSTILE_SITE_KEY` en el cliente); si la clave secreta falta, el
+endpoint responde `503` con `contacto_unavailable` antes de llamar a `siteverify` o a
+Supabase, sin usar claves de prueba. Si falta la site key, el cliente no carga el widget y
+deshabilita el envío con un aviso. El rate limit es
+un `Map` en memoria: protege por instancia, pero no es un límite distribuido/global.
+La respuesta 500 ya no incluye `error.message` de Supabase: solo se registra el código
+interno en el servidor y el cliente recibe `insert_failed` o `internal_error`.
+Las etiquetas visibles de nombre, empresa, cargo, correo, teléfono, servicio y mensaje
+están asociadas mediante `htmlFor`/`id`; los límites HTML y los del endpoint están
+alineados para esos campos.
+
+El formulario recopila nombre, empresa, cargo, correo, teléfono, servicio, mensaje y
+consentimiento; nombre, correo y teléfono son obligatorios en cliente y servidor.
+La ruta interna `/politica-de-privacidad` describe los tratamientos conocidos en la
+aplicación. El responsable de datos debe revisar y confirmar especialmente las bases
+jurídicas, proveedores/transferencias, retención, acceso y borrado antes de tratarla como
+política legal aprobada.
 
 ### `src/components/FloatingChatbot.tsx`
 
@@ -348,8 +618,9 @@ servicio y mensaje; nombre, correo y teléfono son obligatorios en UI.
 - El input se deshabilita durante la petición o mientras se inicializa la sesión.
 - El panel se amplió verticalmente: casi toda la altura disponible en móvil y hasta
   720 px en escritorio, limitado por altura de viewport.
-- Los mensajes de error del backend se traducen a mensajes en español (mapa por código
-  de error, incluido `agent_response_unavailable`).
+- Los mensajes de error del backend se traducen al idioma seleccionado mediante el
+  catálogo de chatbot, incluido `agent_response_unavailable`. Cada mensaje del historial
+  conserva el idioma con `lang`; cambiar idioma no desmonta el chat ni borra lo escrito.
 - No exponer la URL de Make en el frontend. No pasar datos sensibles del historial
   en telemetría.
 
@@ -391,7 +662,16 @@ Los textos de los diferenciales de «¿Por qué TELCOBRAS?» no están aquí: vi
 
 ### `src/styles.css`
 
-- Importa Tailwind y define variables de color/tema mediante OKLCH.
+- Entrada única del CSS global. Usa Tailwind v4 con detección automática desactivada:
+  `@import "tailwindcss" source(none);`, `@import "tw-animate-css";` y
+  `@source "../src";`. El orden se normalizó el 22-10-2026 para que los `@import`
+  precedan a `@source` (orden recomendado por Tailwind/Lightning CSS); el build ya
+  incluía ambas dependencias antes del cambio.
+- `@source "../src"` es relativo a este archivo y equivale a escanear `src/`. No existe
+  `tailwind.config.ts`/`.js`; `src/tailwind.config.vibe.json` lo genera el
+  `componentTagger` solo en desarrollo y está ignorado por Git, así que no participa
+  del build de producción.
+- Define variables de color/tema mediante OKLCH.
 - Define tokens semánticos y fuente Nunito.
 - Contiene estilos globales y animaciones. Familias de clases propias:
   - `header-*` (`header-topbar`, `header-topbar-icon`, `header-glass`,
@@ -502,19 +782,84 @@ exitosa y repetible con el módulo Webhook response configurado correctamente.
 
 - `vite.config.ts` importa el wrapper `@leadconnector/vite-tanstack-config`; este
   wrapper ya instala plugins TanStack Start, React, Tailwind, alias, Nitro y otros.
-  No duplicar plugins manualmente.
-- El destino Nitro es Cloudflare y activa `nodeCompat`.
+  No duplicar plugins manualmente. El wrapper añade `@tailwindcss/vite` siempre; el
+  `componentTagger` solo en `serve` + `development`.
+- El destino Nitro es Cloudflare: el wrapper lo usa como target por defecto
+  (`cloudflare-module`) y `vite.config.ts:11-13` solo activa
+  `nitro.cloudflare.nodeCompat`. No existe `nitro.json`; el
+  `.output/server/wrangler.json` generado fija `compatibility_date: 2026-10-22`
+  (coincide con la fecha de ese build).
+- `npm run build` escribe el artefacto canónico en `.output/` (cliente en
+  `.output/public/`, servidor en `.output/server/`). `dist/` es un build legado del
+  7-10-2026 y no debe desplegarse.
+- `.wrangler/deploy/config.json` apunta a `.output/server/wrangler.json`. Ese archivo
+  declara `main: index.mjs`, `assets.binding: ASSETS`, `assets.directory: ../public`,
+  `compatibility_flags: ["nodejs_compat"]`, `no_bundle: true` y reglas ESModule.
+- `.output/server/index.mjs` incluye `public_assets_data_default`, el mapa de assets
+  públicos; el CSS aparece como `/assets/styles-<hash>.css` con
+  `type: "text/css; charset=utf-8"`. `.output/public/_headers` solo añade
+  `cache-control: public, max-age=31536000, immutable` para `/assets/*`; no hay
+  `_routes.json` ni `_redirects`.
 - `src/server.ts` importa dinámicamente la entrada SSR y reemplaza determinadas
-  respuestas JSON 500 genéricas de H3 por la página de error del proyecto.
+  respuestas JSON 500 genéricas de H3 por la página de error del proyecto. En rutas
+  `/api/*` devuelve `{ "error": "internal_error" }` con `cache-control: no-store` en
+  lugar de HTML, sin propagar el detalle del error.
+- `src/server.ts` aplica cabeceras de seguridad a **todas** las respuestas que pasan
+  por el Worker: `Content-Security-Policy`, `X-Content-Type-Options`,
+  `Referrer-Policy`, `Permissions-Policy`, `X-Frame-Options` y
+  `Strict-Transport-Security` (solo sobre HTTPS). La CSP está en modo **bloqueante**
+  (cabecera `Content-Security-Policy`); ya no se emite
+  `Content-Security-Policy-Report-Only`, así que cualquier origen no permitido bloquea
+  el recurso en lugar de solo reportarse. La CSP permite Turnstile, Google
+  Fonts, el iframe de Google Maps y `vibe.filesafe.space`; en desarrollo añade
+  `'unsafe-eval'`, `ws:`/`wss:` y localhost porque Vite lo requiere. `script-src`
+  conserva `'unsafe-inline'` por los scripts inline de hidratación de TanStack Start;
+  endurecerlo con nonces/hashes es el siguiente paso natural. No se usa
+  `public/_headers` para esto: el SSR es dinámico y el `_headers` que genera Nitro solo
+  cubre assets estáticos (`/assets/*` con cache immutable).
+- El JSON-LD se publica como `<script type="application/ld+json">`; los bloques de datos
+  JSON-LD no ejecutan código, por lo que no están sujetos a `script-src`. Aun así, el
+  bloque se genera con `JSON.stringify` y escapado automático del router, sin
+  concatenar HTML a mano.
 - `src/start.ts` instala middleware de captura de errores y protección CSRF para
   server functions; el filtro solo cubre handlers `serverFn`.
 - El endpoint HTTP `/api/chat` tiene su propia validación y controles; no confundir
   la protección CSRF de server functions con validación del endpoint de chat.
+- `src/start.ts` limita `createCsrfMiddleware` a handlers `serverFn`. Los handlers HTTP
+  `/api/chat` y `/api/contacto` no obtienen esa protección automáticamente; al endurecer
+  estos endpoints, decidir una política de origen/CSRF además de limitación de tasa.
+- El formulario usa Turnstile: configurar `TURNSTILE_SECRET_KEY` como secreto del
+  entorno y `VITE_TURNSTILE_SITE_KEY` como variable pública de compilación. El rate
+  limit en memoria de `api.contacto.ts` no se comparte entre instancias.
+- Escaneo de secretos con gitleaks: `.gitleaks.toml` extiende las reglas por defecto y
+  excluye artefactos generados. `npm run secrets:scan` revisa todo el historial
+  (`--log-opts=--all`) con `--redact`. `.githooks/pre-commit` bloquea commits con
+  secretos en staged; `npm install` activa el hook mediante `scripts/install-hooks.mjs`
+  (`core.hooksPath=.githooks`). CI lo repite en `.github/workflows/gitleaks.yml`
+  (v8.30.1 fijado y verificado por checksum). `.gitignore` cubre `.env`, `.env.*` y
+  `.dev.vars*`, con excepción para los archivos `*.example`.
 - `src/router.tsx` construye QueryClient y el router con restauración de scroll.
 - `tsconfig.json` está en modo estricto y define alias `@/*` → `src/*`.
 - `components.json` refleja la configuración de componentes tipo shadcn.
 - El `README.md` del repositorio cubre el arranque y el contrato/configuración de chat;
   esta guía complementa, no sustituye, la documentación de deploy vigente del proveedor.
+
+### Pipeline de CSS en el build
+
+- `src/routes/__root.tsx:14` importa `../styles.css?url`; `head.links` publica el
+  `<link rel="stylesheet">` en el `<head>` (`HeadContent`).
+- `src/styles.css` usa Tailwind v4 (`@import "tailwindcss" source(none)` +
+  `@source "../src"`), `tw-animate-css` y tokens OKLCH.
+- El build genera `.output/public/assets/styles-<hash>.css` (~162 KB), con utilidades
+  como `bg-primary`, `min-h-screen`, `rounded-2xl` y `animate-in`.
+- El hash se repite en `.output/server/_ssr/router-*.mjs` (SSR) y en
+  `.output/public/assets/index-*.js` (cliente); Nitro sirve el archivo con MIME
+  `text/css; charset=utf-8`.
+- Verificación 22-10-2026: no hay fuga de estilos ni referencias rotas. El único
+  desfase es el build antiguo de `dist/` y que `.output/` (13:09) es anterior a la
+  última edición de `src/server.ts` (13:21); reconstruir antes de desplegar.
+- La ruta del CSS es absoluta (`/assets/...`). Si algún día se despliega bajo un
+  subpath, hay que configurar `base` en Vite; hoy no está configurado y se asume raíz.
 
 ## 10. Recursos estáticos y observaciones
 
@@ -528,17 +873,15 @@ En `public/` se encontraron:
 | `video_colaboracion.mp4` | Servicio Colaboración |
 | `video_nuve.mp4` | Servicio Nube (nombre exacto del archivo, «nuve») |
 | `video_agentes.mp4` | Servicio Agentes IA |
+| `video_tel.mp4` | Fondo de «Quiénes Somos» (`AboutAndValues.tsx`) |
 | `logo_aquora.png` | Aliado Aquora |
 | `logo_xpertic.png` | Aliado Xpertic |
-| `robots.txt` | Reglas básicas para rastreo |
+| `robots.txt` | Reglas básicas para rastreo + referencia al sitemap |
+| `sitemap.xml` | Mapa del sitio con las cuatro URLs públicas (`/`, `/politica-de-privacidad`, `/terminos-de-servicio`, `/sla`) bajo `https://telcobras.com`, con `<lastmod>` |
 
-**Versionado:** ya están en Git `public/video_inicio.mp4`,
-`public/video_conectividad.mp4`, `public/video_seguridad.mp4`,
-`public/video_agentes.mp4` y `public/robots.txt`. Siguen sin versionar
-`public/video_colaboracion.mp4`, `public/video_nuve.mp4`, `public/logo_aquora.png` y
-`public/logo_xpertic.png` (también hay copias sin versionar de los logos en la raíz).
-El código ya los usa: si se suben los componentes sin ellos, la rama conectada a AI
-Studio muestra videos y logos rotos (404).
+**Versionado:** al auditar el repositorio, todos los recursos de la tabla de `public/`
+estaban versionados en Git. `video_tel.mp4`, que antes estaba solo en la raíz y daba
+404, se movió a `public/` con `git mv` el 27-10-2026.
 
 Los archivos de la carpeta `public/` se sirven desde raíz (por ejemplo,
 `public/video_inicio.mp4` se solicita como `/video_inicio.mp4`). También existen
@@ -554,6 +897,34 @@ descargarlas con autorización y migrarlas a `public/`.
 ### Implementado
 
 - Landing responsiva con secciones institucionales, servicios, proyectos, contacto y ubicación.
+- Preferencias de accesibilidad persistidas/validadas y aplicadas en SSR; catálogos
+  tipados ES/EN para el contenido principal, el formulario, el chatbot y los errores raíz.
+- Formulario conectado al endpoint `/api/contacto`, con persistencia de solicitudes en
+  Supabase mediante credenciales de servidor.
+- Protección anti-abuso del formulario: Cloudflare Turnstile, honeypot, validación de
+  longitudes y limitación de tasa por IP (5 envíos / 10 minutos).
+- Higiene de errores: respuestas públicas genéricas (`insert_failed`, `internal_error`)
+  sin exponer mensajes crudos de Supabase, tanto en `api.contacto.ts` como en la
+  normalización de errores SSR de `src/server.ts` para rutas `/api/*`.
+- Cabeceras de seguridad y CSP **activa (bloqueante)** aplicadas desde `src/server.ts`
+  a SSR, API y respuestas de error (ver sección 9). La cabecera emitida es
+  `Content-Security-Policy`; ya no se envía `Content-Security-Policy-Report-Only`.
+- Rutas legales `/terminos-de-servicio` y `/sla` con su contenido completo en ES/EN
+  mediante el componente compartido `LegalDocument`; el footer navega a ellas con
+  `<Link>`, igual que al resto de enlaces legales y al banner de cookies. Los valores
+  del SLA (`SLA_VALUES`) siguen pendientes de aprobación.
+- SEO técnico: metadatos por ruta (`title`, `description`, `canonical`), etiquetas
+  Open Graph y Twitter Card en las cuatro rutas públicas, datos estructurados JSON-LD
+  de `Organization` en la landing y `public/sitemap.xml` referenciado desde
+  `robots.txt`.
+- Optimización de imágenes para Core Web Vitals: `loading`/`decoding`/`fetchPriority`
+  explícitos y `width`/`height` declarados para evitar CLS y priorizar el LCP.
+- `preconnect` a Google Fonts y `fonts.gstatic.com` en el shell global (`head.links`).
+- Página 404 con enlaces de salida a «Ir al inicio» (`/`) y «Ver servicios» (`/#servicios`).
+- Higiene de secretos: auditoría del código, historial completo (incluidos objetos
+  huérfanos) y bundle de cliente sin hallazgos; `.gitignore` cubre `.env*`/`.dev.vars*`,
+  hook pre-commit con gitleaks y workflow de CI que escanea todo el historial con
+  `--redact`.
 - Header sticky con barra superior, efecto glass y menú móvil.
 - Fondos de video por pestaña de servicio y rotación automática cada 30 segundos;
   pestañas y cuadrícula de tarjetas seleccionan el mismo servicio.
@@ -564,75 +935,260 @@ descargarlas con autorización y migrarlas a `public/`.
 - Métricas del hero con iluminación rotativa cada 3 s.
 - «¿Por qué TELCOBRAS?» en bento con ilustración de red sincronizada con las tarjetas.
 - Sección de contacto con red decorativa animada y tarjetas con borde de marca.
-- `conexion.php`: ejemplo aislado de conexión a MySQL con PDO (no integrado).
+
+### Auditoría 26-10-2026
+
+Resultado de la revisión del 26-10-2026, por prioridad. Los detalles y el estado de cada
+punto están en la lista «Pendiente/por confirmar» (número entre paréntesis).
+
+| Prioridad | Hallazgo | Pendiente |
+|---|---|---|
+| Crítica (corregida) | XSS reflejado en TanStack Start (CVE-2026-102989): corregido con `react-start@1.168.60`; el plugin de AI Studio queda en `0.3.3-beta.0` hasta que salga la estable | 20 |
+| Alta (mitigada) | Las páginas `/terminos-de-servicio` y `/sla` ya están en el remoto con textos y valores de SLA pendientes de aprobación; ahora muestran un aviso de borrador y son `noindex` | 7, 24 |
+| Alta (corregida, `066ef0f`) | `TurnstileWidget` se destruía y se volvía a crear en cada render del formulario | 21 |
+| Alta | No hay pruebas: todos los archivos de test y configuración están vacíos | 2 |
+| Alta (corregida) | `/video_tel.mp4` daba 404: se movió a `public/` | 4 |
+| Media | Rate limit en memoria por isolate; `/api/chat` sin Turnstile | 8 |
+| Media (resuelta) | `conexion.php` de prueba con credenciales por defecto y salida de datos personales: eliminado | 22 |
+| Media | Videos pesados (`video_agentes.mp4` 49 MB) y duplicados en la raíz | 6 |
+| Media | Videos y animaciones que ignoran `prefers-reduced-motion` | 14 |
+| Media | El banner de cookies dice «al navegar aceptas» aunque ofrece rechazar | 25 |
+| Baja | CSP `connect-src` con dominios que el navegador no usa | 16 |
+| Baja | Metadatos SSR de las páginas legales siempre en español | 26 |
+| Baja | Textos fijos fuera del catálogo en el formulario, `siteverify` sin `hostname`, `sitemap.xml` desactualizado | 27, 28, 29 |
+
+Verificado y correcto en esta revisión: `npx tsc --noEmit` sin errores; `eslint` con 0
+errores (6 avisos en `components/ui`); `npm run build` correcto; las APIs limitan el tamaño
+del cuerpo, validan el content-type, no exponen errores internos y aplican Turnstile en
+modo fail-closed; los secretos están fuera de git (gitleaks en pre-commit y CI). Las
+páginas legales muestran 15 y 10 secciones, un solo `<h1>`, índice funcional, cambio
+ES/EN, SSR correcto y tablas sin desborde a 360 px.
 
 ### Pendiente/por confirmar
 
-0. **Commit pendiente:** hay cambios locales sin commitear (revisar `git status`).
-   Sin versionar: `ProjectsSection.tsx`, `WhyUsSection.tsx`, `BrandGlowBorder.tsx`,
-   `use-rotating-highlight.ts`, `conexion.php`, `documentacion/` y los recursos de
-   `public/` citados arriba. Hay modificaciones sin commitear en `ContactAndFooter`,
-   `FloatingChatbot`, `HeaderNav`, `HeroAndMetrics`, `LetyIaAndWhyUs`, `ServicesSection`,
-   `ScrollToTopButton`, `telcobras-data.ts` y `styles.css`. Revisar antes
-   `src/tailwind.config.vibe.json`, que regenera el plugin `vibe-tagger` al arrancar el
-   servidor.
-
-1. **Formulario y base de datos:** aún no hay persistencia ni endpoint. El éxito visual
-   del formulario es local; no tratarlo como recepción real. `conexion.php` es solo un
-   ejemplo de referencia (PHP/PDO) y no está enlazado al formulario ni al despliegue.
-2. **Make:** ejecutar una prueba exitosa de extremo a extremo y revisar salida del módulo
+1. **Repositorios y estado Git al 27-10-2026:**
+   - **Repositorio oficial:** `Equipo-D3sarrollo/telcobras_pagina_web` (**público**),
+     remoto `origin`. Su `main` estaba en `16e5c5a` («first commit»), que es ancestro
+     del `main` del repo personal: se pone al día mediante un PR de
+     `feature/footer-seguridad-alejandro` hacia `main`, en fast-forward y sin reescribir
+     historia. La cuenta de Git de este equipo **sí tiene permiso de push** a ese repo
+     (comprobado con `git push --dry-run` el 27-10-2026). La rama
+     `feature/footer-seguridad-alejandro` sigue a `origin`.
+   - **Repositorio de respaldo:** `guidogonzalez21/telcobras-web` (privado), remoto
+     `personal`. Ahí está la historia de los PR #1 (`b299546`), #2 (`6b92799`) y #3
+     (`757e21e`), fusionados desde la rama `feature/footer-seguridad-alejandro`. Se
+     mantiene sincronizado con `git push personal main` y
+     `git push personal feature/footer-seguridad-alejandro`.
+   - Antes del 27-10-2026 existía un remoto llamado
+     `Equipo-D3sarrollo/telcobras_pagina_web.git` que, pese al nombre, apuntaba al repo
+     personal; se eliminó para evitar confusiones.
+   - Al ser público el repo oficial, antes de subir se revisó todo el historial con
+     `git grep`: ningún `.env*` versionado ni valores reales de Supabase, Make o
+     Turnstile; solo aparecen las claves de prueba públicas de Cloudflare
+     (`1x0000…AA`). Los commits muestran nombre y correo del autor.
+   **Origen de los push (investigado el 26-10-2026):** `96e94ec`+`0cef096` y `c1cc050`
+   salieron de este equipo, no de AI Studio. El reflog de la rama remota (entonces
+   `origin`, hoy `personal`) registra «update by push» a las 13:31:24 y 14:38:42
+   (+01:00). El log de Git de VS Code
+   (`%APPDATA%/Code/logs/20261026T095944/window1/exthost/vscode.git/Git.log`) muestra a
+   esas mismas horas `git pull --tags` seguido de `git push`, que es la secuencia del
+   botón «Sincronizar cambios» de VS Code. El 26-10-2026 a las 17:45 VS Code además
+   creó y sincronizó `30f0a3b` con cambios a medio hacer (`git.enableSmartCommit:
+   true`). La configuración de usuario de VS Code tiene `git.confirmSync: false`
+   (sincroniza sin pedir confirmación) y `git.autofetch: true` (este solo hace fetch).
+   No hay hooks que hagan push: `core.hooksPath=.githooks` solo contiene `pre-commit`
+   (gitleaks) y `.git/hooks` solo tiene `*.sample`. No existe `.vscode/settings.json`
+   ni `git.postCommitCommand`. Para retener commits en local, no pulsar «Sincronizar
+   cambios» o poner `git.confirmSync: true`. Ahora «Sincronizar cambios» publica en el
+   repo oficial y público (`origin`).
+2. **Pruebas y validaciones:** `npm exec eslint -- .` pasa con 0 errores y 6
+   advertencias de `react-refresh/only-export-components` en componentes UI
+   compartidos; `npx tsc --noEmit` pasa; `npm run build` pasa (26-10-2026, con el
+   código de `0cef096`). Siguen vacíos (0 bytes) `vitest.config.ts`,
+   `playwright.config.ts`, `src/components/AccessibilityMenu.test.tsx`,
+   `src/components/ServicesSection.test.tsx`, `src/lib/accessibility-preferences.test.ts`,
+   `src/lib/error-page.test.ts`, `src/hooks/use-reduced-motion.test.tsx`,
+   `e2e/accessibility.spec.ts` y también el hook `src/hooks/use-reduced-motion.ts`.
+   `npx vitest run` falla con «config must export or return an object» y no hay script
+   `test`. Reconstruir la suite o retirar los archivos vacíos para no aparentar
+   cobertura. `gitleaks` no está instalado localmente: el pre-commit lo omite y solo
+   escanea CI.
+3. **Make:** ejecutar una prueba exitosa de extremo a extremo y revisar salida del módulo
    Webhook response; hay históricos de respuestas upstream inválidas.
-3. **Video de Quiénes Somos:** `AboutAndValues.tsx` pide `/video_tel.mp4`, pero el listado
-   de `public/` no lo incluye. Verificar la disponibilidad en navegador y colocar el
-   archivo en `public/` si corresponde.
-4. **Rotación automática de Servicios:** rota incluso sin interacción y cambia también
+4. **Video de Quiénes Somos — corregido (27-10-2026):** `AboutAndValues.tsx` pide
+   `/video_tel.mp4`, que estaba solo en la raíz y daba 404. Se movió con `git mv` a
+   `public/video_tel.mp4` (sin copia) y se comprobó en el navegador que carga.
+5. **Rotación automática de Servicios:** rota incluso sin interacción y cambia también
    si el visitante seleccionó manualmente una pestaña. Si UX requiere pausar/reiniciar
    el reloj tras interacción o al salir de viewport, implementar explícitamente.
-5. **Peso de videos:** revisar compresión, dimensiones, poster, carga diferida y política
+6. **Peso de videos:** revisar compresión, dimensiones, poster, carga diferida y política
    de reproducción móvil, especialmente para `video_agentes.mp4`.
-6. **Privacidad:** antes de persistir leads, definir consentimiento informado, política
-   de tratamiento, retención, acceso y borrado con el responsable de datos.
-7. **Formulario:** los enlaces «Términos de Servicio» y «Política de Tratamiento de
-   Datos» actualmente conducen a `#contacto`, no a documentos legales independientes.
-8. **Integración real de proyectos/fotos/redes:** comprobar enlaces sociales e imágenes
-   externas antes de publicar en producción.
-9. **Tarjetas invisibles antes de hidratar:** las tarjetas de `#por-que` se renderizan
-   con `opacity-0` (y las de `#proyectos` con `motion-safe:opacity-0`, es decir, solo
-   sin movimiento reducido) y aparecen cuando el JavaScript hidrata y el observer las
-   revela. En modo dev eso tarda unos 10 s; con conexión lenta se vería un
-   hueco. Propuesta: renderizarlas visibles y aplicar la animación solo tras el montaje.
-10. **Accesibilidad del chatbot:** el robot flotante usa `animate-bounce` sin
-    `motion-safe:` y las animaciones `chatbot-robot-vibrate` y `ally-logo-rotation` no
-    tienen regla de movimiento reducido.
-11. **Por confirmar con el cliente:** textos nuevos de los diferenciales, colores por
+7. **Privacidad y textos legales:** `/politica-de-privacidad` está implementada y el
+   formulario exige consentimiento. `/terminos-de-servicio` y `/sla` ya muestran sus
+   textos completos, pero están pendientes de aprobación de gerencia y revisión
+   jurídica, incluidos los valores de `SLA_VALUES` en `src/lib/sla-content.ts`. Revisar también bases
+   jurídicas, proveedores/transferencias, retención, acceso y borrado de la política.
+8. **Protección de endpoints HTTP:** `/api/contacto` tiene Turnstile y rate limit por IP
+   (5 envíos cada 10 min) y `/api/chat` tiene rate limit (20 mensajes cada 5 min), ambos
+   con el limitador compartido `src/lib/rate-limit.ts` basado en `cf-connecting-ip`. El
+   límite vive en memoria de cada isolate del Worker: no es global, así que el límite
+   efectivo se multiplica entre isolates y centros de datos. `/api/chat` no tiene
+   Turnstile y cada mensaje consume operaciones de Make. Considerar el binding de
+   Rate Limiting de Cloudflare, una regla WAF o un Durable Object, y valorar Turnstile en
+   el chat. Sin la cabecera `cf-connecting-ip` (dev o preview fuera de Cloudflare) todos
+   los clientes comparten el contador `no-client-ip`. Mantener los mensajes de error
+   genéricos sin detalles internos.
+9. **Codificación de README:** `README.md` decodifica como UTF-8, pero contiene 24 bytes
+    NUL. Revisar y guardar el documento como UTF-8 limpio; no copiar/re-guardar con una
+    codificación ambigua.
+10. **Lockfiles:** están versionados `package-lock.json` y `bun.lock`, mientras que los
+    comandos documentados usan npm. Elegir cuál es la fuente canónica y mantener o retirar
+    el otro mediante una decisión coordinada para evitar instalaciones divergentes.
+11. **Formulario:** los enlaces «Términos de Servicio» y «SLA y garantías» del footer ya
+    apuntan con `<Link>` a `/terminos-de-servicio` y `/sla`, que ya muestran el
+    contenido completo (pendiente de aprobación, ver pendiente 7).
+12. **Integración real de proyectos/fotos/redes:** comprobar enlaces sociales e imágenes
+    externas antes de publicar en producción.
+13. **Tarjetas invisibles antes de hidratar:** las tarjetas de `#por-que` se renderizan
+    con `opacity-0` (y las de `#proyectos` con `motion-safe:opacity-0`, es decir, solo
+    sin movimiento reducido) y aparecen cuando el JavaScript hidrata y el observer las
+    revela. En modo dev eso tarda unos 10 s; con conexión lenta se vería un
+    hueco. Propuesta: renderizarlas visibles y aplicar la animación solo tras el montaje.
+14. **Accesibilidad del movimiento:** el robot y los puntos de carga del chatbot usan
+    `animate-bounce` sin `motion-safe:`. `chatbot-robot-vibrate` y `ally-logo-rotation`
+    tampoco tienen regla de movimiento reducido; la invitación del chatbot sí tiene un
+    tratamiento específico en `styles.css`.
+15. **Por confirmar con el cliente:** textos nuevos de los diferenciales, colores por
     tarjeta, si con movimiento reducido la tarjeta activa debe seguir creciendo, y
     categorías/subtítulo de Proyectos.
+16. **CSP en modo bloqueante:** la cabecera `Content-Security-Policy` ya se aplica de
+    forma permanente desde `src/server.ts`. Vigilar en el primer despliegue en producción
+    que no haya violaciones por recursos de terceros no contemplados (por ejemplo, si
+    Google Maps incrusta algo adicional o si Turnstile cambia sus dominios) y resolver
+    cualquier bloqueo antes de propagarlo al equipo. Siguiente paso de endurecimiento:
+    sustituir `'unsafe-inline'` por nonces/hashes en `script-src` y añadir `report-to`
+    con un endpoint de recogida de Reports CSP. `connect-src` incluye `*.supabase.co`,
+    `*.make.com` e `*.integromat.com`, pero el navegador nunca llama a esos dominios
+    (todo pasa por `/api/*`): se pueden quitar. `.output/` se reconstruyó el 26-10-2026
+    con la CSP bloqueante.
+17. **Empaquetado y despliegue (CSS):** el pipeline está correcto — `src/routes/__root.tsx:14`
+    importa `styles.css?url`, `head.links` lo enlaza, Tailwind v4 lo genera en
+    `.output/public/assets/styles-<hash>.css` (~162 KB) y el mismo hash está en SSR y
+    cliente. El riesgo es desplegar `dist/` (build del 7-10-2026 con
+    `styles-CwhTlhtd.css`) o un `.output/` anterior al último cambio: desplegar solo
+    `.output/` recién construido y purgar caché si el HTML quedó cacheado. La URL
+    pública real de la app no está confirmada: `telcobras.com` responde con un sitio
+    Joomla, no con esta app.
+18. **Ruta base del CSS:** los assets se referencian como `/assets/...`. Si el deploy
+    final vive bajo un subpath (por ejemplo `https://dominio/app/`), configurar `base`
+    en Vite o servir la app en la raíz; hoy no hay `base` configurado.
+19. **`.env.example`:** `.gitignore` ya permite versionar `*.example`, pero no existe un
+    `.env.example` en el repo. Crear uno con nombres de variables (sin valores) para
+    onboarding: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `MAKE_CHAT_WEBHOOK_URL`,
+    `TURNSTILE_SECRET_KEY`, `VITE_TURNSTILE_SITE_KEY`.
+20. **Dependencias y CVE-2026-102989 (corregido el 26-10-2026):** el XSS reflejado en
+    respuestas de server functions de TanStack Start (GHSA-qx66-fv34-fjm8; afecta a
+    `@tanstack/react-start` <1.168.60 y `@tanstack/start-server-core` <1.169.39) está
+    corregido con versiones exactas: `@tanstack/react-start@1.168.60`,
+    `@tanstack/react-router@1.170.41`, `@tanstack/router-plugin@1.168.42` y
+    `@tanstack/start-server-core@1.169.39` (transitiva). `package-lock.json` y
+    `bun.lock` coinciden.
+    **Plugin de AI Studio en beta:** `@leadconnector/vite-tanstack-config` está fijado en
+    **`0.3.3-beta.0`**. La versión estable `0.3.2` modifica en desarrollo
+    `start-server-core/dist/esm/server-functions-handler.js` buscando la línea
+    `const unwrapped = res.result || res.error`, que ya no existe en las versiones con
+    parche, y hace que `npm run dev` devuelva 500 en todas las páginas. La beta reconoce
+    la línea de 1.169.39 (`res.error !== void 0 ? res.error : res.result`). **Pendiente:**
+    pasar el plugin a la versión estable en cuanto salga (0.3.3 o superior) y comprobar
+    `npm run dev`. No subir `@tanstack/react-start` por encima de 1.168.60 sin
+    comprobar antes el plugin: con `react-start@1.169.4` (`start-server-core@1.169.45`,
+    línea `failed ? res.error : res.result`) también falla la beta. El commit
+    `30f0a3b`, hecho y sincronizado desde VS Code, dejó temporalmente esa combinación
+    rota en el remoto.
+    Siguen abiertos: `vite@8.1.5` (alto; afecta solo al servidor de desarrollo;
+    corregido en 8.3.5), `zod@3.25.76` (alto; las APIs no usan zod; solo se corrige en
+    zod 4, que es un cambio mayor), `launch-editor` y `postcss-selector-parser`
+    (desarrollo; se corrigen con `npm audit fix`).
+21. **Turnstile se recreaba en cada render — corregido en `066ef0f` (27-10-2026):**
+    `ContactAndFooter.tsx` pasa `onSuccess`, `onError` y `onExpire` como funciones
+    inline y el `useEffect` de `TurnstileWidget.tsx` dependía de ellos, así que cada
+    tecla ejecutaba `turnstile.remove()` y un nuevo `render()`. Ahora el widget lee los
+    callbacks desde refs y el efecto solo depende de `activeSiteKey` y `theme`.
+    Verificado en navegador: 84 teclas, selección de servicio y consentimiento → un solo
+    montaje; un envío fallido llama a `reset()` y uno correcto envía el token. En
+    desarrollo, al montar, el widget se monta dos veces por el `<StrictMode>` del
+    cliente por defecto de TanStack Start; es esperado y no ocurre en producción.
+22. **`conexion.php` — resuelto (27-10-2026):** era un script PHP de prueba ajeno al
+    stack que usaba por defecto `root` sin contraseña y, ejecutado directamente,
+    devolvía una fila de `solicitudes` (nombre y correo) y el mensaje de la excepción.
+    Se eliminó con `git rm` tras comprobar que nada en el código, la configuración ni el
+    build lo referenciaba. Sigue en el historial de Git; no contenía secretos (las
+    credenciales venían de variables de entorno).
+23. **Peso del repositorio:** unos 70 MB de videos versionados; `video_agentes.mp4`,
+    `video_conectividad.mp4`, `video_inicio.mp4` y `video_seguridad.mp4` están también
+    en la raíz, donde no se sirven (`video_tel.mp4` ya se movió a `public/`). Recomprimir, quitar
+    duplicados y valorar Git LFS o un CDN (ver pendientes 4 y 6).
+24. **Páginas legales publicadas sin aprobar:** `0cef096` ya está en el `main` del
+    repo personal (PR #2) y en la rama que se sube al repo oficial. Si se despliega, `/terminos-de-servicio` y `/sla` quedarán públicas con compromisos
+    (disponibilidad, tiempos y créditos de `SLA_VALUES`) que gerencia y jurídica aún no
+    aprobaron. **Mitigado:** mientras `LEGAL_DOCUMENTS_ARE_DRAFT` sea `true`
+    (`src/lib/legal-status.ts`), ambas páginas muestran un aviso ES/EN «Borrador
+    pendiente de aprobación» no vinculante y se sirven con
+    `<meta name="robots" content="noindex, nofollow">`. Cuando gerencia y jurídica
+    aprueben, poner la constante a `false` y actualizar `sitemap.xml` (pendiente 29). El
+    portafolio cita 99,6 % y +99,7 %: confirmar cuál se compromete.
+25. **Texto del banner de cookies:** dice «Al navegar por este sitio web, aceptas el
+    uso de cookies» («By browsing this website, you accept…»), lo que contradice los
+    botones de rechazar y configurar. El consentimiento implícito no es válido para
+    cookies no esenciales; ajustar el texto en `translations.ts` y revisarlo con jurídica.
+26. **Metadatos de las páginas legales:** `head()` en `sla.tsx` y
+    `terminos-de-servicio.tsx` usa siempre la versión en español. `LegalDocument`
+    actualiza `title` y `description` en el cliente, pero el HTML SSR y las etiquetas
+    Open Graph y Twitter siguen en español para quien tenga el idioma en inglés.
+27. **Textos fuera del catálogo:** `ContactAndFooter.tsx` (envío del formulario) tiene
+    mensajes de Turnstile y de rate limit escritos con `language === "en" ? … : …` en
+    lugar de usar `translations.ts`.
+28. **Validación de Turnstile:** `api.contacto.ts` acepta la respuesta de `siteverify`
+    sin comprobar `hostname` (ni `action`). Comprobar que el hostname corresponde al
+    dominio de producción.
+29. **`sitemap.xml`:** `<lastmod>` de `/terminos-de-servicio` y `/sla` sigue en
+    2026-10-22; actualizarlo cuando se publiquen los textos aprobados.
 
-## 12. Recomendación para implementar persistencia del formulario
+## 12. Operación y privacidad del formulario
 
-El frontend actual está listo como formulario visual, no como captura de leads.
-Si el proyecto permanece en Cloudflare, evaluar Cloudflare D1 como opción SQL con
-integración directa con Workers. Firebase/Firestore es viable si TELCOBRAS ya usa el
-ecosistema Firebase, pero mantener las escrituras detrás de un endpoint servidor;
-no dar acceso de escritura indiscriminado al navegador.
+La captura de leads está implementada en `src/routes/api.contacto.ts` y usa Supabase
+desde el servidor; no cambiar el camino de persistencia sin una decisión explícita. Mantener
+la URL y la service-role key exclusivamente en variables de entorno de servidor. La
+clave service-role tiene privilegios elevados y no debe aparecer en código cliente,
+logs, documentación ni variables `VITE_*`.
 
-En la raíz existe `conexion.php`, un ejemplo de conexión a MySQL con PDO (DSN `mysql:`,
-credenciales por variables de entorno `DB_HOST`/`DB_PORT`/`DB_NAME`/`DB_USER`/`DB_PASS`/
-`DB_CHARSET`, `ERRMODE_EXCEPTION`, `EMULATE_PREPARES=false`). Es solo material de
-referencia: Cloudflare Workers no ejecuta PHP, así que no reemplaza a D1 ni a un backend
-Node del stack actual y no debe usarse como el camino de persistencia del formulario.
+Pendiente: verificar esquema/RLS/políticas de acceso de la tabla
+`solicitudes_contacto`, validar con el responsable de datos el contenido de la política,
+definir retención/borrado y probar la inserción en staging de extremo a extremo. El
+anti-spam (Turnstile + honeypot) y la higiene de errores ya están implementados; el rate
+limit por IP es en memoria y conviene complementarlo con un mecanismo distribuido.
 
-Secuencia recomendada:
+### Variables de entorno
 
-1. Confirmar proveedor/entorno objetivo (Cloudflare D1, Firebase/Firestore u otro).
-2. Acordar campos, estado de seguimiento, retención y acceso.
-3. Crear migración/esquema y binding/credenciales solo en servidor.
-4. Crear un `POST /api/contacto` con validación de tipos, longitudes y valores permitidos.
-5. Insertar con consultas parametrizadas o SDK servidor y devolver éxito solo tras persistir.
-6. Conectar `ContactAndFooter.tsx` con loading/error/success y prevenir doble envío.
-7. Añadir consentimiento y protección anti-spam/limitación de tasa.
-8. Añadir notificación a ventas/CRM/Make solo después de guardar, con gestión de fallos.
-9. Probar en entorno staging y verificar que el registro existe realmente.
+Solo en servidor (nunca con prefijo `VITE_` ni en el cliente):
+
+- `SUPABASE_URL`: URL del proyecto Supabase usada por `api.contacto.ts`.
+- `SUPABASE_SERVICE_ROLE_KEY`: clave service-role de Supabase; privilegios elevados.
+  Solo se usa en el servidor para insertar en `solicitudes_contacto`.
+- `MAKE_CHAT_WEBHOOK_URL`: webhook HTTPS de Make para `/api/chat` (ver sección 8).
+- `TURNSTILE_SECRET_KEY`: clave secreta de Cloudflare Turnstile. Si falta,
+  `api.contacto.ts` responde `503` con `contacto_unavailable` antes de `siteverify` y
+  Supabase, sin usar claves de prueba; debe configurarse antes de desplegar.
+
+Pública de compilación:
+
+- `VITE_TURNSTILE_SITE_KEY`: site key pública del widget (`TurnstileWidget.tsx`). Es
+  pública por diseño; si falta, el widget no se carga y el formulario queda deshabilitado
+  con un aviso. No se usa ninguna site key de prueba. No confundirla con la secreta.
+
+Local: definir estas variables en `.env.local` (ignorado por Git). En Cloudflare,
+guardar las secretas con `wrangler secret put <NOMBRE>`. No hay `.env.example`
+versionado todavía (ver pendiente 19).
 
 No crear un endpoint público para listar todas las solicitudes sin autenticación y
 autorización. Evitar registrar datos personales completos en logs.
@@ -641,18 +1197,26 @@ autorización. Evitar registrar datos personales completos en logs.
 
 | Si la tarea trata de... | Empezar por... |
 |---|---|
-| Metadatos, orden o composición de página | `src/routes/index.tsx` |
+| Metadatos, JSON-LD, orden o composición de página | `src/routes/index.tsx` |
 | Navegación global, WhatsApp, shell o errores raíz | `src/routes/__root.tsx` |
+| Sitemap, robots y recursos estáticos públicos | `public/sitemap.xml`, `public/robots.txt` |
+| Cabeceras de seguridad y CSP activa | `src/server.ts` |
+| Escaneo de secretos, hooks y CI | `.gitleaks.toml`, `.githooks/pre-commit`, `.github/workflows/gitleaks.yml` |
 | Servicios, pestañas, videos o rotación | `src/components/ServicesSection.tsx` |
 | Chat visual, sesión, foco o errores en UI | `src/components/FloatingChatbot.tsx` |
 | Contrato y proxy de Make | `src/routes/api.chat.ts` y `README.md` |
 | Formulario, mapa, datos de contacto y footer | `src/components/ContactAndFooter.tsx` |
+| Widget y validación de Turnstile | `src/components/TurnstileWidget.tsx`, `src/routes/api.contacto.ts` |
+| Páginas legales y enlaces del footer | `src/routes/politica-de-privacidad.tsx`, `src/routes/terminos-de-servicio.tsx`, `src/routes/sla.tsx`, `src/components/LegalDocument.tsx` |
+| Textos de Términos y SLA (valores del SLA en `SLA_VALUES`) | `src/lib/terms-content.ts`, `src/lib/sla-content.ts` |
 | Datos de marca, catálogo de servicios/proyectos | `src/lib/telcobras-data.ts` |
 | Proyectos: bento, modal, orden de tarjetas | `src/components/ProjectsSection.tsx` |
 | Métricas del hero e iluminación rotativa | `src/components/HeroAndMetrics.tsx` |
 | Diferenciales, red sincronizada, video girado | `src/components/WhyUsSection.tsx` |
 | Borde iluminado o rotación compartidos | `src/components/BrandGlowBorder.tsx`, `src/hooks/use-rotating-highlight.ts` |
-| Ejemplo de conexión a MySQL (PHP/PDO) | `conexion.php` |
-| Estilos globales, tokens y animaciones | `src/styles.css` |
+| Estilos globales, Tailwind v4, tokens y animaciones | `src/styles.css` y `src/routes/__root.tsx` |
+| CSS: import, `<link>` y hash del build | `src/routes/__root.tsx:14` y `.output/public/assets/styles-*.css` |
+| Despliegue: artefacto, assets y wrangler | `.output/` y `.wrangler/deploy/config.json` |
+| Pruebas (aún vacías) | `vitest.config.ts`, `playwright.config.ts`, `e2e/`, `*.test.ts(x)` |
 | Destino Cloudflare, plugins y entrada SSR | `vite.config.ts` y `src/server.ts` |
 | Configuración de rutas | `src/router.tsx`, `src/routes/README.md` |

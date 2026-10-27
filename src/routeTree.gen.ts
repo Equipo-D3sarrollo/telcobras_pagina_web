@@ -10,12 +10,30 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PoliticaDePrivacidadRouteImport } from './routes/politica-de-privacidad'
+import { Route as SlaRouteImport } from './routes/sla'
+import { Route as TerminosDeServicioRouteImport } from './routes/terminos-de-servicio'
 import { Route as ApiChatRouteImport } from './routes/api.chat'
 import { Route as ApiContactoRouteImport } from './routes/api.contacto'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PoliticaDePrivacidadRoute = PoliticaDePrivacidadRouteImport.update({
+  id: '/politica-de-privacidad',
+  path: '/politica-de-privacidad',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SlaRoute = SlaRouteImport.update({
+  id: '/sla',
+  path: '/sla',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TerminosDeServicioRoute = TerminosDeServicioRouteImport.update({
+  id: '/terminos-de-servicio',
+  path: '/terminos-de-servicio',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiChatRoute = ApiChatRouteImport.update({
@@ -31,30 +49,61 @@ const ApiContactoRoute = ApiContactoRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/politica-de-privacidad': typeof PoliticaDePrivacidadRoute
+  '/sla': typeof SlaRoute
+  '/terminos-de-servicio': typeof TerminosDeServicioRoute
   '/api/chat': typeof ApiChatRoute
   '/api/contacto': typeof ApiContactoRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/politica-de-privacidad': typeof PoliticaDePrivacidadRoute
+  '/sla': typeof SlaRoute
+  '/terminos-de-servicio': typeof TerminosDeServicioRoute
   '/api/chat': typeof ApiChatRoute
   '/api/contacto': typeof ApiContactoRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/politica-de-privacidad': typeof PoliticaDePrivacidadRoute
+  '/sla': typeof SlaRoute
+  '/terminos-de-servicio': typeof TerminosDeServicioRoute
   '/api/chat': typeof ApiChatRoute
   '/api/contacto': typeof ApiContactoRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/chat' | '/api/contacto'
+  fullPaths:
+    | '/'
+    | '/politica-de-privacidad'
+    | '/sla'
+    | '/terminos-de-servicio'
+    | '/api/chat'
+    | '/api/contacto'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/chat' | '/api/contacto'
-  id: '__root__' | '/' | '/api/chat' | '/api/contacto'
+  to:
+    | '/'
+    | '/politica-de-privacidad'
+    | '/sla'
+    | '/terminos-de-servicio'
+    | '/api/chat'
+    | '/api/contacto'
+  id:
+    | '__root__'
+    | '/'
+    | '/politica-de-privacidad'
+    | '/sla'
+    | '/terminos-de-servicio'
+    | '/api/chat'
+    | '/api/contacto'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  PoliticaDePrivacidadRoute: typeof PoliticaDePrivacidadRoute
+  SlaRoute: typeof SlaRoute
+  TerminosDeServicioRoute: typeof TerminosDeServicioRoute
   ApiChatRoute: typeof ApiChatRoute
   ApiContactoRoute: typeof ApiContactoRoute
 }
@@ -66,6 +115,27 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/politica-de-privacidad': {
+      id: '/politica-de-privacidad'
+      path: '/politica-de-privacidad'
+      fullPath: '/politica-de-privacidad'
+      preLoaderRoute: typeof PoliticaDePrivacidadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sla': {
+      id: '/sla'
+      path: '/sla'
+      fullPath: '/sla'
+      preLoaderRoute: typeof SlaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terminos-de-servicio': {
+      id: '/terminos-de-servicio'
+      path: '/terminos-de-servicio'
+      fullPath: '/terminos-de-servicio'
+      preLoaderRoute: typeof TerminosDeServicioRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/chat': {
@@ -87,6 +157,9 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  PoliticaDePrivacidadRoute: PoliticaDePrivacidadRoute,
+  SlaRoute: SlaRoute,
+  TerminosDeServicioRoute: TerminosDeServicioRoute,
   ApiChatRoute: ApiChatRoute,
   ApiContactoRoute: ApiContactoRoute,
 }

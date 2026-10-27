@@ -1,5 +1,7 @@
 import { createStart, createCsrfMiddleware, createMiddleware } from "@tanstack/react-start";
+import { getRequestHeader } from "@tanstack/react-start/server";
 
+import { readAccessibilityPreferencesCookie } from "./lib/accessibility-preferences";
 import { renderErrorPage } from "./lib/error-page";
 
 const errorMiddleware = createMiddleware().server(async ({ next }) => {
@@ -10,7 +12,8 @@ const errorMiddleware = createMiddleware().server(async ({ next }) => {
       throw error;
     }
     console.error(error);
-    return new Response(renderErrorPage(), {
+    const language = readAccessibilityPreferencesCookie(getRequestHeader("cookie")).language;
+    return new Response(renderErrorPage(language), {
       status: 500,
       headers: { "content-type": "text/html; charset=utf-8" },
     });

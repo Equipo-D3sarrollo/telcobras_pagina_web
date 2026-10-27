@@ -11,16 +11,18 @@ import {
   BookOpenCheck,
   Heart,
 } from "lucide-react";
+import { useTranslations } from "@/lib/accessibility-preferences-context";
 
 export function AboutAndValues() {
-  const valores = [
-    { label: "Compromiso", icon: Handshake, color: "#2491CC" },
-    { label: "Integridad", icon: ShieldCheck, color: "#88BD4C" },
-    { label: "Innovación", icon: Lightbulb, color: "#F3CB35" },
-    { label: "Colaboración", icon: UsersRound, color: "#2491CC" },
-    { label: "Responsabilidad Social", icon: HeartHandshake, color: "#88BD4C" },
-    { label: "Aprendizaje Continuo", icon: BookOpenCheck, color: "#F3CB35" },
-    { label: "Empatía", icon: Heart, color: "#2491CC" },
+  const t = useTranslations().about;
+  const valores: { key: keyof typeof t.values; icon: typeof Handshake; color: string }[] = [
+    { key: "compromiso", icon: Handshake, color: "#2491CC" },
+    { key: "integridad", icon: ShieldCheck, color: "#88BD4C" },
+    { key: "innovacion", icon: Lightbulb, color: "#F3CB35" },
+    { key: "colaboracion", icon: UsersRound, color: "#2491CC" },
+    { key: "responsabilidadSocial", icon: HeartHandshake, color: "#88BD4C" },
+    { key: "aprendizajeContinuo", icon: BookOpenCheck, color: "#F3CB35" },
+    { key: "empatia", icon: Heart, color: "#2491CC" },
   ];
 
   return (
@@ -46,27 +48,20 @@ export function AboutAndValues() {
         <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-2 lg:gap-12">
           <div className="space-y-6">
             <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-[#0087C3]">
-              Conectividad · Innovación · Confianza
+              {t.eyebrow}
             </p>
 
-            <h2 className="bg-gradient-to-r from-[#0087C3] via-[#88BD4C] to-[#F3CB35] bg-clip-text text-4xl font-black tracking-tight leading-[1.05] text-transparent sm:text-5xl lg:text-6xl">
-              Quiénes Somos
+            <h2 className="bg-gradient-to-r from-[var(--brand-gradient-blue)] via-[var(--brand-gradient-green)] to-[var(--brand-gradient-yellow)] bg-clip-text text-4xl font-black tracking-tight leading-[1.05] text-transparent sm:text-5xl lg:text-6xl">
+              {t.title}
             </h2>
 
             <div className="h-1.5 w-20 rounded-full bg-gradient-to-r from-[#0087C3] via-[#88BD4C] to-[#F3CB35]" />
 
             <h3 className="text-2xl font-extrabold leading-tight tracking-tight text-slate-900 sm:text-3xl">
-              El aliado tecnológico de confianza para las empresas que buscan crecer, transformarse
-              y mantenerse vigentes
+              {t.heading}
             </h3>
 
-            <p className="text-slate-600 leading-relaxed font-normal">
-              Somos una compañía colombiana con sede principal en Cali y más de 20 años de
-              experiencia comprobada. Desarrollamos soluciones integrales de tecnología y
-              telecomunicaciones con infraestructura propia de fibra óptica y radioenlace de
-              microondas, además de integrar Inteligencia Artificial en procesos clave. Atendemos a
-              empresas medianas y grandes que exigen continuidad, seguridad y desempeño superior.
-            </p>
+            <p className="text-slate-600 leading-relaxed font-normal">{t.description}</p>
 
             <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-xs space-y-3">
               <div className="flex items-start gap-3">
@@ -74,14 +69,8 @@ export function AboutAndValues() {
                   <Check className="w-5 h-5 stroke-[3]" />
                 </div>
                 <div>
-                  <h4 className="font-extrabold text-slate-900 text-base">
-                    Nuestro Valor Central: LA CONFIANZA
-                  </h4>
-                  <p className="text-xs text-slate-600 mt-0.5">
-                    Cada enlace, cada servicio en la nube y cada despliegue de seguridad lo
-                    respaldamos con cercanía, honestidad técnica y cumplimiento estricto de los
-                    acuerdos de servicio.
-                  </p>
+                  <h4 className="font-extrabold text-slate-900 text-base">{t.coreValue}</h4>
+                  <p className="text-xs text-slate-600 mt-0.5">{t.coreDescription}</p>
                 </div>
               </div>
             </div>
@@ -95,12 +84,10 @@ export function AboutAndValues() {
               />
               <div className="relative h-full rounded-[22px] bg-white/95 p-6 md:p-8">
                 <h3 className="mb-3 flex items-center gap-2 text-base font-black uppercase tracking-wider text-[#0087C3] md:text-lg">
-                  <Building2 className="h-5 w-5" /> Misión
+                  <Building2 className="h-5 w-5" /> {t.mission}
                 </h3>
                 <p className="text-sm leading-relaxed text-slate-700 md:text-base">
-                  Colaborar con las organizaciones como aliados estratégicos en la implementación de
-                  soluciones tecnológicas que impulsen sus objetivos y generen un impacto positivo
-                  mediante la adopción efectiva de las TIC.
+                  {t.missionDescription}
                 </p>
               </div>
             </div>
@@ -111,13 +98,11 @@ export function AboutAndValues() {
                 className="absolute inset-0 motion-safe:animate-[spin_6s_linear_infinite] bg-[conic-gradient(from_0deg,transparent_0deg,transparent_290deg,#88BD4C_340deg,#ffffff_360deg)]"
               />
               <div className="relative h-full rounded-[22px] bg-white/95 p-6 md:p-8">
-                <h3 className="mb-3 flex items-center gap-2 text-base font-black uppercase tracking-wider text-[#88BD4C] md:text-lg">
-                  <TrendingUp className="h-5 w-5" /> Visión
+                <h3 className="mb-3 flex items-center gap-2 text-base font-black uppercase tracking-wider text-[var(--brand-action)] md:text-lg">
+                  <TrendingUp className="h-5 w-5" /> {t.vision}
                 </h3>
                 <p className="text-sm leading-relaxed text-slate-700 md:text-base">
-                  Ser líderes en tecnologías de la información y comunicación en Latinoamérica,
-                  destacándonos por la apropiación tecnológica y el desarrollo sostenible de
-                  nuestros aliados.
+                  {t.visionDescription}
                 </p>
               </div>
             </div>
@@ -132,21 +117,21 @@ export function AboutAndValues() {
               <div>
                 <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-[#F3CB35]/15 px-3 py-1.5 text-xs font-extrabold uppercase tracking-[0.14em] text-slate-800">
                   <Sparkles className="h-4 w-4 text-[#C99E00]" />
-                  Nuestra esencia
+                  {t.essence}
                 </div>
                 <h3 className="text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">
-                  Valores que nos mueven
+                  {t.valuesTitle}
                 </h3>
               </div>
               <p className="max-w-md text-sm leading-relaxed text-slate-600 sm:text-right">
-                Principios que guían cada relación, cada decisión y cada solución que construimos.
+                {t.valuesDescription}
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 xl:grid-cols-4">
-              {valores.map(({ label, icon: Icon, color }) => (
+            <div className="about-values-grid grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 xl:grid-cols-4">
+              {valores.map(({ key, icon: Icon, color }) => (
                 <div
-                  key={label}
+                  key={key}
                   className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-lg hover:shadow-slate-900/10 sm:p-5"
                 >
                   <div
@@ -161,7 +146,7 @@ export function AboutAndValues() {
                     <Icon aria-hidden="true" className="h-5 w-5" strokeWidth={2.2} />
                   </span>
                   <p className="text-sm font-extrabold leading-snug text-slate-800 sm:text-base">
-                    {label}
+                    {t.values[key]}
                   </p>
                 </div>
               ))}
