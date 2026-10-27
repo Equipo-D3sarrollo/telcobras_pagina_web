@@ -19,9 +19,6 @@ conocidos. Debe actualizarse cuando cambien la arquitectura o las capacidades de
 - Revisar `git status` antes de editar. Puede haber cambios locales no relacionados;
   no descartarlos ni incluirlos accidentalmente.
 - `src/routeTree.gen.ts` es generado por TanStack Router. No modificarlo manualmente.
-- `conexion.php` (raíz) es un ejemplo aislado de conexión a MySQL con PDO. No forma
-  parte de la aplicación TanStack/Nitro y el despliegue en Cloudflare no lo ejecuta.
-  Mantener sus credenciales solo en variables de entorno del servidor.
 - Mantener la URL y cualquier credencial de Make exclusivamente en configuración de
   servidor. Nunca leerlas a la consola, pegarlas en documentación ni incluirlas en
   variables `VITE_*`, código cliente o capturas.
@@ -152,9 +149,6 @@ se montan globalmente; el botón para volver al inicio se monta en la página pr
 - `vitest`, `jsdom`, Testing Library, `axe-core` y Playwright están instalados, pero
   sus archivos de configuración y pruebas siguen vacíos (0 bytes); no hay suite
   ejecutable ni script `test`.
-- `conexion.php` es un ejemplo independiente en PHP (MySQL con PDO, `mysql:`), ajeno
-  al stack React/TanStack. No hay relación con `src/routes/api.chat.ts` ni con el
-  formulario de contacto.
 
 ### Comandos del proyecto
 
@@ -209,7 +203,6 @@ agreguen pruebas.
 │   ├── server.ts                   # Adaptador SSR, CSP y normalización de errores
 │   ├── start.ts                    # Middleware de servidor y CSRF para server functions
 │   └── styles.css                  # Tema, tokens y estilos globales/animaciones
-├── conexion.php                    # Ejemplo aislado de conexión a MySQL con PDO (PHP)
 ├── vite.config.ts                  # Configuración del wrapper de Vite/Nitro/Cloudflare
 ├── package.json                    # Dependencias y scripts
 ├── tsconfig.json                   # TypeScript estricto y alias @/*
@@ -582,8 +575,7 @@ El formulario hace `POST /api/contacto` y muestra éxito solo si el endpoint res
 con estado HTTP exitoso. El servidor valida el JSON y longitudes, exige
 `consentimiento: true` y persiste el registro en Supabase, tabla
 `solicitudes_contacto`, usando `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` del entorno
-de servidor. `conexion.php` continúa siendo un ejemplo aislado de MySQL/PDO, no usado
-por la aplicación.
+de servidor.
 
 **Seguridad del formulario implementada:** el endpoint aplica limitación de tasa por IP
 (5 envíos por ventana de 10 minutos, con `429` y `retry-after`), descarta el honeypot
@@ -943,7 +935,6 @@ descargarlas con autorización y migrarlas a `public/`.
 - Métricas del hero con iluminación rotativa cada 3 s.
 - «¿Por qué TELCOBRAS?» en bento con ilustración de red sincronizada con las tarjetas.
 - Sección de contacto con red decorativa animada y tarjetas con borde de marca.
-- `conexion.php`: ejemplo aislado de conexión a MySQL con PDO (no integrado).
 
 ### Auditoría 26-10-2026
 
@@ -958,7 +949,7 @@ punto están en la lista «Pendiente/por confirmar» (número entre paréntesis)
 | Alta | No hay pruebas: todos los archivos de test y configuración están vacíos | 2 |
 | Alta (corregida) | `/video_tel.mp4` daba 404: se movió a `public/` | 4 |
 | Media | Rate limit en memoria por isolate; `/api/chat` sin Turnstile | 8 |
-| Media | `conexion.php` de prueba con credenciales por defecto y salida de datos personales | 22 |
+| Media (resuelta) | `conexion.php` de prueba con credenciales por defecto y salida de datos personales: eliminado | 22 |
 | Media | Videos pesados (`video_agentes.mp4` 49 MB) y duplicados en la raíz | 6 |
 | Media | Videos y animaciones que ignoran `prefers-reduced-motion` | 14 |
 | Media | El banner de cookies dice «al navegar aceptas» aunque ofrece rechazar | 25 |
@@ -1116,10 +1107,12 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
     montaje; un envío fallido llama a `reset()` y uno correcto envía el token. En
     desarrollo, al montar, el widget se monta dos veces por el `<StrictMode>` del
     cliente por defecto de TanStack Start; es esperado y no ocurre en producción.
-22. **`conexion.php`:** script PHP de prueba ajeno al stack. Usa por defecto `root` sin
-    contraseña y, si se ejecuta directamente, devuelve una fila de `solicitudes` (nombre
-    y correo) y el mensaje de la excepción. En Workers no se sirve, pero filtraría datos
-    en un hosting PHP. Eliminarlo o moverlo fuera del repo.
+22. **`conexion.php` — resuelto (27-10-2026):** era un script PHP de prueba ajeno al
+    stack que usaba por defecto `root` sin contraseña y, ejecutado directamente,
+    devolvía una fila de `solicitudes` (nombre y correo) y el mensaje de la excepción.
+    Se eliminó con `git rm` tras comprobar que nada en el código, la configuración ni el
+    build lo referenciaba. Sigue en el historial de Git; no contenía secretos (las
+    credenciales venían de variables de entorno).
 23. **Peso del repositorio:** unos 70 MB de videos versionados; `video_agentes.mp4`,
     `video_conectividad.mp4`, `video_inicio.mp4` y `video_seguridad.mp4` están también
     en la raíz, donde no se sirven (`video_tel.mp4` ya se movió a `public/`). Recomprimir, quitar
@@ -1154,16 +1147,10 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
 ## 12. Operación y privacidad del formulario
 
 La captura de leads está implementada en `src/routes/api.contacto.ts` y usa Supabase
-desde el servidor; no cambiarla por el ejemplo PHP sin una decisión explícita. Mantener
+desde el servidor; no cambiar el camino de persistencia sin una decisión explícita. Mantener
 la URL y la service-role key exclusivamente en variables de entorno de servidor. La
 clave service-role tiene privilegios elevados y no debe aparecer en código cliente,
 logs, documentación ni variables `VITE_*`.
-
-En la raíz existe `conexion.php`, un ejemplo de conexión a MySQL con PDO (DSN `mysql:`,
-credenciales por variables de entorno `DB_HOST`/`DB_PORT`/`DB_NAME`/`DB_USER`/`DB_PASS`/
-`DB_CHARSET`, `ERRMODE_EXCEPTION`, `EMULATE_PREPARES=false`). Es solo material de
-referencia: Cloudflare Workers no ejecuta PHP, así que no reemplaza a D1 ni a un backend
-Node del stack actual y no debe usarse como el camino de persistencia del formulario.
 
 Pendiente: verificar esquema/RLS/políticas de acceso de la tabla
 `solicitudes_contacto`, validar con el responsable de datos el contenido de la política,
@@ -1217,7 +1204,6 @@ autorización. Evitar registrar datos personales completos en logs.
 | Métricas del hero e iluminación rotativa | `src/components/HeroAndMetrics.tsx` |
 | Diferenciales, red sincronizada, video girado | `src/components/WhyUsSection.tsx` |
 | Borde iluminado o rotación compartidos | `src/components/BrandGlowBorder.tsx`, `src/hooks/use-rotating-highlight.ts` |
-| Ejemplo de conexión a MySQL (PHP/PDO) | `conexion.php` |
 | Estilos globales, Tailwind v4, tokens y animaciones | `src/styles.css` y `src/routes/__root.tsx` |
 | CSS: import, `<link>` y hash del build | `src/routes/__root.tsx:14` y `.output/public/assets/styles-*.css` |
 | Despliegue: artefacto, assets y wrangler | `.output/` y `.wrangler/deploy/config.json` |
