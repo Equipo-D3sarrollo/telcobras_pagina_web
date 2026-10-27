@@ -39,7 +39,7 @@ const policyCopy = {
     title: "Política de Privacidad y Tratamiento de Datos Personales",
     description:
       "Política de privacidad y tratamiento de datos personales de TELCOBRAS S.A.S., conforme a la Ley Estatutaria 1581 de 2012 y, cuando corresponda, al RGPD.",
-    updated: "Fecha de actualización: 20 de octubre de 2026",
+    updated: "Fecha de actualización: 27 de octubre de 2026",
     sections: {
       controller: {
         title: "1. Responsable del tratamiento",
@@ -71,7 +71,7 @@ const policyCopy = {
       },
       cookies: {
         title: "6. Cookies y almacenamiento local",
-        text: "El sitio usa una cookie para recordar preferencias de apariencia, tamaño de texto, idioma y refuerzo visual, y utiliza almacenamiento local del navegador para recordar la elección sobre cookies. El banner permite aceptar cookies no esenciales, rechazarlas o configurar la preferencia disponible. La elección se conserva en el dispositivo hasta que se borren sus datos locales.",
+        text: "Esenciales: el almacenamiento local del navegador guarda tu elección sobre cookies y, solo si usas el chat, un identificador de sesión de la conversación; si cambias las preferencias de apariencia, tamaño de texto, idioma o refuerzo visual, una cookie de sesión las conserva mientras navegas y se borra al cerrar el navegador. Opcionales, solo si las aceptas en el banner: esa cookie de preferencias se conserva hasta un año, y el mapa de ubicación de Google se carga automáticamente (Google puede guardar sus propias cookies; sin aceptarlas, el mapa solo se carga si pulsas «Ver mapa»). Puedes cambiar tu elección en cualquier momento desde «Preferencias de cookies», en el pie de página. Los datos locales se conservan en tu dispositivo hasta que los borres.",
       },
       retention: {
         title: "7. Conservación y seguridad",
@@ -129,7 +129,7 @@ const policyCopy = {
     title: "Privacy Policy and Personal Data Processing",
     description:
       "TELCOBRAS S.A.S. privacy and personal data processing policy under Colombian Statutory Law 1581 of 2012 and, where applicable, the GDPR.",
-    updated: "Last updated: October 20, 2026",
+    updated: "Last updated: October 27, 2026",
     sections: {
       controller: {
         title: "1. Data controller",
@@ -161,7 +161,7 @@ const policyCopy = {
       },
       cookies: {
         title: "6. Cookies and local storage",
-        text: "The site uses a cookie to remember appearance, text size, language, and visual enhancement preferences, and uses browser local storage to remember your cookie choice. The banner lets you accept non-essential cookies, reject them, or configure the available preference. Your choice remains on your device until its local data is deleted.",
+        text: "Essential: browser local storage keeps your cookie choice and, only if you use the chat, a conversation session identifier; if you change your appearance, text size, language, or visual enhancement preferences, a session cookie keeps them while you browse and is deleted when you close the browser. Optional, only if you accept them in the banner: that preferences cookie is kept for up to one year, and the Google location map loads automatically (Google may store its own cookies; without accepting them, the map only loads if you click “Show map”). You can change your choice at any time from “Cookie preferences” in the footer. Local data remains on your device until you delete it.",
       },
       retention: {
         title: "7. Retention and security",

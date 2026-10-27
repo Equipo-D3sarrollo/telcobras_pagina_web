@@ -24,7 +24,7 @@ const CONTENT_SECURITY_POLICY = [
   "img-src 'self' data: blob: https://vibe.filesafe.space https://*.supabase.co",
   "media-src 'self'",
   "frame-src 'self' https://challenges.cloudflare.com https://www.google.com https://maps.google.com",
-  `connect-src 'self' https://challenges.cloudflare.com https://*.supabase.co https://*.make.com https://*.integromat.com${isDev ? " ws: wss: http://localhost:* http://127.0.0.1:*" : ""}`,
+  `connect-src 'self' https://challenges.cloudflare.com${isDev ? " ws: wss: http://localhost:* http://127.0.0.1:*" : ""}`,
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",

@@ -28,6 +28,7 @@ function formatBotText(text: string): string {
 }
 
 const WELCOME_BUBBLE_MS = 8000;
+const SESSION_STORAGE_KEY = "telcobras_session_id";
 
 export function FloatingChatbot() {
   const { preferences } = useAccessibilityPreferences();
@@ -53,20 +54,27 @@ export function FloatingChatbot() {
   const messageInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Solo se lee una sesión existente; el identificador se crea al enviar el primer
+  // mensaje, para no guardar nada en el navegador de quien no usa el chat.
   useEffect(() => {
-    let currentSessionId: string;
     try {
-      currentSessionId = window.localStorage.getItem("telcobras_session_id") ?? "";
-      if (!currentSessionId) {
-        currentSessionId = window.crypto.randomUUID();
-        window.localStorage.setItem("telcobras_session_id", currentSessionId);
-      }
+      setSessionId(window.localStorage.getItem(SESSION_STORAGE_KEY) ?? "");
+    } catch (error) {
+      console.error("No se pudo leer la sesión del chatbot.", error);
+    }
+  }, []);
+
+  function ensureSessionId(): string {
+    if (sessionId) return sessionId;
+    const newSessionId = window.crypto.randomUUID();
+    try {
+      window.localStorage.setItem(SESSION_STORAGE_KEY, newSessionId);
     } catch (error) {
       console.error("No se pudo persistir la sesión del chatbot.", error);
-      currentSessionId = window.crypto.randomUUID();
     }
-    setSessionId(currentSessionId);
-  }, []);
+    setSessionId(newSessionId);
+    return newSessionId;
+  }
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -88,15 +96,16 @@ export function FloatingChatbot() {
   }, [language, t.initialGreeting]);
 
   useEffect(() => {
-    if (isOpen && !isLoading && sessionId) {
+    if (isOpen && !isLoading) {
       messageInputRef.current?.focus();
     }
-  }, [isOpen, isLoading, sessionId]);
+  }, [isOpen, isLoading]);
 
   async function handleSendMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const userText = input.trim();
-    if (!userText || !sessionId || isLoading) return;
+    if (!userText || isLoading) return;
+    const currentSessionId = ensureSessionId();
     let getLocalizedError = () => getTranslations(languageRef.current).chatbot.errors.generic;
 
     setMessages((currentMessages) => [
@@ -111,7 +120,7 @@ export function FloatingChatbot() {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ session_id: sessionId, mensaje: userText }),
+        body: JSON.stringify({ session_id: currentSessionId, mensaje: userText }),
       });
 
       let payload: unknown;
@@ -275,7 +284,7 @@ export function FloatingChatbot() {
             <input
               autoComplete="off"
               className="min-w-0 flex-1 rounded-full border border-input bg-muted px-4 py-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20"
-              disabled={isLoading || !sessionId}
+              disabled={isLoading}
               id="telcobras-chat-message"
               name="message"
               onChange={(event) => setInput(event.currentTarget.value)}
@@ -287,7 +296,7 @@ export function FloatingChatbot() {
             <button
               aria-label={t.send}
               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#006BA4] text-white transition-colors hover:bg-[#005888] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2491CC]"
-              disabled={isLoading || !sessionId || !input.trim()}
+              disabled={isLoading || !input.trim()}
               type="submit"
             >
               <Send aria-hidden="true" className="h-5 w-5" />

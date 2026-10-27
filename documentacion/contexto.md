@@ -139,6 +139,20 @@ se montan globalmente; el botón para volver al inicio se monta en la página pr
   bajo `telcobras_cookie_consent` y no vuelve a renderizar cuando ya existe la clave.
   El botón «Preferencias de cookies» del footer lo vuelve a abrir con el panel de
   preferencias y la elección guardada (evento de `src/lib/cookie-consent.ts`).
+- Consentimiento explícito (27-10-2026): el banner pide decidir («Usamos cookies
+  esenciales… y, si lo aceptas, cookies opcionales…»), ya no dice «al navegar
+  aceptas». Lo opcional solo se activa con `nonEssential: true`
+  (`hasNonEssentialConsent()` / `useNonEssentialConsent()`):
+
+  | Almacenamiento | Sin aceptar opcionales | Con opcionales aceptadas |
+  |---|---|---|
+  | `telcobras_cookie_consent` (localStorage) | se guarda al decidir (esencial) | igual |
+  | `telcobras_session_id` (localStorage, chat) | solo al enviar el primer mensaje | igual |
+  | Cookie `telcobras_a11y` (preferencias) | de sesión, solo si se cambia una opción | persistente, 1 año |
+  | Mapa de Google (cookies de terceros) | no se carga; recuadro con «Ver mapa» | se carga |
+
+  Al cambiar la elección, la cookie de preferencias existente pasa a persistente o a
+  sesión en el momento. Turnstile y Google Fonts no dejan cookies en el dominio.
 - El menú de accesibilidad y la preferencia de idioma persisten en una cookie y se
   aplican también durante SSR para evitar flashes de contenido con idioma incorrecto.
 - La documentación legal debe revisarse con el responsable del tratamiento antes de
@@ -314,8 +328,10 @@ con excepciones para `*.example`, aunque hoy no existe un `.env.example` version
   en `localStorage` bajo `telcobras_cookie_consent` (esenciales siempre activas y una
   preferencia booleana para las no esenciales); si la clave existe, no vuelve a mostrar
   el banner, salvo que se pulse «Preferencias de cookies» en el footer, que lo abre con
-  el panel de preferencias, la elección guardada y el foco en él. El control registra la preferencia, pero la carga/ejecución de cookies de
-  terceros debe conectarse a esa preferencia si se incorporan esas integraciones.
+  el panel de preferencias, la elección guardada y el foco en él. La elección se guarda
+  con `saveCookieConsent()`, que avisa del cambio (evento y `storage` entre pestañas).
+  Cualquier integración nueva que deje cookies de terceros debe condicionarse a
+  `useNonEssentialConsent()`, como el mapa de Google.
 - Si se añaden rutas, no eliminar `<Outlet />`.
 
 ### Preferencias de accesibilidad
@@ -590,8 +606,9 @@ Exporta dos componentes: `ContactSection` (`#contacto` y `#ubicacion`, dentro de
 - Formulario «Solicitud de Cotización o Diagnóstico». El `<select>` de servicio ofrece
   las opciones del portafolio (Conectividad, Seguridad, Colaboración, Nube híbrida,
   IA integrada, Agentes con IA, Solución integral).
-- `#ubicacion`: mapa de Google embebido de la sede en Cali y botón «Cómo llegar» con
-  enlace de indicaciones.
+- `#ubicacion`: mapa de Google de la sede en Cali (`LocationMap`; solo se carga con
+  cookies opcionales aceptadas o al pulsar «Ver mapa») y botón «Cómo llegar» con enlace
+  de indicaciones.
 - Footer con logo, eslogan y copyright dinámico. Debajo, una rejilla (1 columna en
   móvil, 2 en tablet, 3 en escritorio) con: `<address>` con la dirección
   (`CONTACT.address`), el teléfono (`<a href="tel:…">`) y el correo
@@ -645,9 +662,10 @@ política legal aprobada.
 - El botón colapsado es un robot animado (`chatbot-robot-vibrate` +
   `motion-safe:animate-bounce`, ambos quietos con movimiento reducido) y
   la invitación («¡Hola! ¿Necesitas ayuda?») usa `chatbot-invite-animation`.
-- La sesión se guarda en `localStorage` bajo `telcobras_session_id`; si falta se crea
-  con `crypto.randomUUID()`. Si el acceso a `localStorage` falla, usa un UUID
-  temporal y registra el error.
+- La sesión se guarda en `localStorage` bajo `telcobras_session_id`. Al cargar solo se
+  lee una existente; si no hay, se crea con `crypto.randomUUID()` al enviar el primer
+  mensaje (`ensureSessionId`), así quien no usa el chat no guarda nada. Si el acceso a
+  `localStorage` falla, usa el UUID en memoria y registra el error.
 - Al abrir el panel y al terminar la petición enfoca el input; desplaza el log al
   mensaje más reciente.
 - Enviar mensaje hace `POST /api/chat` con JSON `{ session_id, mensaje }`; espera
@@ -1026,10 +1044,10 @@ punto están en la lista «Pendiente/por confirmar» (número entre paréntesis)
 | Media (resuelta) | `conexion.php` de prueba con credenciales por defecto y salida de datos personales: eliminado | 22 |
 | Media (corregida) | Videos pesados: comprimidos de 76,9 MB a 11,9 MB en total (`video_agentes.mp4` 49 → 3,5 MB); duplicados de la raíz eliminados | 6, 23 |
 | Media (corregida) | Videos y animaciones que ignoraban `prefers-reduced-motion` | 14 |
-| Media | El banner de cookies dice «al navegar aceptas» aunque ofrece rechazar | 25 |
-| Baja | CSP `connect-src` con dominios que el navegador no usa | 16 |
+| Media (corregida) | El banner de cookies decía «al navegar aceptas»; ahora pide decisión y lo opcional depende de ella | 25 |
+| Baja (corregida) | CSP `connect-src` con dominios que el navegador no usa | 16 |
 | Baja | Metadatos SSR de las páginas legales siempre en español | 26 |
-| Baja (27 corregida) | Textos fijos fuera del catálogo en el formulario (corregido: ahora en `translations.ts`), `siteverify` sin `hostname`, `sitemap.xml` desactualizado | 27, 28, 29 |
+| Baja (27 y 28 corregidas) | Textos fijos fuera del catálogo en el formulario (corregido), `siteverify` sin `hostname` (corregido), `sitemap.xml` desactualizado | 27, 28, 29 |
 
 Verificado y correcto en esta revisión: `npx tsc --noEmit` sin errores; `eslint` con 0
 errores (6 avisos en `components/ui`); `npm run build` correcto; las APIs limitan el tamaño
@@ -1124,6 +1142,10 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
    textos completos, pero están pendientes de aprobación de gerencia y revisión
    jurídica, incluidos los valores de `SLA_VALUES` en `src/lib/sla-content.ts`. Revisar también bases
    jurídicas, proveedores/transferencias, retención, acceso y borrado de la política.
+   El 27-10-2026 se reescribió la sección 6 («Cookies y almacenamiento local») de la
+   política, ES/EN, para que describa el funcionamiento real (esencial frente a
+   opcional, sesión del chat, mapa de Google) y se cambió su fecha de actualización:
+   **pendiente de revisión jurídica**, igual que el texto nuevo del banner.
 8. **Protección de endpoints HTTP:** `/api/contacto` tiene Turnstile y rate limit por IP
    (5 envíos cada 10 min) y `/api/chat` tiene rate limit (20 mensajes cada 5 min), ambos
    con el limitador compartido `src/lib/rate-limit.ts` basado en `cf-connecting-ip`. El
@@ -1163,10 +1185,12 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
     Google Maps incrusta algo adicional o si Turnstile cambia sus dominios) y resolver
     cualquier bloqueo antes de propagarlo al equipo. Siguiente paso de endurecimiento:
     sustituir `'unsafe-inline'` por nonces/hashes en `script-src` y añadir `report-to`
-    con un endpoint de recogida de Reports CSP. `connect-src` incluye `*.supabase.co`,
-    `*.make.com` e `*.integromat.com`, pero el navegador nunca llama a esos dominios
-    (todo pasa por `/api/*`): se pueden quitar. `.output/` se reconstruyó el 26-10-2026
-    con la CSP bloqueante.
+    con un endpoint de recogida de Reports CSP. Desde el 27-10-2026 `connect-src` es
+    `'self' https://challenges.cloudflare.com` (más `ws:`/localhost solo en desarrollo):
+    se quitaron Supabase, Make e Integromat porque el navegador solo llama a `/api/*`.
+    Verificado: ninguna violación de CSP recorriendo landing, formulario con Turnstile,
+    chat, mapa y páginas legales, y un `fetch` del navegador a Make queda bloqueado.
+    `img-src` aún incluye `*.supabase.co`, que tampoco se usa.
 17. **Empaquetado y despliegue (CSS):** el pipeline está correcto — `src/routes/__root.tsx:14`
     importa `styles.css?url`, `head.links` lo enlaza, Tailwind v4 lo genera en
     `.output/public/assets/styles-<hash>.css` (~162 KB) y el mismo hash está en SSR y
@@ -1178,10 +1202,10 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
 18. **Ruta base del CSS:** los assets se referencian como `/assets/...`. Si el deploy
     final vive bajo un subpath (por ejemplo `https://dominio/app/`), configurar `base`
     en Vite o servir la app en la raíz; hoy no hay `base` configurado.
-19. **`.env.example`:** `.gitignore` ya permite versionar `*.example`, pero no existe un
-    `.env.example` en el repo. Crear uno con nombres de variables (sin valores) para
-    onboarding: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `MAKE_CHAT_WEBHOOK_URL`,
-    `TURNSTILE_SECRET_KEY`, `VITE_TURNSTILE_SITE_KEY`.
+19. **`.env.example` — creado (27-10-2026):** contiene los nombres (sin valores) y un
+    comentario de las 6 variables que lee el código: `SUPABASE_URL`,
+    `SUPABASE_SERVICE_ROLE_KEY`, `MAKE_CHAT_WEBHOOK_URL`, `TURNSTILE_SECRET_KEY`,
+    `VITE_TURNSTILE_SITE_KEY` y `TURNSTILE_ALLOWED_HOSTNAMES`.
 20. **Dependencias y CVE-2026-102989 (corregido el 26-10-2026):** el XSS reflejado en
     respuestas de server functions de TanStack Start (GHSA-qx66-fv34-fjm8; afecta a
     `@tanstack/react-start` <1.168.60 y `@tanstack/start-server-core` <1.169.39) está
@@ -1239,10 +1263,10 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
     `<meta name="robots" content="noindex, nofollow">`. Cuando gerencia y jurídica
     aprueben, poner la constante a `false` y actualizar `sitemap.xml` (pendiente 29). El
     portafolio cita 99,6 % y +99,7 %: confirmar cuál se compromete.
-25. **Texto del banner de cookies:** dice «Al navegar por este sitio web, aceptas el
-    uso de cookies» («By browsing this website, you accept…»), lo que contradice los
-    botones de rechazar y configurar. El consentimiento implícito no es válido para
-    cookies no esenciales; ajustar el texto en `translations.ts` y revisarlo con jurídica.
+25. **Banner de cookies — corregido (27-10-2026):** pide una decisión explícita en lugar
+    de «al navegar aceptas», y lo opcional (cookie de preferencias de 1 año y mapa de
+    Google) solo se activa si se acepta (ver la tabla de consentimiento en la sección
+    2). Queda la revisión jurídica del texto (pendiente 7).
 26. **Metadatos de las páginas legales:** `head()` en `sla.tsx`,
     `terminos-de-servicio.tsx` y `politica-de-privacidad.tsx` usa siempre la versión en
     español. Las páginas actualizan `title` y `description` en el cliente, pero el HTML
@@ -1252,9 +1276,15 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
     de rate limit del envío del formulario (antes `language === "en" ? … : …`) y los
     textos de `TurnstileWidget.tsx` (errores de carga y `aria-label`, antes solo en
     español) ahora vienen de `contact.*` en `translations.ts`.
-28. **Validación de Turnstile:** `api.contacto.ts` acepta la respuesta de `siteverify`
-    sin comprobar `hostname` (ni `action`). Comprobar que el hostname corresponde al
-    dominio de producción.
+28. **Validación de Turnstile — corregido (27-10-2026):** `api.contacto.ts` exige que
+    el `hostname` de `siteverify` esté en `TURNSTILE_ALLOWED_HOSTNAMES` (en desarrollo
+    se añaden `localhost` y `127.0.0.1`). En producción, sin esa variable responde 503
+    (fail-closed) y una respuesta obtenida con clave de prueba de Cloudflare
+    (`metadata.result_with_testing_key`) se rechaza con 403; en desarrollo las claves de
+    prueba se aceptan sin mirar el hostname (siempre es `example.com`). Verificado con
+    el build de producción en Wrangler local (503 y 403) y en `vite dev` (pasa). No se
+    comprueba `action` porque el widget no la define. **Antes de desplegar:** configurar
+    `TURNSTILE_ALLOWED_HOSTNAMES` en Cloudflare con el dominio real.
 29. **`sitemap.xml`:** `<lastmod>` de las cuatro URLs se actualizó a 2026-10-27.
     Volver a actualizar el de `/terminos-de-servicio` y `/sla` cuando se publiquen los
     textos aprobados.
@@ -1288,6 +1318,10 @@ Solo en servidor (nunca con prefijo `VITE_` ni en el cliente):
 - `TURNSTILE_SECRET_KEY`: clave secreta de Cloudflare Turnstile. Si falta,
   `api.contacto.ts` responde `503` con `contacto_unavailable` antes de `siteverify` y
   Supabase, sin usar claves de prueba; debe configurarse antes de desplegar.
+- `TURNSTILE_ALLOWED_HOSTNAMES`: hostnames permitidos para el token de Turnstile,
+  separados por comas (p. ej. `telcobras.com,www.telcobras.com`). Si falta en
+  producción, `api.contacto.ts` responde `503` (fail-closed); en desarrollo se añaden
+  `localhost` y `127.0.0.1`.
 
 Pública de compilación:
 
@@ -1296,8 +1330,8 @@ Pública de compilación:
   con un aviso. No se usa ninguna site key de prueba. No confundirla con la secreta.
 
 Local: definir estas variables en `.env.local` (ignorado por Git). En Cloudflare,
-guardar las secretas con `wrangler secret put <NOMBRE>`. No hay `.env.example`
-versionado todavía (ver pendiente 19).
+guardar las secretas con `wrangler secret put <NOMBRE>`. `.env.example` lista todas las
+variables con un comentario (sin valores).
 
 No crear un endpoint público para listar todas las solicitudes sin autenticación y
 autorización. Evitar registrar datos personales completos en logs.

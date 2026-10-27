@@ -226,6 +226,8 @@ interface Catalog {
     sla: string;
     logoAlt: string;
     mapTitle: string;
+    mapConsentNote: string;
+    mapLoad: string;
     whatsappLabel: string;
     whatsappMessage: string;
     socialTitle: string;
@@ -305,16 +307,18 @@ const es: Catalog = {
   cookieBanner: {
     label: "Preferencias de cookies",
     description:
-      "Utilizamos cookies para mejorar tu experiencia en nuestro sitio web. Al navegar por este sitio web, aceptas el uso de cookies. Más información en nuestra",
+      "Usamos cookies esenciales para que el sitio funcione y, si lo aceptas, cookies opcionales para recordar tus preferencias y mostrar el mapa de Google. Puedes aceptarlas, rechazarlas o configurarlas. Más información en nuestra",
     privacyLink: "Política de privacidad",
     acceptAll: "Aceptar todas",
     rejectNonEssential: "Rechazar las no esenciales",
     configure: "Configurar preferencias",
     preferencesTitle: "Configurar preferencias de cookies",
     essentialCookies: "Cookies esenciales",
-    essentialDescription: "Necesarias para que el sitio web funcione.",
+    essentialDescription:
+      "Necesarias para que el sitio funcione: guardan tu elección sobre cookies, la sesión del chat si lo usas y tus preferencias de apariencia e idioma mientras navegas.",
     nonEssentialCookies: "Cookies no esenciales",
-    nonEssentialDescription: "Permiten guardar preferencias opcionales de cookies.",
+    nonEssentialDescription:
+      "Recuerdan tus preferencias de apariencia, tamaño de texto e idioma entre visitas (hasta un año) y cargan el mapa de Google, que puede guardar sus propias cookies.",
     back: "Volver",
     savePreferences: "Guardar preferencias",
     storageError: "No se pudo guardar tu preferencia. Inténtalo de nuevo.",
@@ -682,6 +686,9 @@ const es: Catalog = {
     sla: "SLA y garantías",
     logoAlt: "Logotipo de TELCOBRAS S.A.S.",
     mapTitle: "Ubicación de TELCOBRAS S.A.S. en Cali",
+    mapConsentNote:
+      "El mapa lo ofrece Google y puede guardar cookies en tu navegador. Se carga si aceptas las cookies opcionales o si lo pides aquí.",
+    mapLoad: "Ver mapa",
     whatsappLabel: "Contáctanos por WhatsApp",
     whatsappMessage: "Hola, quiero información sobre los servicios de TELCOBRAS",
     socialTitle: "Síguenos en redes sociales:",
@@ -767,16 +774,18 @@ const en: Catalog = {
   cookieBanner: {
     label: "Cookie preferences",
     description:
-      "We use cookies to improve your experience on our website. By browsing this website, you accept the use of cookies. Learn more in our",
+      "We use essential cookies to make the site work and, if you agree, optional cookies to remember your preferences and show the Google map. You can accept, reject, or configure them. Learn more in our",
     privacyLink: "Privacy Policy",
     acceptAll: "Accept all",
     rejectNonEssential: "Reject non-essential",
     configure: "Configure preferences",
     preferencesTitle: "Configure cookie preferences",
     essentialCookies: "Essential cookies",
-    essentialDescription: "Required for the website to function.",
+    essentialDescription:
+      "Required for the site to work: they store your cookie choice, the chat session if you use it, and your appearance and language preferences while you browse.",
     nonEssentialCookies: "Non-essential cookies",
-    nonEssentialDescription: "Allow optional cookie preferences to be saved.",
+    nonEssentialDescription:
+      "Remember your appearance, text size, and language preferences between visits (up to one year) and load the Google map, which may store its own cookies.",
     back: "Back",
     savePreferences: "Save preferences",
     storageError: "Your preference could not be saved. Please try again.",
@@ -1142,6 +1151,9 @@ const en: Catalog = {
     sla: "SLAs and Warranties",
     logoAlt: "TELCOBRAS S.A.S. logo",
     mapTitle: "TELCOBRAS S.A.S. location in Cali",
+    mapConsentNote:
+      "The map is provided by Google and may store cookies in your browser. It loads if you accept optional cookies or if you ask for it here.",
+    mapLoad: "Show map",
     whatsappLabel: "Contact us on WhatsApp",
     whatsappMessage: "Hello, I'd like information about TELCOBRAS services",
     socialTitle: "Follow us on social media:",

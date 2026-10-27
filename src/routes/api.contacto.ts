@@ -22,7 +22,12 @@ async function verifyTurnstileToken(
   token: string,
   secret: string,
   remoteIp?: string | null,
-): Promise<{ success: boolean; errorCodes?: string[] | undefined }> {
+): Promise<{
+  success: boolean;
+  errorCodes?: string[] | undefined;
+  hostname?: string | undefined;
+  testingKey?: boolean;
+}> {
   const formData = new URLSearchParams();
   formData.append("secret", secret);
   formData.append("response", token);
@@ -47,16 +52,37 @@ async function verifyTurnstileToken(
     const data = (await res.json()) as {
       success: boolean;
       "error-codes"?: string[];
+      hostname?: string;
+      metadata?: { result_with_testing_key?: boolean };
     };
 
     return {
       success: Boolean(data.success),
       errorCodes: data["error-codes"],
+      hostname: typeof data.hostname === "string" ? data.hostname.toLowerCase() : undefined,
+      testingKey: data.metadata?.result_with_testing_key === true,
     };
   } catch (err) {
     console.error("[api/contacto] Error al conectar con Cloudflare Turnstile:", err);
     return { success: false, errorCodes: ["network_error"] };
   }
+}
+
+const IS_DEV = import.meta.env.DEV;
+const DEV_HOSTNAMES = ["localhost", "127.0.0.1"];
+
+/**
+ * Hostnames desde los que se acepta un token de Turnstile (TURNSTILE_ALLOWED_HOSTNAMES,
+ * separados por comas). En desarrollo se añaden localhost y 127.0.0.1. Devuelve `null`
+ * si en producción no hay ninguno configurado: el envío se rechaza (fail-closed).
+ */
+function getAllowedTurnstileHostnames(): string[] | null {
+  const configured = (process.env["TURNSTILE_ALLOWED_HOSTNAMES"] ?? "")
+    .split(",")
+    .map((hostname) => hostname.trim().toLowerCase())
+    .filter(Boolean);
+  if (IS_DEV) return [...configured, ...DEV_HOSTNAMES];
+  return configured.length > 0 ? configured : null;
 }
 
 const LIMITS = {
@@ -229,9 +255,27 @@ async function handlePost(request: Request): Promise<Response> {
       return jsonResponse({ error: "contacto_unavailable" }, 503);
     }
 
+    const allowedHostnames = getAllowedTurnstileHostnames();
+    if (!allowedHostnames) {
+      console.error("[api/contacto] TURNSTILE_ALLOWED_HOSTNAMES not configured");
+      return jsonResponse({ error: "contacto_unavailable" }, 503);
+    }
+
     const turnstileResult = await verifyTurnstileToken(turnstileToken, turnstileSecret, clientIp);
     if (!turnstileResult.success) {
       console.warn("[api/contacto] Verificación Turnstile fallida:", turnstileResult.errorCodes);
+      return jsonResponse({ error: "turnstile_verification_failed" }, 403);
+    }
+
+    // Con las claves de prueba de Cloudflare el hostname siempre es example.com: se
+    // aceptan solo en desarrollo; en producción indican una configuración equivocada.
+    if (turnstileResult.testingKey) {
+      if (!IS_DEV) {
+        console.error("[api/contacto] Turnstile respondió con una clave de prueba en producción");
+        return jsonResponse({ error: "turnstile_verification_failed" }, 403);
+      }
+    } else if (!turnstileResult.hostname || !allowedHostnames.includes(turnstileResult.hostname)) {
+      console.warn("[api/contacto] Hostname de Turnstile no permitido:", turnstileResult.hostname);
       return jsonResponse({ error: "turnstile_verification_failed" }, 403);
     }
 

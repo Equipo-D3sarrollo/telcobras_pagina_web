@@ -37,6 +37,7 @@ import {
 } from "@/lib/accessibility-preferences-context";
 import { getTranslations } from "@/lib/translations";
 import { openCookiePreferences } from "@/lib/cookie-consent";
+import { useNonEssentialConsent } from "@/hooks/use-cookie-consent";
 
 const footerLinkClass =
   "rounded-sm text-left transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F3CB35]";
@@ -798,17 +799,7 @@ export function ContactSection() {
           </div>
 
           <div className="location-map-frame rounded-3xl overflow-hidden border border-slate-200 shadow-xl shadow-slate-200/60">
-            <iframe
-              title={t.mapTitle}
-              src="https://www.google.com/maps?q=Carrera+83A+%23+20+-+20,+Cali,+Colombia&output=embed"
-              width="100%"
-              height="400"
-              style={{ border: 0 }}
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              allowFullScreen
-              className="h-[300px] md:h-[400px] w-full block"
-            />
+            <LocationMap />
           </div>
 
           <div className="mt-8 text-center">
@@ -824,6 +815,47 @@ export function ContactSection() {
         </div>
       </section>
     </>
+  );
+}
+
+/**
+ * Mapa de Google de la sede. Deja cookies de terceros, así que solo se carga con las
+ * cookies opcionales aceptadas o cuando el usuario lo pide con «Ver mapa».
+ */
+function LocationMap() {
+  const t = useTranslations().contact;
+  const hasConsent = useNonEssentialConsent();
+  const [requested, setRequested] = useState(false);
+
+  if (hasConsent || requested) {
+    return (
+      <iframe
+        title={t.mapTitle}
+        src="https://www.google.com/maps?q=Carrera+83A+%23+20+-+20,+Cali,+Colombia&output=embed"
+        width="100%"
+        height="400"
+        style={{ border: 0 }}
+        loading="lazy"
+        referrerPolicy="no-referrer-when-downgrade"
+        allowFullScreen
+        className="h-[300px] md:h-[400px] w-full block"
+      />
+    );
+  }
+
+  return (
+    <div className="flex h-[300px] w-full flex-col items-center justify-center gap-4 bg-slate-100 px-6 text-center md:h-[400px]">
+      <MapPin aria-hidden="true" className="h-10 w-10 text-[#88BD4C]" />
+      <p className="font-bold text-slate-800">{CONTACT.address}</p>
+      <p className="max-w-md text-sm text-slate-600">{t.mapConsentNote}</p>
+      <button
+        type="button"
+        onClick={() => setRequested(true)}
+        className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#006BA4] px-6 text-sm font-bold text-white transition-colors hover:bg-[#005888] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0A5F8F]"
+      >
+        {t.mapLoad}
+      </button>
+    </div>
   );
 }
 

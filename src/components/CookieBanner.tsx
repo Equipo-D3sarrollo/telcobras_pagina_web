@@ -6,6 +6,7 @@ import {
   COOKIE_CONSENT_KEY,
   onOpenCookiePreferences,
   readCookieConsent,
+  saveCookieConsent,
   type CookieConsentChoice,
 } from "@/lib/cookie-consent";
 
@@ -57,10 +58,7 @@ export function CookieBanner() {
 
   function saveConsent(choice: CookieConsentChoice, nonEssential: boolean) {
     try {
-      window.localStorage.setItem(
-        COOKIE_CONSENT_KEY,
-        JSON.stringify({ necessary: true, nonEssential, choice }),
-      );
+      saveCookieConsent(choice, nonEssential);
       setStorageError(false);
       setIsVisible(false);
     } catch (error) {
