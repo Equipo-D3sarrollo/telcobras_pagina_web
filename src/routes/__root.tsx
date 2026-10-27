@@ -112,18 +112,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       links: [
         { rel: "icon", href: "/favicon.ico", sizes: "32x32" },
         { rel: "apple-touch-icon", href: "/apple-touch-icon.png", sizes: "180x180" },
+        // Nunito autoalojada (ver @font-face en styles.css): solo se precarga la normal,
+        // que usa casi todo el texto; la cursiva se descarga cuando hace falta.
         {
-          rel: "preconnect",
-          href: "https://fonts.googleapis.com",
-        },
-        {
-          rel: "preconnect",
-          href: "https://fonts.gstatic.com",
+          rel: "preload",
+          href: "/fonts/nunito-latin-400-900.woff2",
+          as: "font",
+          type: "font/woff2",
           crossOrigin: "anonymous",
-        },
-        {
-          rel: "stylesheet",
-          href: "https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,300..1000;1,300..1000&display=swap",
         },
         {
           rel: "stylesheet",

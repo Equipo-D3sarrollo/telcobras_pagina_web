@@ -156,7 +156,7 @@ se montan globalmente; el botón para volver al inicio se monta en la página pr
   | Mapa de Google (cookies de terceros) | no se carga; recuadro con «Ver mapa» | se carga |
 
   Al cambiar la elección, la cookie de preferencias existente pasa a persistente o a
-  sesión en el momento. Turnstile y Google Fonts no dejan cookies en el dominio.
+  sesión en el momento. Turnstile no deja cookies en el dominio; las fuentes son propias.
 - El menú de accesibilidad y la preferencia de idioma persisten en una cookie y se
   aplican también durante SSR para evitar flashes de contenido con idioma incorrecto.
 - La documentación legal debe revisarse con el responsable del tratamiento antes de
@@ -182,7 +182,8 @@ se montan globalmente; el botón para volver al inicio se monta en la página pr
 - TanStack Query está configurado en el contexto del router.
 - Nitro 3 (beta) genera el despliegue para Cloudflare con preset `cloudflare-module`;
   `nodeCompat` está habilitado.
-- Tipografía principal: Nunito, cargada desde Google Fonts en el shell raíz.
+- Tipografía principal: Nunito autoalojada en `public/fonts/` (ver «Tipografía» en la
+  sección 7); no se usa Google Fonts.
 - `vitest`, `jsdom`, Testing Library, `axe-core` y Playwright están instalados, pero
   sus archivos de configuración y pruebas siguen vacíos (0 bytes); no hay suite
   ejecutable ni script `test`.
@@ -313,12 +314,11 @@ con excepciones para `*.example`, aunque hoy no existe un `.env.example` version
   aparecer en el bundle cliente y en el SSR. No hay `index.html` ni `src/main.tsx`.
 - Monta globalmente `FloatingChatbot` y `WhatsAppFloatingButton` (enlace flotante a
   `wa.me` con el número comercial de `CONTACT`). Ambos viven en este archivo.
-- Carga la tipografía Nunito desde Google Fonts: las etiquetas `<link rel="preconnect">`
-  a `https://fonts.googleapis.com` y `https://fonts.gstatic.com` (esta última con
-  `crossOrigin="anonymous"`), más el `<link rel="stylesheet">` de la familia Nunito y
-  `styles.css`. Las `preconnect` se declaran en `head.links` del shell raíz, que es la
-  forma de inyectar `<link>` en el `<head>` con TanStack Router; no deben duplicarse
-  como JSX dentro del `<body>`. La CSP de `src/server.ts` permite ambos orígenes.
+- En `head.links` precarga la Nunito normal autoalojada (`<link rel="preload"
+  href="/fonts/nunito-latin-400-900.woff2" as="font" type="font/woff2" crossorigin>`) y
+  enlaza `styles.css`. `head.links` es la forma de inyectar `<link>` en el `<head>` con
+  TanStack Router; no duplicarlos como JSX dentro del `<body>`. Desde el 27-10-2026 no
+  hay `preconnect` ni hoja de estilos de Google Fonts.
 - Tiene los componentes raíz de error (`ErrorComponent`, con `reportVibeError`) y 404.
 - El 404 (`NotFoundComponent`) ofrece dos salidas claras: «Ir al inicio» (`<Link to="/">`)
   y «Ver servicios» (`<Link to="/" hash="servicios">`, que produce `/#servicios` y
@@ -728,6 +728,32 @@ y la posición de cada proyecto en el bento de `ProjectsSection`.
 Los textos de los diferenciales de «¿Por qué TELCOBRAS?» no están aquí: viven en
 `DIFERENCIALES` dentro de `WhyUsSection.tsx`.
 
+### Tipografía
+
+- Nunito autoalojada en `public/fonts/` (licencia SIL OFL 1.1 en `public/fonts/OFL.txt`),
+  descargada el 27-10-2026 de la API de Google Fonts, subconjunto latino (U+0000-00FF:
+  tildes, ñ, ¿ y ¡; más comillas, guiones, € y ™):
+  - `nunito-latin-400-900.woff2` (39 KiB): normal variable de 400 a 900. Cubre todos los
+    grosores que usa el sitio (`font-normal`, `medium`, `semibold`, `bold`, `extrabold`,
+    `black`); no se usa 300. Es la única que se precarga.
+  - `nunito-latin-italic-700.woff2` (17 KiB): cursiva solo en 700, para el único texto
+    en cursiva (eslogan del hero). Se descarga solo cuando la página la usa.
+  - La flecha «→» (U+2192) no está en el subconjunto y se pinta con la fuente del
+    sistema, igual que antes con Google Fonts.
+- `@font-face` en `src/styles.css` con `font-display: swap`. Fuente de reserva
+  `"Nunito Fallback"`: Arial (400-500) y Arial Bold (600, 700, 800, 900, una cara por
+  grosor) con `size-adjust`, `ascent-override`, `descent-override` y
+  `line-gap-override` medidos en Chrome con los textos reales del sitio. Con las fuentes
+  bloqueadas, el header, el hero y Servicios ocupan exactamente lo mismo que con Nunito
+  (quedan diferencias de ~25 px más abajo en la página).
+- Los enlaces del menú de escritorio llevan `whitespace-nowrap`: el header no deja
+  margen a 1280 px y una diferencia de 3 px partía en dos líneas los enlaces de dos
+  palabras. Con Nunito no se parten en ningún ancho de escritorio, así que no cambia el
+  diseño.
+- Para regenerar: pedir a la API `family=Nunito:ital,wght@0,400..900;1,700` con un
+  User-Agent de Chrome y quedarse con los bloques `/* latin */` (¡no el primero del CSS,
+  que es cirílico!). Si cambian los grosores usados, volver a medir la reserva.
+
 ### `src/styles.css`
 
 - Entrada única del CSS global. Usa Tailwind v4 con detección automática desactivada:
@@ -740,7 +766,8 @@ Los textos de los diferenciales de «¿Por qué TELCOBRAS?» no están aquí: vi
   `componentTagger` solo en desarrollo y está ignorado por Git, así que no participa
   del build de producción.
 - Define variables de color/tema mediante OKLCH.
-- Define tokens semánticos y fuente Nunito.
+- Define tokens semánticos y la fuente (`--font-sans: "Nunito", "Nunito Fallback",
+  sans-serif`) con sus `@font-face` (ver «Tipografía» más abajo).
 - Contiene estilos globales y animaciones. Familias de clases propias:
   - `header-*` (`header-topbar`, `header-topbar-icon`, `header-glass`,
     `header-glass-panel`, `header-nav-link`, `header-nav-link--block`, `header-cta`).
@@ -912,9 +939,10 @@ exitosa y repetible con el módulo Webhook response configurado correctamente.
   `Strict-Transport-Security` (solo sobre HTTPS). La CSP está en modo **bloqueante**
   (cabecera `Content-Security-Policy`); ya no se emite
   `Content-Security-Policy-Report-Only`, así que cualquier origen no permitido bloquea
-  el recurso en lugar de solo reportarse. La CSP permite Turnstile, Google
-  Fonts y el iframe de Google Maps; las imágenes solo pueden venir del propio origen
-  (`img-src 'self' data: blob:`); en desarrollo añade
+  el recurso en lugar de solo reportarse. La CSP permite Turnstile y el iframe de
+  Google Maps; las imágenes y las fuentes solo pueden venir del propio origen
+  (`img-src 'self' data: blob:`, `font-src 'self'`, `style-src 'self' 'unsafe-inline'`);
+  en desarrollo añade
   `'unsafe-eval'`, `ws:`/`wss:` y localhost porque Vite lo requiere. `script-src`
   conserva `'unsafe-inline'` por los scripts inline de hidratación de TanStack Start;
   endurecerlo con nonces/hashes es el siguiente paso natural. No se usa
@@ -1052,7 +1080,8 @@ ese dominio (hoy `telcobras.com` sirve otro sitio, ver pendiente 17).
   apple-touch-icon.
 - Optimización de imágenes para Core Web Vitals: `loading`/`decoding`/`fetchPriority`
   explícitos y `width`/`height` declarados para evitar CLS y priorizar el LCP.
-- `preconnect` a Google Fonts y `fonts.gstatic.com` en el shell global (`head.links`).
+- Nunito autoalojada con `preload` y fuente de reserva con métricas ajustadas (sin CLS
+  por cambio de fuente).
 - Página 404 con enlaces de salida a «Ir al inicio» (`/`) y «Ver servicios» (`/#servicios`).
 - Higiene de secretos: auditoría del código, historial completo (incluidos objetos
   huérfanos) y bundle de cliente sin hallazgos; `.gitignore` cubre `.env*`/`.dev.vars*`,
@@ -1186,7 +1215,11 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
    El 27-10-2026 se reescribió la sección 6 («Cookies y almacenamiento local») de la
    política, ES/EN, para que describa el funcionamiento real (esencial frente a
    opcional, sesión del chat, mapa de Google) y se cambió su fecha de actualización:
-   **pendiente de revisión jurídica**, igual que el texto nuevo del banner.
+   **pendiente de revisión jurídica**, igual que el texto nuevo del banner. También el
+   27-10-2026 se quitó Google Fonts de la sección 5 («Proveedores», ES/EN), porque la
+   tipografía pasó a servirse desde el propio sitio: **este cambio también lo revisa
+   jurídica**. Nota para esa revisión: la sección 5 no menciona Cloudflare Turnstile,
+   que recibe datos técnicos del navegador al verificar el formulario.
 8. **Protección de endpoints HTTP:** `/api/contacto` tiene Turnstile y rate limit por IP
    (5 envíos cada 10 min) y `/api/chat` tiene rate limit (20 mensajes cada 5 min), ambos
    con el limitador compartido `src/lib/rate-limit.ts` basado en `cf-connecting-ip`. El
@@ -1386,9 +1419,13 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
     **Optimización 1, imágenes (27-10-2026, sin medir aún con Lighthouse):** imágenes
     propias en AVIF/WebP con `srcset`/`sizes`, preload del hero, CSP sin orígenes de
     imágenes externos (desaparece la cookie `__cf_bm`) y altura reservada en la tarjeta
-    del hero (sección 10, «Imágenes»). Queda un desplazamiento de unos 0,03 en
-    escritorio: la navegación del header pasa de dos líneas a una cuando llega Nunito
-    (cambio de fuente; ya estaba en la línea base de escritorio, 0,029).
+    del hero (sección 10, «Imágenes»).
+
+    **Optimización 2, fuentes (27-10-2026, sin medir aún con Lighthouse):** Nunito
+    autoalojada (sin la petición de ~1 s que bloqueaba el renderizado a Google Fonts),
+    precargada, y fuente de reserva con métricas ajustadas. Corrige el CLS de ~0,03 del
+    menú del header en escritorio: en el navegador ya no hay ningún layout shift al
+    cargar, ni a 360 ni a 1280 px (ver «Tipografía» en la sección 7).
 
 ## 12. Operación y privacidad del formulario
 

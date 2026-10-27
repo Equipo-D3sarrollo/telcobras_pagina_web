@@ -65,7 +65,7 @@ const policyCopy = {
       },
       providers: {
         title: "5. Proveedores y transferencias",
-        text: "Para operar los servicios descritos, la información puede ser procesada por proveedores tecnológicos que apoyan el almacenamiento de solicitudes y la atención automatizada. El sitio también integra recursos externos como Google Maps y Google Fonts, que pueden recibir datos técnicos de conexión cuando el navegador los solicita. La ubicación de los proveedores y las condiciones aplicables a eventuales transmisiones internacionales deben revisarse conforme a la normativa vigente.",
+        text: "Para operar los servicios descritos, la información puede ser procesada por proveedores tecnológicos que apoyan el almacenamiento de solicitudes y la atención automatizada. El sitio también integra recursos externos como el mapa de Google Maps, que puede recibir datos técnicos de conexión cuando el navegador lo carga (ver sección 6). La tipografía se sirve desde el propio sitio. La ubicación de los proveedores y las condiciones aplicables a eventuales transmisiones internacionales deben revisarse conforme a la normativa vigente.",
       },
       cookies: {
         title: "6. Cookies y almacenamiento local",
@@ -155,7 +155,7 @@ const policyCopy = {
       },
       providers: {
         title: "5. Providers and transfers",
-        text: "To operate the services described, information may be processed by technology providers that support request storage and automated assistance. The site also integrates external resources such as Google Maps and Google Fonts, which may receive technical connection data when requested by your browser. Provider locations and the conditions applicable to any international transfers must be reviewed in accordance with current law.",
+        text: "To operate the services described, information may be processed by technology providers that support request storage and automated assistance. The site also integrates external resources such as the Google Maps map, which may receive technical connection data when your browser loads it (see section 6). Fonts are served from the site itself. Provider locations and the conditions applicable to any international transfers must be reviewed in accordance with current law.",
       },
       cookies: {
         title: "6. Cookies and local storage",

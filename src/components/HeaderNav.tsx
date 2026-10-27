@@ -75,7 +75,7 @@ export function HeaderNav() {
               <a
                 key={link.href}
                 href={link.href}
-                className="header-nav-link rounded-lg px-1.5 py-2.5 text-[0.8125rem] xl:px-2 xl:text-[0.875rem] font-semibold text-foreground transition-colors duration-300 hover:text-[var(--brand-link)] focus-visible:text-[var(--brand-link)] focus-visible:outline-2 focus-visible:outline-offset-1"
+                className="header-nav-link whitespace-nowrap rounded-lg px-1.5 py-2.5 text-[0.8125rem] xl:px-2 xl:text-[0.875rem] font-semibold text-foreground transition-colors duration-300 hover:text-[var(--brand-link)] focus-visible:text-[var(--brand-link)] focus-visible:outline-2 focus-visible:outline-offset-1"
               >
                 {t.links[index]}
               </a>

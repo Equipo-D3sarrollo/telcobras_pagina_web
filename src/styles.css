@@ -6,6 +6,92 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
+ * Nunito autoalojada (public/fonts/, licencia OFL en public/fonts/OFL.txt): subconjunto
+ * latino de Google Fonts (U+0000-00FF y signos: tildes, ñ, ¿ y ¡). Normal variable 400-900, que cubre
+ * todos los grosores usados (font-normal a font-black), y cursiva solo en 700 (eslogan
+ * del hero). La normal se precarga en __root.tsx.
+ */
+@font-face {
+  font-family: "Nunito";
+  font-style: normal;
+  font-weight: 400 900;
+  font-display: swap;
+  src: url("/fonts/nunito-latin-400-900.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Nunito";
+  font-style: italic;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/nunito-latin-italic-700.woff2") format("woff2");
+}
+
+/*
+ * Reserva con métricas de Nunito mientras carga (evita que el texto cambie de tamaño y,
+ * por ejemplo, que el menú del header pase de dos líneas a una: CLS). size-adjust =
+ * ancho de Nunito / ancho de Arial (400-500) o Arial Bold (600-900), medido en Chrome
+ * con los textos reales del sitio para cada grosor: 400 párrafos 99,8 %, 600 menú
+ * 93,6 % (se usa 93,4 % para que nunca sea más ancho que Nunito y el menú no se parta),
+ * 700 97,9 %, 800 99,1 %, 900 títulos 101 %. ascent/descent = 1,016 y 0,359 em de
+ * Nunito divididos entre size-adjust.
+ */
+@font-face {
+  font-family: "Nunito Fallback";
+  font-style: normal;
+  font-weight: 400 500;
+  src: local("Arial"), local("ArialMT"), local("Helvetica");
+  size-adjust: 99.8%;
+  ascent-override: 101.8%;
+  descent-override: 36%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: "Nunito Fallback";
+  font-style: normal;
+  font-weight: 600;
+  src: local("Arial Bold"), local("Arial-BoldMT"), local("Helvetica Bold");
+  size-adjust: 93.4%;
+  ascent-override: 108.8%;
+  descent-override: 38.4%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: "Nunito Fallback";
+  font-style: normal;
+  font-weight: 700;
+  src: local("Arial Bold"), local("Arial-BoldMT"), local("Helvetica Bold");
+  size-adjust: 97.8%;
+  ascent-override: 103.9%;
+  descent-override: 36.7%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: "Nunito Fallback";
+  font-style: normal;
+  font-weight: 800;
+  src: local("Arial Bold"), local("Arial-BoldMT"), local("Helvetica Bold");
+  size-adjust: 99.1%;
+  ascent-override: 102.5%;
+  descent-override: 36.2%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: "Nunito Fallback";
+  font-style: normal;
+  font-weight: 900;
+  src: local("Arial Bold"), local("Arial-BoldMT"), local("Helvetica Bold");
+  size-adjust: 101%;
+  ascent-override: 100.6%;
+  descent-override: 35.5%;
+  line-gap-override: 0%;
+}
+
+/*
  * Design system definition.
  *
  * The @theme inline block maps CSS custom properties to Tailwind utility
@@ -27,7 +113,7 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
-  --font-sans: "Nunito", sans-serif;
+  --font-sans: "Nunito", "Nunito Fallback", sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -319,7 +405,7 @@
 }
 
 .telcobras-rounded-font {
-  font-family: "Arial Rounded MT Bold", "Arial Rounded", "Nunito", sans-serif;
+  font-family: "Arial Rounded MT Bold", "Arial Rounded", "Nunito", "Nunito Fallback", sans-serif;
 }
 
 .hero-aurora-blob {
