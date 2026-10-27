@@ -207,6 +207,8 @@ export function ContactSection() {
             alt=""
             width={1200}
             height={800}
+            loading="lazy"
+            decoding="async"
             className="w-full h-full object-cover"
           />
         </div>
@@ -840,6 +842,8 @@ export function SiteFooter() {
               alt={t.logoAlt}
               width={160}
               height={48}
+              loading="lazy"
+              decoding="async"
               className="h-12 w-auto object-contain"
             />
           </div>

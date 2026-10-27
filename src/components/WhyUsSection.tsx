@@ -11,6 +11,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useRotatingHighlight } from "@/hooks/use-rotating-highlight";
 import { BrandGlowBorder } from "./BrandGlowBorder";
+import { BackgroundVideo } from "./BackgroundVideo";
 import { useTranslations } from "@/lib/accessibility-preferences-context";
 
 type TipoEnlace = "fibra" | "radio";
@@ -263,7 +264,6 @@ export function WhyUsSection() {
   // Arranca visible y animado; solo se pausa cuando el observer confirma que salió.
   const [isInView, setIsInView] = useState(true);
   const [revealed, setRevealed] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
   // Estado compartido: un único activo para la ilustración y las 5 tarjetas. Rota cada
   // 3 s; hover/focus lo fija y al salir se reanuda tras 1,5 s; un toque pausa 6 s.
   const {
@@ -310,17 +310,6 @@ export function WhyUsSection() {
     return () => observer.disconnect();
   }, []);
 
-  // El video de fondo solo se reproduce mientras la sección está en pantalla.
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-    if (isInView) {
-      video.play().catch(() => {});
-    } else {
-      video.pause();
-    }
-  }, [isInView]);
-
   // Aparición escalonada: opacidad siempre; desplazamiento solo con motion-safe.
   const revealClass = (index: number) => ({
     className: cn(
@@ -345,18 +334,12 @@ export function WhyUsSection() {
         aria-hidden="true"
         className="absolute inset-0 -z-10 overflow-hidden [container-type:size]"
       >
-        <video
-          ref={videoRef}
-          autoPlay
+        <BackgroundVideo
+          src="/video_inicio.mp4"
+          poster="/video_inicio.webp"
+          playing={isInView}
           className="absolute left-1/2 top-1/2 h-[100cqw] w-[100cqh] max-w-none -translate-x-1/2 -translate-y-1/2 rotate-90 object-cover"
-          loop
-          muted
-          playsInline
-          preload="metadata"
-          tabIndex={-1}
-        >
-          <source src="/video_inicio.mp4" type="video/mp4" />
-        </video>
+        />
         {/* Capa navy para mantener el contraste del texto sobre el video */}
         <div className="absolute inset-0 bg-[#0A192F]/75" />
       </div>

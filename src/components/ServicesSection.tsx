@@ -3,6 +3,7 @@ import { SERVICIOS_DATA } from "@/lib/telcobras-data";
 import type { CSSProperties } from "react";
 import { Wifi, ShieldCheck, Users, Cloud, Bot, CheckCircle2, Zap } from "lucide-react";
 import { BrandGlowBorder } from "@/components/BrandGlowBorder";
+import { BackgroundVideo } from "@/components/BackgroundVideo";
 import { useTranslations } from "@/lib/accessibility-preferences-context";
 
 const ICONS_MAP = {
@@ -11,6 +12,15 @@ const ICONS_MAP = {
   colaboracion: Users,
   nube: Cloud,
   "agentes-ia": Bot,
+};
+
+/* Video de fondo por servicio (archivos en public/, cada uno con su poster .webp). */
+const SERVICE_VIDEOS: Record<string, string> = {
+  conectividad: "video_conectividad",
+  seguridad: "video_seguridad",
+  colaboracion: "video_colaboracion",
+  nube: "video_nuve",
+  "agentes-ia": "video_agentes",
 };
 
 /* Acento visual por servicio (solo decoración; no reemplaza SERVICIOS_DATA). */
@@ -34,6 +44,7 @@ export function ServicesSection() {
   }
   const CurrentIcon = ICONS_MAP[currentService.id as keyof typeof ICONS_MAP] || Wifi;
   const translatedService = t.cards[currentService.id as keyof typeof t.cards];
+  const serviceVideo = SERVICE_VIDEOS[currentService.id] ?? "video_agentes";
 
   useEffect(() => {
     const rotationInterval = window.setInterval(() => {
@@ -114,31 +125,12 @@ export function ServicesSection() {
             currentService.id,
           ) && (
             <>
-              <video
-                aria-hidden="true"
-                autoPlay
-                className="services-panel-video absolute inset-0 h-full w-full object-cover"
+              <BackgroundVideo
                 key={currentService.id}
-                loop
-                muted
-                playsInline
-                tabIndex={-1}
-              >
-                <source
-                  src={
-                    currentService.id === "conectividad"
-                      ? "/video_conectividad.mp4"
-                      : currentService.id === "seguridad"
-                        ? "/video_seguridad.mp4"
-                        : currentService.id === "colaboracion"
-                          ? "/video_colaboracion.mp4"
-                          : currentService.id === "nube"
-                            ? "/video_nuve.mp4"
-                            : "/video_agentes.mp4"
-                  }
-                  type="video/mp4"
-                />
-              </video>
+                src={`/${serviceVideo}.mp4`}
+                poster={`/${serviceVideo}.webp`}
+                className="services-panel-video absolute inset-0 h-full w-full object-cover"
+              />
               <div aria-hidden="true" className="absolute inset-0 bg-slate-950/75" />
             </>
           )}

@@ -27,6 +27,8 @@ function formatBotText(text: string): string {
     .trim();
 }
 
+const WELCOME_BUBBLE_MS = 8000;
+
 export function FloatingChatbot() {
   const { preferences } = useAccessibilityPreferences();
   const t = useTranslations().chatbot;
@@ -69,6 +71,13 @@ export function FloatingChatbot() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [isLoading, messages]);
+
+  // La invitación es un aviso temporal: se cierra sola para no tapar contenido (en
+  // móvil quedaba sobre el correo y el horario del footer). El botón del robot sigue.
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setWelcomeVisible(false), WELCOME_BUBBLE_MS);
+    return () => window.clearTimeout(timeout);
+  }, []);
 
   useEffect(() => {
     setMessages((currentMessages) =>
@@ -247,9 +256,9 @@ export function FloatingChatbot() {
                 className="flex items-center gap-1 rounded-2xl rounded-bl-md bg-muted px-4 py-3 text-muted-foreground"
                 role="status"
               >
-                <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground" />
-                <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground [animation-delay:120ms]" />
-                <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground [animation-delay:240ms]" />
+                <span className="h-2 w-2 motion-safe:animate-bounce rounded-full bg-muted-foreground" />
+                <span className="h-2 w-2 motion-safe:animate-bounce rounded-full bg-muted-foreground [animation-delay:120ms]" />
+                <span className="h-2 w-2 motion-safe:animate-bounce rounded-full bg-muted-foreground [animation-delay:240ms]" />
                 <span className="ml-2 text-xs">{t.responding}</span>
               </div>
             )}
@@ -342,7 +351,7 @@ export function FloatingChatbot() {
         ) : (
           <span
             aria-hidden="true"
-            className="relative flex h-[124px] w-[112px] scale-[1.15] flex-col items-center justify-end animate-bounce [animation-duration:3s] drop-shadow-lg"
+            className="relative flex h-[124px] w-[112px] scale-[1.15] flex-col items-center justify-end motion-safe:animate-bounce [animation-duration:3s] drop-shadow-lg"
           >
             <span className="z-10 -mb-0.5 flex flex-col items-center">
               <span className="h-2 w-2 rounded-full bg-[#88BD4C] ring-2 ring-emerald-200/70 shadow-[0_0_8px_#88BD4C]" />

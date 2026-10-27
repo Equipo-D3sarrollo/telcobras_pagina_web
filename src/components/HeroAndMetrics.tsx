@@ -11,6 +11,7 @@ import {
 import { CALI_PHOTO, HERO_PHOTO, TECHNICIAN_PHOTO } from "@/lib/telcobras-data";
 import { useRotatingHighlight } from "@/hooks/use-rotating-highlight";
 import { BrandGlowBorder } from "./BrandGlowBorder";
+import { BackgroundVideo } from "./BackgroundVideo";
 import { useTranslations } from "@/lib/accessibility-preferences-context";
 
 const HERO_SLIDES = [HERO_PHOTO, TECHNICIAN_PHOTO, CALI_PHOTO];
@@ -77,17 +78,11 @@ export function HeroAndMetrics() {
         id="inicio"
         className="telcobras-rounded-font relative isolate overflow-hidden bg-[#0A192F] text-white pt-12 pb-20 md:pt-20 md:pb-32"
       >
-        <video
-          aria-hidden="true"
-          autoPlay
+        <BackgroundVideo
+          src="/video_inicio.mp4"
+          poster="/video_inicio.webp"
           className="absolute inset-0 z-0 h-full w-full object-cover"
-          loop
-          muted
-          playsInline
-          tabIndex={-1}
-        >
-          <source src="/video_inicio.mp4" type="video/mp4" />
-        </video>
+        />
         <div aria-hidden="true" className="absolute inset-0 z-[1] bg-slate-950/55" />
 
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">

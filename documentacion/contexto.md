@@ -485,8 +485,8 @@ o Remix: la guía local está en `src/routes/README.md`.
   - `colaboracion` → `/video_colaboracion.mp4`
   - `nube` → `/video_nuve.mp4`
   - `agentes-ia` → `/video_agentes.mp4`
-- Usa `<video autoPlay loop muted playsInline>`; la `key` por ID ayuda a recrear
-  el reproductor al cambiar de pestaña. Overlay oscuro (`bg-slate-950/75`) para
+- Usa `BackgroundVideo` (ver «Videos de fondo»), con el mapa `SERVICE_VIDEOS`; la
+  `key` por ID recrea el reproductor al cambiar de pestaña. Overlay oscuro (`bg-slate-950/75`) para
   mantener contraste.
 - Interfaz con dos formas de selección sincronizadas: una barra de pestañas
   (`services-tabs` / `services-tab` / `services-tab-indicator`) y una cuadrícula de
@@ -638,10 +638,12 @@ política legal aprobada.
 
 ### `src/components/FloatingChatbot.tsx`
 
-- Chat flotante con bienvenida cerrable, botón de robot, historial en memoria mientras
+- Chat flotante con bienvenida cerrable (se cierra sola a los 8 s, `WELCOME_BUBBLE_MS`,
+  para no tapar contenido como el correo y el horario del footer en móvil), botón de robot, historial en memoria mientras
   está montado, mensajes de usuario/asistente, loading indicator (tres puntos) y
   mensajes de error.
-- El botón colapsado es un robot animado (`chatbot-robot-vibrate` + `animate-bounce`) y
+- El botón colapsado es un robot animado (`chatbot-robot-vibrate` +
+  `motion-safe:animate-bounce`, ambos quietos con movimiento reducido) y
   la invitación («¡Hola! ¿Necesitas ayuda?») usa `chatbot-invite-animation`.
 - La sesión se guarda en `localStorage` bajo `telcobras_session_id`; si falta se crea
   con `crypto.randomUUID()`. Si el acceso a `localStorage` falla, usa un UUID
@@ -749,6 +751,27 @@ Los textos de los diferenciales de «¿Por qué TELCOBRAS?» no están aquí: vi
   del viewport. Opciones: `resumeDelayMs` y `onTouchActivate(index, pauseMs)`. No usa
   `window` durante el render (SSR seguro). Lo usan las métricas y los diferenciales.
 
+### Videos de fondo
+
+- Los cinco `<video>` de la landing (Hero, Quiénes Somos, Servicios, Inteligencia
+  Artificial y «¿Por qué TELCOBRAS?») usan `src/components/BackgroundVideo.tsx`:
+  silenciado, en bucle, `playsInline`, `poster` `.webp` (primer fotograma, mismo nombre
+  que el `.mp4` en `public/`), `preload="none"` y **sin `autoPlay`**. Se reproduce desde
+  el cliente con `play()` salvo con `prefers-reduced-motion: reduce`, en cuyo caso se
+  queda en el poster y ni siquiera descarga el video. `playing` permite pausarlo fuera
+  de pantalla (lo usa `WhyUsSection`).
+- La preferencia se lee con `useReducedMotion()` / `prefersReducedMotion()` de
+  `src/hooks/use-reduced-motion.ts`.
+- Compresión (27-10-2026, `ffmpeg` 9.0.2): H.264 `-preset veryfast -crf 28`, sin audio,
+  máximo 1280×720 y `-movflags +faststart`. Excepciones: `video_agentes.mp4` a 960×540
+  para bajar de 5 MB, y `video_seguridad.mp4` sin recodificar (con CRF 28 crecía), solo
+  sin audio y con `+faststart`. Se comprobó fotograma a fotograma que no hay pérdida
+  visible y que cada video conserva su número de fotogramas. Para volver a comprimir:
+  `ffmpeg -i in.mp4 -an -c:v libx264 -preset veryfast -crf 28 -pix_fmt yuv420p -vf
+  "scale='min(1280,iw)':'min(720,ih)':force_original_aspect_ratio=decrease,scale=trunc(iw/2)*2:trunc(ih/2)*2"
+  -movflags +faststart out.mp4`; poster: `ffmpeg -i in.mp4 -frames:v 1 -c:v libwebp
+  -quality 75 in.webp`.
+
 ### Convenciones de movimiento
 
 - Con `prefers-reduced-motion` no se elimina un efecto: se conservan los ciclos y los
@@ -762,6 +785,11 @@ Los textos de los diferenciales de «¿Por qué TELCOBRAS?» no están aquí: vi
 - Para verificar en navegador, emular ambos modos (`reducedMotion: "reduce"` y
   `"no-preference"`). No usar capturas de un elemento más alto que el viewport
   mientras se mide una rotación: alteran el área visible y el observer la pausa.
+- Excepciones explícitas (27-10-2026): con movimiento reducido los videos de fondo no
+  se reproducen (se ve el poster), y se detienen del todo el rebote y la vibración del
+  robot del chat, los puntos de carga del chat (`motion-safe:animate-bounce`) y la
+  rotación de logos de aliados (`.chatbot-robot-vibrate` y `.ally-logo-rotation` con
+  `animation: none` en `styles.css`).
 
 ## 8. Integración del chatbot con Make
 
@@ -912,6 +940,7 @@ En `public/` se encontraron:
 | `video_nuve.mp4` | Servicio Nube (nombre exacto del archivo, «nuve») |
 | `video_agentes.mp4` | Servicio Agentes IA |
 | `video_tel.mp4` | Fondo de «Quiénes Somos» (`AboutAndValues.tsx`) |
+| `video_*.webp` | Poster (primer fotograma) de cada video, mismo nombre que el `.mp4` |
 | `logo_aquora.png` | Aliado Aquora |
 | `logo_xpertic.png` | Aliado Xpertic |
 | `favicon.ico` | Favicon (32×32, más 16 y 48), isotipo de TELCOBRAS |
@@ -992,8 +1021,8 @@ punto están en la lista «Pendiente/por confirmar» (número entre paréntesis)
 | Alta (corregida) | `/video_tel.mp4` daba 404: se movió a `public/` | 4 |
 | Media | Rate limit en memoria por isolate; `/api/chat` sin Turnstile | 8 |
 | Media (resuelta) | `conexion.php` de prueba con credenciales por defecto y salida de datos personales: eliminado | 22 |
-| Media | Videos pesados (`video_agentes.mp4` 49 MB) y duplicados en la raíz | 6 |
-| Media | Videos y animaciones que ignoran `prefers-reduced-motion` | 14 |
+| Media (corregida) | Videos pesados: comprimidos de 76,9 MB a 16,5 MB en total (`video_agentes.mp4` 49 → 3,5 MB); duplicados de la raíz pendientes de borrar | 6, 23 |
+| Media (corregida) | Videos y animaciones que ignoraban `prefers-reduced-motion` | 14 |
 | Media | El banner de cookies dice «al navegar aceptas» aunque ofrece rechazar | 25 |
 | Baja | CSP `connect-src` con dominios que el navegador no usa | 16 |
 | Baja | Metadatos SSR de las páginas legales siempre en español | 26 |
@@ -1049,8 +1078,9 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
    código de `0cef096`). Siguen vacíos (0 bytes) `vitest.config.ts`,
    `playwright.config.ts`, `src/components/AccessibilityMenu.test.tsx`,
    `src/components/ServicesSection.test.tsx`, `src/lib/accessibility-preferences.test.ts`,
-   `src/lib/error-page.test.ts`, `src/hooks/use-reduced-motion.test.tsx`,
-   `e2e/accessibility.spec.ts` y también el hook `src/hooks/use-reduced-motion.ts`.
+   `src/lib/error-page.test.ts`, `src/hooks/use-reduced-motion.test.tsx` y
+   `e2e/accessibility.spec.ts` (el hook `src/hooks/use-reduced-motion.ts` ya tiene
+   implementación desde el 27-10-2026).
    `npx vitest run` falla con «config must export or return an object» y no hay script
    `test`. Reconstruir la suite o retirar los archivos vacíos para no aparentar
    cobertura. `gitleaks` no está instalado localmente: el pre-commit lo omite y solo
@@ -1063,8 +1093,22 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
 5. **Rotación automática de Servicios:** rota incluso sin interacción y cambia también
    si el visitante seleccionó manualmente una pestaña. Si UX requiere pausar/reiniciar
    el reloj tras interacción o al salir de viewport, implementar explícitamente.
-6. **Peso de videos:** revisar compresión, dimensiones, poster, carga diferida y política
-   de reproducción móvil, especialmente para `video_agentes.mp4`.
+6. **Peso de videos — corregido (27-10-2026):** los 7 videos de `public/` se
+   comprimieron (ver «Videos de fondo»):
+
+   | Video | Antes | Después | Duración |
+   |---|---|---|---|
+   | `video_agentes.mp4` | 49,04 MB | 3,51 MB | 40,87 s |
+   | `video_colaboracion.mp4` | 1,40 MB | 0,66 MB | 12,80 s |
+   | `video_conectividad.mp4` | 1,14 MB | 0,60 MB | 10,08 s |
+   | `video_inicio.mp4` | 2,99 MB | 0,74 MB | 10,00 s |
+   | `video_nuve.mp4` | 4,62 MB | 4,07 MB | 20,16 s |
+   | `video_seguridad.mp4` | 2,33 MB | 2,08 MB | 15,00 s |
+   | `video_tel.mp4` | 15,34 MB | 4,84 MB | 345,90 s |
+
+   Todos tienen poster `.webp` y `preload="none"`. Queda abierto: `video_tel.mp4` dura
+   casi 6 minutos para un fondo en bucle (recortarlo requiere decisión de contenido), y
+   el poster de `video_nuve.mp4` es casi negro porque el video empieza con un fundido.
 7. **Privacidad y textos legales:** `/politica-de-privacidad` está implementada y el
    formulario exige consentimiento. `/terminos-de-servicio` y `/sla` ya muestran sus
    textos completos, pero están pendientes de aprobación de gerencia y revisión
@@ -1096,10 +1140,10 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
     sin movimiento reducido) y aparecen cuando el JavaScript hidrata y el observer las
     revela. En modo dev eso tarda unos 10 s; con conexión lenta se vería un
     hueco. Propuesta: renderizarlas visibles y aplicar la animación solo tras el montaje.
-14. **Accesibilidad del movimiento:** el robot y los puntos de carga del chatbot usan
-    `animate-bounce` sin `motion-safe:`. `chatbot-robot-vibrate` y `ally-logo-rotation`
-    tampoco tienen regla de movimiento reducido; la invitación del chatbot sí tiene un
-    tratamiento específico en `styles.css`.
+14. **Accesibilidad del movimiento — corregido (27-10-2026):** con
+    `prefers-reduced-motion: reduce` los videos de fondo se quedan en el poster y se
+    detienen el robot del chat, sus puntos de carga y la rotación de logos de aliados
+    (ver «Convenciones de movimiento»).
 15. **Por confirmar con el cliente:** textos nuevos de los diferenciales, colores por
     tarjeta, si con movimiento reducido la tarjeta activa debe seguir creciendo, y
     categorías/subtítulo de Proyectos.
@@ -1166,10 +1210,10 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
     Se eliminó con `git rm` tras comprobar que nada en el código, la configuración ni el
     build lo referenciaba. Sigue en el historial de Git; no contenía secretos (las
     credenciales venían de variables de entorno).
-23. **Peso del repositorio:** unos 70 MB de videos versionados; `video_agentes.mp4`,
-    `video_conectividad.mp4`, `video_inicio.mp4` y `video_seguridad.mp4` están también
-    en la raíz, donde no se sirven (`video_tel.mp4` ya se movió a `public/`). Recomprimir, quitar
-    duplicados y valorar Git LFS o un CDN (ver pendientes 4 y 6).
+23. **Peso del repositorio:** los videos de `public/` ya están comprimidos (pendiente 6),
+    pero los originales siguen en el historial de Git. `video_agentes.mp4`,
+    `video_conectividad.mp4`, `video_inicio.mp4` y `video_seguridad.mp4` siguen también
+    en la raíz, sin comprimir y sin usarse (`video_tel.mp4` ya se movió a `public/`).
 24. **Páginas legales publicadas sin aprobar:** `0cef096` ya está en el `main` del
     repo personal (PR #2) y en la rama que se sube al repo oficial. Si se despliega, `/terminos-de-servicio` y `/sla` quedarán públicas con compromisos
     (disponibilidad, tiempos y créditos de `SLA_VALUES`) que gerencia y jurídica aún no

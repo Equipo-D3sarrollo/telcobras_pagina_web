@@ -12,6 +12,7 @@ import {
   Heart,
 } from "lucide-react";
 import { useTranslations } from "@/lib/accessibility-preferences-context";
+import { BackgroundVideo } from "./BackgroundVideo";
 
 export function AboutAndValues() {
   const t = useTranslations().about;
@@ -30,17 +31,11 @@ export function AboutAndValues() {
       id="nosotros"
       className="relative isolate overflow-hidden bg-slate-900 px-6 py-20 md:py-28"
     >
-      <video
+      <BackgroundVideo
+        src="/video_tel.mp4"
+        poster="/video_tel.webp"
         className="absolute inset-0 z-0 h-full w-full object-cover"
-        autoPlay
-        muted
-        loop
-        playsInline
-        aria-hidden="true"
-        tabIndex={-1}
-      >
-        <source src="/video_tel.mp4" type="video/mp4" />
-      </video>
+      />
       <div className="absolute inset-0 z-[1] bg-white/65" />
       <div className="absolute top-0 right-0 z-[2] h-2 w-1/3 bg-gradient-to-r from-[#0087C3] via-[#88BD4C] to-[#F3CB35]" />
 

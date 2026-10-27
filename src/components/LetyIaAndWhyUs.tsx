@@ -1,6 +1,7 @@
 import { Sparkles, ArrowRight } from "lucide-react";
 import { ProjectsSection } from "./ProjectsSection";
 import { WhyUsSection } from "./WhyUsSection";
+import { BackgroundVideo } from "./BackgroundVideo";
 import { useTranslations } from "@/lib/accessibility-preferences-context";
 
 export function LetyIaAndWhyUs() {
@@ -12,17 +13,11 @@ export function LetyIaAndWhyUs() {
         id="inteligencia-artificial"
         className="py-20 md:py-28 bg-[#0A192F] text-white relative isolate overflow-hidden"
       >
-        <video
-          aria-hidden="true"
-          autoPlay
+        <BackgroundVideo
+          src="/video_inicio.mp4"
+          poster="/video_inicio.webp"
           className="absolute inset-0 z-0 h-full w-full object-cover"
-          loop
-          muted
-          playsInline
-          tabIndex={-1}
-        >
-          <source src="/video_inicio.mp4" type="video/mp4" />
-        </video>
+        />
         <div aria-hidden="true" className="absolute inset-0 z-[1] bg-slate-950/55" />
         <div className="absolute top-1/2 left-0 -translate-y-1/2 w-80 h-80 bg-[#0087C3]/20 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 right-0 w-80 h-80 bg-[#88BD4C]/20 rounded-full blur-3xl pointer-events-none" />
