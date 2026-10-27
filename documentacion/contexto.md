@@ -966,30 +966,41 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
 
 ### Pendiente/por confirmar
 
-1. **Estado Git al 26-10-2026:** `HEAD` y `origin/feature/footer-seguridad-alejandro`
-   están en `0cef096` (incluye `96e94ec`, limitador compartido, y `0cef096`, páginas
-   legales). `origin/main` sigue en `b299546` (merge del PR #1) y la rama local `main`
-   en `680eeb3`, un commit por detrás de `origin/main`. Los dos commits nuevos ya
-   están publicados en la rama remota, pero no en `main`; no hace falta reescribir
-   historia. El árbol de trabajo está limpio.
+1. **Repositorios y estado Git al 27-10-2026:**
+   - **Repositorio oficial:** `Equipo-D3sarrollo/telcobras_pagina_web` (**público**),
+     remoto `origin`. Su `main` estaba en `16e5c5a` («first commit»), que es ancestro
+     del `main` del repo personal: se pone al día mediante un PR de
+     `feature/footer-seguridad-alejandro` hacia `main`, en fast-forward y sin reescribir
+     historia. La cuenta de Git de este equipo **sí tiene permiso de push** a ese repo
+     (comprobado con `git push --dry-run` el 27-10-2026). La rama
+     `feature/footer-seguridad-alejandro` sigue a `origin`.
+   - **Repositorio de respaldo:** `guidogonzalez21/telcobras-web` (privado), remoto
+     `personal`. Ahí está la historia de los PR #1 (`b299546`), #2 (`6b92799`) y #3
+     (`757e21e`), fusionados desde la rama `feature/footer-seguridad-alejandro`. Se
+     mantiene sincronizado con `git push personal main` y
+     `git push personal feature/footer-seguridad-alejandro`.
+   - Antes del 27-10-2026 existía un remoto llamado
+     `Equipo-D3sarrollo/telcobras_pagina_web.git` que, pese al nombre, apuntaba al repo
+     personal; se eliminó para evitar confusiones.
+   - Al ser público el repo oficial, antes de subir se revisó todo el historial con
+     `git grep`: ningún `.env*` versionado ni valores reales de Supabase, Make o
+     Turnstile; solo aparecen las claves de prueba públicas de Cloudflare
+     (`1x0000…AA`). Los commits muestran nombre y correo del autor.
    **Origen de los push (investigado el 26-10-2026):** `96e94ec`+`0cef096` y `c1cc050`
-   salieron de este equipo, no de AI Studio. El reflog de
-   `origin/feature/footer-seguridad-alejandro` registra «update by push» a las 13:31:24 y
-   14:38:42 (+01:00). El log de Git de VS Code
+   salieron de este equipo, no de AI Studio. El reflog de la rama remota (entonces
+   `origin`, hoy `personal`) registra «update by push» a las 13:31:24 y 14:38:42
+   (+01:00). El log de Git de VS Code
    (`%APPDATA%/Code/logs/20261026T095944/window1/exthost/vscode.git/Git.log`) muestra a
-   esas mismas horas `git pull --tags` seguido de `git push origin
-   feature/footer-seguridad-alejandro`, que es la secuencia del botón «Sincronizar
-   cambios» de VS Code. La configuración de usuario de VS Code tiene `git.confirmSync:
-   false` (sincroniza sin pedir confirmación) y `git.autofetch: true` (este solo hace
-   fetch). No hay hooks que hagan push: `core.hooksPath=.githooks` solo contiene
-   `pre-commit` (gitleaks) y `.git/hooks` solo tiene `*.sample`. No existe
-   `.vscode/settings.json` ni `git.postCommitCommand`. No se pudo consultar la actividad
-   de GitHub porque `gh` no está instalado y el repo es privado. Para retener commits
-   en local, no pulsar «Sincronizar cambios» o poner `git.confirmSync: true`.
-   El push directo a
-   `Equipo-D3sarrollo/telcobras_pagina_web` seguía limitado por permisos de la cuenta
-   en la última comprobación; `origin` (`guidogonzalez21/telcobras-web`) es el remoto
-   operativo.
+   esas mismas horas `git pull --tags` seguido de `git push`, que es la secuencia del
+   botón «Sincronizar cambios» de VS Code. El 26-10-2026 a las 17:45 VS Code además
+   creó y sincronizó `30f0a3b` con cambios a medio hacer (`git.enableSmartCommit:
+   true`). La configuración de usuario de VS Code tiene `git.confirmSync: false`
+   (sincroniza sin pedir confirmación) y `git.autofetch: true` (este solo hace fetch).
+   No hay hooks que hagan push: `core.hooksPath=.githooks` solo contiene `pre-commit`
+   (gitleaks) y `.git/hooks` solo tiene `*.sample`. No existe `.vscode/settings.json`
+   ni `git.postCommitCommand`. Para retener commits en local, no pulsar «Sincronizar
+   cambios» o poner `git.confirmSync: true`. Ahora «Sincronizar cambios» publica en el
+   repo oficial y público (`origin`).
 2. **Pruebas y validaciones:** `npm exec eslint -- .` pasa con 0 errores y 6
    advertencias de `react-refresh/only-export-components` en componentes UI
    compartidos; `npx tsc --noEmit` pasa; `npm run build` pasa (26-10-2026, con el
@@ -1117,9 +1128,8 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
     `video_conectividad.mp4`, `video_inicio.mp4` y `video_seguridad.mp4` están también
     en la raíz, donde no se sirven (`video_tel.mp4` ya se movió a `public/`). Recomprimir, quitar
     duplicados y valorar Git LFS o un CDN (ver pendientes 4 y 6).
-24. **Páginas legales publicadas sin aprobar:** `0cef096` ya está en
-    `origin/feature/footer-seguridad-alejandro`. Si esa rama se fusiona a `main` o se
-    despliega, `/terminos-de-servicio` y `/sla` quedarán públicas con compromisos
+24. **Páginas legales publicadas sin aprobar:** `0cef096` ya está en el `main` del
+    repo personal (PR #2) y en la rama que se sube al repo oficial. Si se despliega, `/terminos-de-servicio` y `/sla` quedarán públicas con compromisos
     (disponibilidad, tiempos y créditos de `SLA_VALUES`) que gerencia y jurídica aún no
     aprobaron. **Mitigado:** mientras `LEGAL_DOCUMENTS_ARE_DRAFT` sea `true`
     (`src/lib/legal-status.ts`), ambas páginas muestran un aviso ES/EN «Borrador
