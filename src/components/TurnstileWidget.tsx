@@ -42,6 +42,14 @@ export const TurnstileWidget = forwardRef<TurnstileWidgetHandle, TurnstileWidget
     const widgetIdRef = useRef<string | null>(null);
     const [loadError, setLoadError] = useState<string | null>(null);
     const activeSiteKey = TURNSTILE_SITE_KEY;
+    // Los callbacks llegan inline desde el formulario y cambian en cada render; se leen
+    // desde refs para que el efecto que monta el widget no lo destruya en cada tecla.
+    const onSuccessRef = useRef(onSuccess);
+    const onErrorRef = useRef(onError);
+    const onExpireRef = useRef(onExpire);
+    onSuccessRef.current = onSuccess;
+    onErrorRef.current = onError;
+    onExpireRef.current = onExpire;
 
     useImperativeHandle(
       ref,
@@ -78,18 +86,18 @@ export const TurnstileWidget = forwardRef<TurnstileWidgetHandle, TurnstileWidget
             callback: (token: string) => {
               if (isMounted) {
                 setLoadError(null);
-                onSuccess(token);
+                onSuccessRef.current(token);
               }
             },
             "error-callback": (errorCode?: string) => {
               if (isMounted) {
                 console.warn("Cloudflare Turnstile reportó un error:", errorCode);
-                onError?.(errorCode);
+                onErrorRef.current?.(errorCode);
               }
             },
             "expired-callback": () => {
               if (isMounted) {
-                onExpire?.();
+                onExpireRef.current?.();
               }
             },
           });
@@ -98,7 +106,7 @@ export const TurnstileWidget = forwardRef<TurnstileWidgetHandle, TurnstileWidget
           console.error("Error al renderizar Cloudflare Turnstile:", error);
           if (isMounted) {
             setLoadError("No se pudo inicializar la verificación de seguridad.");
-            onError?.("render_failed");
+            onErrorRef.current?.("render_failed");
           }
         }
       };
@@ -116,7 +124,7 @@ export const TurnstileWidget = forwardRef<TurnstileWidgetHandle, TurnstileWidget
           script.onerror = () => {
             if (isMounted) {
               setLoadError("Error al cargar el script de verificación.");
-              onError?.("script_load_error");
+              onErrorRef.current?.("script_load_error");
             }
           };
           document.head.appendChild(script);
@@ -143,7 +151,7 @@ export const TurnstileWidget = forwardRef<TurnstileWidgetHandle, TurnstileWidget
           widgetIdRef.current = null;
         }
       };
-    }, [activeSiteKey, theme, onSuccess, onError, onExpire]);
+    }, [activeSiteKey, theme]);
 
     if (!activeSiteKey) return null;
 
