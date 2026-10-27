@@ -956,7 +956,7 @@ punto están en la lista «Pendiente/por confirmar» (número entre paréntesis)
 |---|---|---|
 | Crítica (corregida) | XSS reflejado en TanStack Start (CVE-2026-102989): corregido con `react-start@1.168.60`; el plugin de AI Studio queda en `0.3.3-beta.0` hasta que salga la estable | 20 |
 | Alta (mitigada) | Las páginas `/terminos-de-servicio` y `/sla` ya están en el remoto con textos y valores de SLA pendientes de aprobación; ahora muestran un aviso de borrador y son `noindex` | 7, 24 |
-| Alta | `TurnstileWidget` se destruye y se vuelve a crear en cada render del formulario | 21 |
+| Alta (corregida, `066ef0f`) | `TurnstileWidget` se destruía y se volvía a crear en cada render del formulario | 21 |
 | Alta | No hay pruebas: todos los archivos de test y configuración están vacíos | 2 |
 | Alta | `/video_tel.mp4` da 404 | 4 |
 | Media | Rate limit en memoria por isolate; `/api/chat` sin Turnstile | 8 |
@@ -1109,12 +1109,15 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
     corregido en 8.3.5), `zod@3.25.76` (alto; las APIs no usan zod; solo se corrige en
     zod 4, que es un cambio mayor), `launch-editor` y `postcss-selector-parser`
     (desarrollo; se corrigen con `npm audit fix`).
-21. **Turnstile se recrea en cada render:** `ContactAndFooter.tsx` pasa `onSuccess`,
-    `onError` y `onExpire` como funciones inline y `TurnstileWidget.tsx` los incluye en
-    las dependencias del `useEffect`. Cada tecla en el formulario ejecuta
-    `turnstile.remove()` y un nuevo `render()`, y `onSuccess` provoca otro render, con
-    riesgo de bucle. Guardar los callbacks en refs dentro del widget y quitarlos de las
-    dependencias.
+21. **Turnstile se recreaba en cada render — corregido en `066ef0f` (27-10-2026):**
+    `ContactAndFooter.tsx` pasa `onSuccess`, `onError` y `onExpire` como funciones
+    inline y el `useEffect` de `TurnstileWidget.tsx` dependía de ellos, así que cada
+    tecla ejecutaba `turnstile.remove()` y un nuevo `render()`. Ahora el widget lee los
+    callbacks desde refs y el efecto solo depende de `activeSiteKey` y `theme`.
+    Verificado en navegador: 84 teclas, selección de servicio y consentimiento → un solo
+    montaje; un envío fallido llama a `reset()` y uno correcto envía el token. En
+    desarrollo, al montar, el widget se monta dos veces por el `<StrictMode>` del
+    cliente por defecto de TanStack Start; es esperado y no ocurre en producción.
 22. **`conexion.php`:** script PHP de prueba ajeno al stack. Usa por defecto `root` sin
     contraseña y, si se ejecuta directamente, devuelve una fila de `solicitudes` (nombre
     y correo) y el mensaje de la excepción. En Workers no se sirve, pero filtraría datos
