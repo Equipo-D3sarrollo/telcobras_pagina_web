@@ -453,10 +453,8 @@ o Remix: la guía local está en `src/routes/README.md`.
   siete valores.
 - El título utiliza degradado azul/verde/amarillo; el contenido se organiza en grid
   adaptable.
-- Referencia `/video_tel.mp4` como fondo. **Estado de recurso a revisar:** al revisar
-  `public/`, ese archivo no aparecía allí, aunque existe `video_tel.mp4` en la raíz
-  del repositorio. Los recursos estáticos deben residir en `public/`; comprobar y
-  copiarlo allí si se desea que el fondo cargue.
+- Referencia `/video_tel.mp4` como fondo; el archivo está en `public/video_tel.mp4`
+  (movido desde la raíz el 27-10-2026, antes daba 404).
 - Las animaciones de borde de Misión/Visión usan clases `motion-safe:`; considerar
   accesibilidad al modificarlas.
 
@@ -883,15 +881,15 @@ En `public/` se encontraron:
 | `video_colaboracion.mp4` | Servicio Colaboración |
 | `video_nuve.mp4` | Servicio Nube (nombre exacto del archivo, «nuve») |
 | `video_agentes.mp4` | Servicio Agentes IA |
+| `video_tel.mp4` | Fondo de «Quiénes Somos» (`AboutAndValues.tsx`) |
 | `logo_aquora.png` | Aliado Aquora |
 | `logo_xpertic.png` | Aliado Xpertic |
 | `robots.txt` | Reglas básicas para rastreo + referencia al sitemap |
 | `sitemap.xml` | Mapa del sitio con las cuatro URLs públicas (`/`, `/politica-de-privacidad`, `/terminos-de-servicio`, `/sla`) bajo `https://telcobras.com`, con `<lastmod>` |
 
 **Versionado:** al auditar el repositorio, todos los recursos de la tabla de `public/`
-estaban versionados en Git. `video_tel.mp4` existe en la raíz del repositorio, pero no
-en `public/`; el componente Quiénes Somos pide `/video_tel.mp4`, por lo que esa
-referencia produce un 404 salvo que se copie el recurso a `public/`.
+estaban versionados en Git. `video_tel.mp4`, que antes estaba solo en la raíz y daba
+404, se movió a `public/` con `git mv` el 27-10-2026.
 
 Los archivos de la carpeta `public/` se sirven desde raíz (por ejemplo,
 `public/video_inicio.mp4` se solicita como `/video_inicio.mp4`). También existen
@@ -958,7 +956,7 @@ punto están en la lista «Pendiente/por confirmar» (número entre paréntesis)
 | Alta (mitigada) | Las páginas `/terminos-de-servicio` y `/sla` ya están en el remoto con textos y valores de SLA pendientes de aprobación; ahora muestran un aviso de borrador y son `noindex` | 7, 24 |
 | Alta (corregida, `066ef0f`) | `TurnstileWidget` se destruía y se volvía a crear en cada render del formulario | 21 |
 | Alta | No hay pruebas: todos los archivos de test y configuración están vacíos | 2 |
-| Alta | `/video_tel.mp4` da 404 | 4 |
+| Alta (corregida) | `/video_tel.mp4` daba 404: se movió a `public/` | 4 |
 | Media | Rate limit en memoria por isolate; `/api/chat` sin Turnstile | 8 |
 | Media | `conexion.php` de prueba con credenciales por defecto y salida de datos personales | 22 |
 | Media | Videos pesados (`video_agentes.mp4` 49 MB) y duplicados en la raíz | 6 |
@@ -1015,9 +1013,9 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
    escanea CI.
 3. **Make:** ejecutar una prueba exitosa de extremo a extremo y revisar salida del módulo
    Webhook response; hay históricos de respuestas upstream inválidas.
-4. **Video de Quiénes Somos:** `AboutAndValues.tsx` pide `/video_tel.mp4`, pero solo
-   existe en la raíz, no en `public/`; colocar una copia autorizada en `public/` o
-   actualizar/eliminar la referencia para evitar 404.
+4. **Video de Quiénes Somos — corregido (27-10-2026):** `AboutAndValues.tsx` pide
+   `/video_tel.mp4`, que estaba solo en la raíz y daba 404. Se movió con `git mv` a
+   `public/video_tel.mp4` (sin copia) y se comprobó en el navegador que carga.
 5. **Rotación automática de Servicios:** rota incluso sin interacción y cambia también
    si el visitante seleccionó manualmente una pestaña. Si UX requiere pausar/reiniciar
    el reloj tras interacción o al salir de viewport, implementar explícitamente.
@@ -1123,8 +1121,8 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
     y correo) y el mensaje de la excepción. En Workers no se sirve, pero filtraría datos
     en un hosting PHP. Eliminarlo o moverlo fuera del repo.
 23. **Peso del repositorio:** unos 70 MB de videos versionados; `video_agentes.mp4`,
-    `video_conectividad.mp4`, `video_inicio.mp4`, `video_seguridad.mp4` y
-    `video_tel.mp4` están también en la raíz, donde no se sirven. Recomprimir, quitar
+    `video_conectividad.mp4`, `video_inicio.mp4` y `video_seguridad.mp4` están también
+    en la raíz, donde no se sirven (`video_tel.mp4` ya se movió a `public/`). Recomprimir, quitar
     duplicados y valorar Git LFS o un CDN (ver pendientes 4 y 6).
 24. **Páginas legales publicadas sin aprobar:** `0cef096` ya está en
     `origin/feature/footer-seguridad-alejandro`. Si esa rama se fusiona a `main` o se
