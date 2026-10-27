@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
-  CALI_PHOTO,
+  CALI_IMAGE,
   CONTACT,
   HORARIO,
-  LOGO_URL,
+  LOGO_IMAGE,
   NIT,
   PRIVACY_POLICY_URL,
   RAZON_SOCIAL,
@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { Facebook, Instagram, Linkedin, Music2 } from "lucide-react";
 import { BrandGlowBorder } from "./BrandGlowBorder";
+import { ResponsivePicture } from "./ResponsivePicture";
 import { TURNSTILE_SITE_KEY, TurnstileWidget, type TurnstileWidgetHandle } from "./TurnstileWidget";
 import {
   useAccessibilityPreferences,
@@ -203,11 +204,12 @@ export function ContactSection() {
         className="py-20 md:py-28 bg-slate-900 text-white relative overflow-hidden"
       >
         <div className="absolute inset-0 z-0 opacity-15">
-          <img
-            src={CALI_PHOTO}
+          <ResponsivePicture
+            image={CALI_IMAGE}
+            sizes="100vw"
             alt=""
-            width={1200}
-            height={800}
+            width={1376}
+            height={768}
             loading="lazy"
             decoding="async"
             className="w-full h-full object-cover"
@@ -869,10 +871,11 @@ export function SiteFooter() {
         <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-8 border-b border-slate-800">
           {/* Logo oficial transparente sobre fondo oscuro */}
           <div className="inline-flex items-center">
-            <img
-              src={LOGO_URL}
+            <ResponsivePicture
+              image={LOGO_IMAGE}
+              sizes="151px"
               alt={t.logoAlt}
-              width={160}
+              width={151}
               height={48}
               loading="lazy"
               decoding="async"

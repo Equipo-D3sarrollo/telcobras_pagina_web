@@ -6,11 +6,18 @@ import { ServicesSection } from "@/components/ServicesSection";
 import { LetyIaAndWhyUs } from "@/components/LetyIaAndWhyUs";
 import { ContactSection, SiteFooter } from "@/components/ContactAndFooter";
 import { ScrollToTopButton } from "@/components/ScrollToTopButton";
-import { CONTACT, LOGO_URL, RAZON_SOCIAL, SOCIAL_LINKS } from "@/lib/telcobras-data";
+import {
+  CONTACT,
+  HERO_IMAGE,
+  HERO_IMAGE_SIZES,
+  LOGO_URL,
+  OG_IMAGE_URL,
+  RAZON_SOCIAL,
+  SOCIAL_LINKS,
+} from "@/lib/telcobras-data";
+import { imageSrcSet } from "@/lib/responsive-image";
 
 const SITE_URL = "https://telcobras.com";
-const OG_IMAGE =
-  "https://vibe.filesafe.space/1790689453956353174/assets/5634ad24-3ed8-4f8d-a4e2-e41b61113a29.png";
 
 const ORGANIZATION_JSON_LD = {
   "@context": "https://schema.org",
@@ -39,15 +46,27 @@ export const Route = createFileRoute("/")({
     // title, description y og/twitter title/description los pone el head raíz desde
     // `metadata` de translations.ts, según el idioma de la cookie.
     meta: [
-      { property: "og:image", content: OG_IMAGE },
+      { property: "og:image", content: OG_IMAGE_URL },
       { property: "og:url", content: `${SITE_URL}/` },
       { property: "og:type", content: "website" },
       { property: "og:locale", content: "es_CO" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:image", content: OG_IMAGE },
+      { name: "twitter:image", content: OG_IMAGE_URL },
       { "script:ld+json": ORGANIZATION_JSON_LD },
     ],
-    links: [{ rel: "canonical", href: `${SITE_URL}/` }],
+    links: [
+      { rel: "canonical", href: `${SITE_URL}/` },
+      // La foto del hero es el elemento LCP: se descarga antes de que el CSS y el JS
+      // descubran el <picture> (mismo srcset y sizes que el componente).
+      {
+        rel: "preload",
+        as: "image",
+        type: "image/avif",
+        imageSrcSet: imageSrcSet(HERO_IMAGE, "avif"),
+        imageSizes: HERO_IMAGE_SIZES,
+        fetchPriority: "high",
+      },
+    ],
   }),
   component: TelcobrasLandingPage,
 });

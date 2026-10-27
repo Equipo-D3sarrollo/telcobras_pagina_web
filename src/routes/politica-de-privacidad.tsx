@@ -3,11 +3,9 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { useAccessibilityPreferences } from "@/lib/accessibility-preferences-context";
 import { htmlLang } from "@/lib/accessibility-preferences";
-import { CONTACT, NIT, RAZON_SOCIAL } from "@/lib/telcobras-data";
+import { CONTACT, NIT, OG_IMAGE_URL, RAZON_SOCIAL } from "@/lib/telcobras-data";
 
 const SITE_URL = "https://telcobras.com";
-const OG_IMAGE =
-  "https://vibe.filesafe.space/1790689453956353174/assets/5634ad24-3ed8-4f8d-a4e2-e41b61113a29.png";
 
 export const Route = createFileRoute("/politica-de-privacidad")({
   head: () => ({
@@ -16,14 +14,14 @@ export const Route = createFileRoute("/politica-de-privacidad")({
       { name: "description", content: policyCopy.es.metaDescription },
       { property: "og:title", content: policyCopy.es.metaTitle },
       { property: "og:description", content: policyCopy.es.metaDescription },
-      { property: "og:image", content: OG_IMAGE },
+      { property: "og:image", content: OG_IMAGE_URL },
       { property: "og:url", content: `${SITE_URL}/politica-de-privacidad` },
       { property: "og:type", content: "website" },
       { property: "og:locale", content: "es_CO" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: policyCopy.es.metaTitle },
       { name: "twitter:description", content: policyCopy.es.metaDescription },
-      { name: "twitter:image", content: OG_IMAGE },
+      { name: "twitter:image", content: OG_IMAGE_URL },
     ],
     links: [{ rel: "canonical", href: `${SITE_URL}/politica-de-privacidad` }],
   }),

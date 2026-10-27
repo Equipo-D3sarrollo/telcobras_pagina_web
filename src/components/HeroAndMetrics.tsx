@@ -8,13 +8,14 @@ import {
   Headphones,
   RadioTower,
 } from "lucide-react";
-import { CALI_PHOTO, HERO_PHOTO, TECHNICIAN_PHOTO } from "@/lib/telcobras-data";
+import { CALI_IMAGE, HERO_IMAGE, HERO_IMAGE_SIZES, TECHNICIAN_IMAGE } from "@/lib/telcobras-data";
 import { useRotatingHighlight } from "@/hooks/use-rotating-highlight";
 import { BrandGlowBorder } from "./BrandGlowBorder";
 import { BackgroundVideo } from "./BackgroundVideo";
+import { ResponsivePicture } from "./ResponsivePicture";
 import { useTranslations } from "@/lib/accessibility-preferences-context";
 
-const HERO_SLIDES = [HERO_PHOTO, TECHNICIAN_PHOTO, CALI_PHOTO];
+const HERO_SLIDES = [HERO_IMAGE, TECHNICIAN_IMAGE, CALI_IMAGE];
 const METRICS_COUNT = 4;
 const METRIC_HIGHLIGHT_MS = 3000;
 
@@ -141,9 +142,10 @@ export function HeroAndMetrics() {
                 <div className="relative rounded-2xl overflow-hidden bg-slate-800 shadow-2xl border border-white/10 group">
                   <div className="relative h-96 sm:h-[32rem]">
                     {HERO_SLIDES.map((slide, index) => (
-                      <img
-                        key={slide}
-                        src={slide}
+                      <ResponsivePicture
+                        key={slide.base}
+                        image={slide}
+                        sizes={HERO_IMAGE_SIZES}
                         alt=""
                         aria-hidden="true"
                         width={640}
@@ -159,8 +161,10 @@ export function HeroAndMetrics() {
                     <div className="absolute inset-0 bg-gradient-to-t from-[#0A192F]/75 via-[#0A192F]/5 to-transparent" />
                   </div>
 
-                  <div className="absolute bottom-4 left-4 right-4 rounded-xl border border-white/15 bg-slate-900/90 p-4 backdrop-blur-md">
-                    <div className="hero-feature-caption flex min-w-0 items-center gap-3">
+                  {/* Altura mínima para dos líneas del texto: al cambiar la fuente de
+                      reserva por Nunito el corte de línea variaba y la tarjeta crecía (CLS). */}
+                  <div className="absolute bottom-4 left-4 right-4 flex min-h-[5.75rem] items-center rounded-xl border border-white/15 bg-slate-900/90 p-4 backdrop-blur-md">
+                    <div className="hero-feature-caption flex w-full min-w-0 items-center gap-3">
                       <div className="rounded-lg border border-white/15 bg-gradient-to-br from-[#0087C3]/35 via-[#88BD4C]/25 to-[#F3CB35]/30 p-2.5 shadow-lg shadow-[#0087C3]/20">
                         <RadioTower className="h-6 w-6 text-[#F3CB35] drop-shadow-[0_0_6px_rgba(243,203,53,0.65)]" />
                       </div>

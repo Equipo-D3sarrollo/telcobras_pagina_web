@@ -126,11 +126,15 @@ se montan globalmente; el botón para volver al inicio se monta en la página pr
   (180×180, fondo blanco), generados a partir del isotipo (las tres velas) de
   `LOGO_URL` y enlazados en `head.links` de `__root.tsx`. No hay `icon.svg` porque no
   existe una versión vectorial del logo; añadirlo cuando se tenga el SVG oficial.
-- La optimización de imágenes para Core Web Vitals está aplicada en los componentes
-  principales: la imagen principal del hero usa `loading="eager"` +
-  `fetchPriority="high"` y las demás son `loading="lazy"`; todas declaran `width`/`height`
-  explícitos (evita CLS) y `decoding="async"`. Las imágenes de proyecto, aliados y
-  ubicación se cargan de forma diferida.
+- Imágenes (27-10-2026): todas son propias, en `public/images/`, como AVIF y WebP en
+  varios anchos (ver «Imágenes» en la sección 10). Se pintan con
+  `src/components/ResponsivePicture.tsx` (`<picture>` con `<source type="image/avif">`
+  y `<img>` WebP, `srcset` y `sizes` según el ancho real, y `width`/`height` para no
+  causar CLS). La primera foto del hero usa `loading="eager"` + `fetchPriority="high"`
+  y la landing la precarga con `<link rel="preload" as="image" type="image/avif"
+  imagesrcset imagesizes>` (`HERO_IMAGE_SIZES` es la misma cadena en el preload y en el
+  `<picture>`, para que el navegador no la descargue dos veces). Las demás son
+  `loading="lazy"`.
 - `public/sitemap.xml` está generado con las cuatro URLs públicas (`/`,
   `/politica-de-privacidad`, `/terminos-de-servicio`, `/sla`) bajo
   `https://telcobras.com`, con `<lastmod>` y código HTTP 200. `public/robots.txt`
@@ -460,7 +464,8 @@ o Remix: la guía local está en `src/routes/README.md`.
   ¿Por qué TELCOBRAS?, Ubicación y Contacto. El menú completo aparece en `xl`; por
   debajo se usa el panel móvil desplegable (`header-glass-panel`).
 - CTA «Solicita una cotización» (`header-cta`) apunta a `#contacto`.
-- Usa `LOGO_URL` y constantes de contacto de `telcobras-data.ts`.
+- Usa `LOGO_IMAGE` (con `ResponsivePicture`, `sizes="151px"`) y constantes de contacto
+  de `telcobras-data.ts`.
 - El estilo real (glass, links, indicadores) vive en clases de `styles.css`:
   `header-topbar`, `header-topbar-icon`, `header-glass`, `header-glass-panel`,
   `header-nav-link` (y `--block`), `header-cta`.
@@ -472,8 +477,10 @@ o Remix: la guía local está en `src/routes/README.md`.
   de entender las redes».
 - Fondo de video `/video_inicio.mp4`.
 - Tarjeta lateral con rotación automática de tres imágenes (`HERO_SLIDES`:
-  `HERO_PHOTO`, `TECHNICIAN_PHOTO`, `CALI_PHOTO`) cada 4 segundos y una tarjeta
-  superpuesta «Infraestructura de Red Propia».
+  `HERO_IMAGE`, `TECHNICIAN_IMAGE`, `CALI_IMAGE`) cada 4 segundos y una tarjeta
+  superpuesta «Infraestructura de Red Propia» con `min-h-[5.75rem]`: reserva dos líneas
+  de texto, porque al llegar la fuente Nunito el corte de línea cambiaba y la tarjeta
+  crecía (CLS).
 - Debajo presenta métricas como +20 años, 99,6 % de SLA, instalación en 15 días y
   soporte 24/7; los iconos usan la animación `metric-icon-glow`.
 - Cada métrica se envuelve en `MetricCard`, que añade `BrandGlowBorder` sin tocar su
@@ -697,8 +704,11 @@ antes de crear un control nuevo, revisar si ya existe una primitiva apropiada.
 
 Fuente de verdad para:
 
-- URLs alojadas externamente (`vibe.filesafe.space`): `LOGO_URL`, `HERO_PHOTO`,
-  `TECHNICIAN_PHOTO`, `CALI_PHOTO`.
+- Imágenes propias (`ResponsiveImage` = base en `public/images/` + anchos):
+  `LOGO_IMAGE`, `HERO_IMAGE`, `TECHNICIAN_IMAGE`, `CALI_IMAGE`, `PROJECT_IMAGE_WIDTHS`
+  (el campo `imagen` de cada proyecto es su base) y `HERO_IMAGE_SIZES`. URLs absolutas
+  del dominio para usos externos: `SITE_URL`, `LOGO_URL` (`/images/logo.png`, JSON-LD)
+  y `OG_IMAGE_URL` (`/images/og.jpg`, `og:image` y `twitter:image` de las 4 rutas).
 - Paleta de marca (`BRAND_COLORS`: azul `#0087C3`, verde `#88BD4C`, amarillo
   `#F3CB35`, gris `#888D91`, navy `#0A192F`).
 - Datos de contacto (`CONTACT`: teléfono, WhatsApp, correo, dirección) y el teléfono
@@ -903,7 +913,8 @@ exitosa y repetible con el módulo Webhook response configurado correctamente.
   (cabecera `Content-Security-Policy`); ya no se emite
   `Content-Security-Policy-Report-Only`, así que cualquier origen no permitido bloquea
   el recurso en lugar de solo reportarse. La CSP permite Turnstile, Google
-  Fonts, el iframe de Google Maps y `vibe.filesafe.space`; en desarrollo añade
+  Fonts y el iframe de Google Maps; las imágenes solo pueden venir del propio origen
+  (`img-src 'self' data: blob:`); en desarrollo añade
   `'unsafe-eval'`, `ws:`/`wss:` y localhost porque Vite lo requiere. `script-src`
   conserva `'unsafe-inline'` por los scripts inline de hidratación de TanStack Start;
   endurecerlo con nonces/hashes es el siguiente paso natural. No se usa
@@ -982,9 +993,35 @@ Los archivos de la carpeta `public/` se sirven desde raíz (por ejemplo,
 `public/video_inicio.mp4` se solicita como `/video_inicio.mp4`). Ya no hay copias de
 medios en la raíz del repositorio (se eliminaron el 27-10-2026, ver pendiente 23).
 
-Las fotos de hero, sede y otras secciones usan URLs externas alojadas en
-`vibe.filesafe.space`. Si la entrega debe funcionar sin ese proveedor, habrá que
-descargarlas con autorización y migrarlas a `public/`.
+### Imágenes
+
+Desde el 27-10-2026 no hay imágenes externas: las 11 que venían de
+`vibe.filesafe.space` se descargaron a `public/images/` y se generaron con Pillow
+(AVIF calidad 55, WebP calidad 78, sin ampliar nunca el original):
+
+| Imagen | Original (PNG) | AVIF servido en móvil (360 px) | AVIF servido en escritorio (1280 px) | Anchos |
+|---|---|---|---|---|
+| `hero` (LCP) | 178 KiB | 12 KiB (480) | 24 KiB (768) | 480, 768, 1024 |
+| `tecnico` | 288 KiB | 24 KiB | 51 KiB | 480, 768, 1024 |
+| `cali` (hero y fondo de Contacto) | 301 KiB | 18 KiB | 41 KiB / 93 KiB (fondo, 1280) | 480, 768, 1024, 1280 |
+| `logo` | 128 KiB | 4 KiB (160) | 4-9 KiB (160/320) | 160, 320, 480 + `logo.png` 44 KiB |
+| `proyecto-vigilancia-risaralda` | 318 KiB | 24 KiB | 24 KiB (480) | 480, 768, 1200 |
+| `proyecto-automatizacion-agua-cali` | 327 KiB | 23 KiB | 52 KiB (768) | 480, 768, 1200 |
+| `proyecto-zonas-wifi-corregimientos` | 318 KiB | 30 KiB | 60 KiB (768) | 480, 768, 1200 |
+| `proyecto-nodos-telemetria-cali` | 350 KiB | 27 KiB | 27 KiB (480) | 480, 768, 1200 |
+| `proyecto-centros-digitales-claro` | 234 KiB | 20 KiB | 41 KiB (768) | 480, 768, 1200 |
+| `proyecto-chatbot-espy` | 83 KiB | — (la tarjeta usa una ilustración) | — | 480, 768, 1200 |
+| `og` (Open Graph) | 223 KiB | — | — | `og.jpg` 1200 px, 150 KiB |
+
+Total de imágenes de la landing: unos 2.440 KiB antes; unos 182 KiB en móvil y unos
+420 KiB en escritorio después. Para regenerarlas: `Image.resize(..., LANCZOS)` al
+ancho y `save(..., "AVIF", quality=55)` / `save(..., "WEBP", quality=78, method=6)`
+desde los PNG originales (siguen en el historial: commit anterior a este cambio, en
+`src/lib/telcobras-data.ts`).
+
+`og:image`, `twitter:image` y el `logo` del JSON-LD apuntan a URLs absolutas de
+`https://telcobras.com/images/...`: no funcionarán hasta que esta app se despliegue en
+ese dominio (hoy `telcobras.com` sirve otro sitio, ver pendiente 17).
 
 ## 11. Estado funcional y pendientes conocidos
 
@@ -1194,8 +1231,8 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
     se quitaron Supabase, Make e Integromat porque el navegador solo llama a `/api/*`.
     Verificado: ninguna violación de CSP recorriendo landing, formulario con Turnstile,
     chat, mapa y páginas legales, y un `fetch` del navegador a Make queda bloqueado.
-    `img-src` tampoco incluye ya `*.supabase.co` (27-10-2026): las imágenes vienen de
-    `'self'` y `https://vibe.filesafe.space`.
+    `img-src` es `'self' data: blob:` desde el 27-10-2026: se quitaron `*.supabase.co`
+    y `vibe.filesafe.space` porque todas las imágenes son propias.
 17. **Empaquetado y despliegue (CSS):** el pipeline está correcto — `src/routes/__root.tsx:14`
     importa `styles.css?url`, `head.links` lo enlaza, Tailwind v4 lo genera en
     `.output/public/assets/styles-<hash>.css` (~162 KB) y el mismo hash está en SSR y
@@ -1345,6 +1382,13 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
     Otros hallazgos: una corrida tuvo CLS 0,185 por la tarjeta «Infraestructura de Red
     Propia» del hero (intermitente), y `vibe.filesafe.space` deja la cookie de terceros
     `__cf_bm` (gestión de bots de Cloudflare) al servir las imágenes.
+
+    **Optimización 1, imágenes (27-10-2026, sin medir aún con Lighthouse):** imágenes
+    propias en AVIF/WebP con `srcset`/`sizes`, preload del hero, CSP sin orígenes de
+    imágenes externos (desaparece la cookie `__cf_bm`) y altura reservada en la tarjeta
+    del hero (sección 10, «Imágenes»). Queda un desplazamiento de unos 0,03 en
+    escritorio: la navegación del header pasa de dos líneas a una cuando llega Nunito
+    (cambio de fuente; ya estaba en la línea base de escritorio, 0,029).
 
 ## 12. Operación y privacidad del formulario
 

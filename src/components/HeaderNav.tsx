@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { LOGO_URL, CONTACT } from "@/lib/telcobras-data";
+import { LOGO_IMAGE, CONTACT } from "@/lib/telcobras-data";
+import { ResponsivePicture } from "./ResponsivePicture";
 import { MapPin, Clock, Phone, Mail, ArrowRight, Menu, X } from "lucide-react";
 import { useTranslations } from "@/lib/accessibility-preferences-context";
 
@@ -56,10 +57,11 @@ export function HeaderNav() {
       <div className="header-glass">
         <div className="mx-auto flex min-h-[76px] max-w-7xl items-center justify-between gap-4 px-4 py-2 sm:min-h-20 sm:px-6 lg:px-8">
           <a href="#inicio" className="flex items-center shrink-0 pr-4">
-            <img
-              src={LOGO_URL}
+            <ResponsivePicture
+              image={LOGO_IMAGE}
+              sizes="151px"
               alt={translations.contact.logoAlt}
-              width={160}
+              width={151}
               height={48}
               className="h-[40px] w-auto max-w-[40vw] object-contain sm:h-[48px]"
             />

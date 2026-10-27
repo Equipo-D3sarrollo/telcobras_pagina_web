@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowRight, ArrowUpRight, MapPin } from "lucide-react";
-import { PROYECTOS_DATA, CHATBOT_PHONE, type ProyectoItem } from "@/lib/telcobras-data";
+import {
+  PROYECTOS_DATA,
+  CHATBOT_PHONE,
+  PROJECT_IMAGE_WIDTHS,
+  type ProyectoItem,
+} from "@/lib/telcobras-data";
+import { ResponsivePicture } from "./ResponsivePicture";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "@/lib/accessibility-preferences-context";
 import {
@@ -26,6 +32,17 @@ const BENTO_LAYOUT: Record<string, string> = {
 };
 
 const BENTO_ORDER = Object.keys(BENTO_LAYOUT);
+
+/* Ancho que ocupa la foto de cada tarjeta según su posición en el bento: 1 columna en
+   móvil, 2 en tablet y 4 en escritorio (cada `col-span-2` duplica el ancho). */
+function projectCardSizes(id: string): string {
+  const layout = BENTO_LAYOUT[id] ?? "";
+  const md = layout.includes("md:col-span-2") ? "100vw" : "50vw";
+  const lg = layout.includes("col-span-2") ? "50vw" : "25vw";
+  return `(min-width: 1280px) ${lg === "50vw" ? "608px" : "304px"}, (min-width: 1024px) ${lg}, (min-width: 768px) ${md}, 100vw`;
+}
+
+const PROJECT_MODAL_SIZES = "(min-width: 704px) 672px, 100vw";
 
 function sortProjects(projects: ProyectoItem[]) {
   const rank = (proyecto: ProyectoItem) => {
@@ -210,11 +227,12 @@ function ProjectCard({ proyecto, numero, onOpen, copy, labels, chatbotCopy }: Pr
         </div>
       ) : (
         <>
-          <img
-            src={proyecto.imagen}
+          <ResponsivePicture
+            image={{ base: proyecto.imagen, widths: PROJECT_IMAGE_WIDTHS }}
+            sizes={projectCardSizes(proyecto.id)}
             alt={copy.alt}
-            width={640}
-            height={480}
+            width={1200}
+            height={896}
             loading="lazy"
             decoding="async"
             className="absolute inset-0 -z-20 h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105 group-focus-within:scale-105"
@@ -415,8 +433,9 @@ export function ProjectsSection() {
                 </div>
               ) : (
                 <>
-                  <img
-                    src={selected.imagen}
+                  <ResponsivePicture
+                    image={{ base: selected.imagen, widths: PROJECT_IMAGE_WIDTHS }}
+                    sizes={PROJECT_MODAL_SIZES}
                     alt={t.cards[selected.id as keyof typeof t.cards].alt}
                     width={1280}
                     height={720}
