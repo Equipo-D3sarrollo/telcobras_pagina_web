@@ -1,16 +1,25 @@
+import { lazy, Suspense } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { HeaderNav } from "@/components/HeaderNav";
 import { HeroAndMetrics } from "@/components/HeroAndMetrics";
 import { AboutAndValues } from "@/components/AboutAndValues";
 import { ServicesSection } from "@/components/ServicesSection";
-import { LetyIaAndWhyUs } from "@/components/LetyIaAndWhyUs";
 import { ContactSection, SiteFooter } from "@/components/ContactAndFooter";
 import { ScrollToTopButton } from "@/components/ScrollToTopButton";
-import { CONTACT, LOGO_URL, RAZON_SOCIAL, SOCIAL_LINKS } from "@/lib/telcobras-data";
+import {
+  CONTACT,
+  HERO_IMAGE,
+  HERO_IMAGE_SIZES,
+  HORARIO,
+  LOGO_URL,
+  OG_IMAGE_URL,
+  RAZON_SOCIAL,
+  SOCIAL_LINKS,
+  SUPPORT,
+} from "@/lib/telcobras-data";
+import { imageSrcSet } from "@/lib/responsive-image";
 
 const SITE_URL = "https://telcobras.com";
-const OG_IMAGE =
-  "https://vibe.filesafe.space/1790689453956353174/assets/5634ad24-3ed8-4f8d-a4e2-e41b61113a29.png";
 
 const ORGANIZATION_JSON_LD = {
   "@context": "https://schema.org",
@@ -26,6 +35,42 @@ const ORGANIZATION_JSON_LD = {
     addressRegion: "Valle del Cauca",
     addressCountry: "CO",
   },
+  contactPoint: [
+    {
+      "@type": "ContactPoint",
+      contactType: "customer support",
+      telephone: SUPPORT.phones.map((phone) => phone.display),
+      email: SUPPORT.emailDisplay,
+      // HORARIO = "24/7": todos los días, todo el día.
+      hoursAvailable:
+        HORARIO === "24/7"
+          ? {
+              "@type": "OpeningHoursSpecification",
+              dayOfWeek: [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday",
+              ],
+              opens: "00:00",
+              closes: "23:59",
+            }
+          : undefined,
+      areaServed: "CO",
+      availableLanguage: "es",
+    },
+    {
+      "@type": "ContactPoint",
+      contactType: "sales",
+      telephone: CONTACT.phoneDisplay,
+      email: CONTACT.emailDisplay,
+      areaServed: "CO",
+      availableLanguage: "es",
+    },
+  ],
   sameAs: [
     SOCIAL_LINKS.facebook,
     SOCIAL_LINKS.instagram,
@@ -34,20 +79,39 @@ const ORGANIZATION_JSON_LD = {
   ],
 };
 
+// Inteligencia Artificial, Proyectos (con su diálogo) y «¿Por qué TELCOBRAS?» quedan por
+// debajo del pliegue: su JS va en un chunk aparte. El servidor sigue pintando su HTML
+// (React resuelve el lazy en el SSR), así que el contenido y el SEO no cambian.
+const LetyIaAndWhyUs = lazy(() =>
+  import("@/components/LetyIaAndWhyUs").then((m) => ({ default: m.LetyIaAndWhyUs })),
+);
+
 export const Route = createFileRoute("/")({
   head: () => ({
     // title, description y og/twitter title/description los pone el head raíz desde
     // `metadata` de translations.ts, según el idioma de la cookie.
     meta: [
-      { property: "og:image", content: OG_IMAGE },
+      { property: "og:image", content: OG_IMAGE_URL },
       { property: "og:url", content: `${SITE_URL}/` },
       { property: "og:type", content: "website" },
       { property: "og:locale", content: "es_CO" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:image", content: OG_IMAGE },
+      { name: "twitter:image", content: OG_IMAGE_URL },
       { "script:ld+json": ORGANIZATION_JSON_LD },
     ],
-    links: [{ rel: "canonical", href: `${SITE_URL}/` }],
+    links: [
+      { rel: "canonical", href: `${SITE_URL}/` },
+      // La foto del hero es el elemento LCP: se descarga antes de que el CSS y el JS
+      // descubran el <picture> (mismo srcset y sizes que el componente).
+      {
+        rel: "preload",
+        as: "image",
+        type: "image/avif",
+        imageSrcSet: imageSrcSet(HERO_IMAGE, "avif"),
+        imageSizes: HERO_IMAGE_SIZES,
+        fetchPriority: "high",
+      },
+    ],
   }),
   component: TelcobrasLandingPage,
 });
@@ -69,7 +133,9 @@ function TelcobrasLandingPage() {
         <ServicesSection />
 
         {/* 6, 7 & 8. LETY.IA, ¿Por qué TELCOBRAS? y Aliados Estratégicos */}
-        <LetyIaAndWhyUs />
+        <Suspense fallback={null}>
+          <LetyIaAndWhyUs />
+        </Suspense>
 
         {/* 9. Formulario de Contacto/Cotización y Ubicación */}
         <ContactSection />

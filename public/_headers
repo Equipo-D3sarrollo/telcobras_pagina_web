@@ -1,0 +1,17 @@
+# Caché de los estáticos de public/ (Workers Static Assets lee este archivo; Nitro le
+# añade al final su regla de /assets/*, que sí llevan hash y son immutable).
+# Estos nombres NO llevan hash: 30 días y, al caducar, revalidación con ETag (304 si no
+# cambió); stale-while-revalidate permite servir la copia vieja 7 días más mientras se
+# revalida en segundo plano. Si se sustituye un archivo, conviene cambiarle el nombre.
+/images/*
+  cache-control: public, max-age=2592000, stale-while-revalidate=604800
+/fonts/*
+  cache-control: public, max-age=2592000, stale-while-revalidate=604800
+/video_*
+  cache-control: public, max-age=2592000, stale-while-revalidate=604800
+/logo_*
+  cache-control: public, max-age=2592000, stale-while-revalidate=604800
+/favicon.ico
+  cache-control: public, max-age=2592000, stale-while-revalidate=604800
+/apple-touch-icon.png
+  cache-control: public, max-age=2592000, stale-while-revalidate=604800

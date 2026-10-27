@@ -238,7 +238,9 @@ interface Catalog {
       tiktok: string;
     };
     legalLinksLabel: string;
-    hoursLabel: string;
+    commercialTitle: string;
+    supportTitle: string;
+    supportHours: string;
     cookiePreferences: string;
     turnstileRequired: string;
     tooManyRequests: string;
@@ -699,7 +701,9 @@ const es: Catalog = {
       tiktok: "TELCOBRAS en TikTok",
     },
     legalLinksLabel: "Enlaces legales",
-    hoursLabel: "Horario de atención",
+    commercialTitle: "Atención comercial",
+    supportTitle: "Soporte técnico (Centro de Gestión)",
+    supportHours: "Soporte técnico 24 horas, 7 días a la semana",
     cookiePreferences: "Preferencias de cookies",
     turnstileRequired: "Por favor complete la verificación de seguridad.",
     tooManyRequests:
@@ -1164,7 +1168,9 @@ const en: Catalog = {
       tiktok: "TELCOBRAS on TikTok",
     },
     legalLinksLabel: "Legal links",
-    hoursLabel: "Business hours",
+    commercialTitle: "Sales",
+    supportTitle: "Technical support (Network Operations Center)",
+    supportHours: "Technical support 24/7",
     cookiePreferences: "Cookie preferences",
     turnstileRequired: "Please complete the security verification.",
     tooManyRequests: "Too many requests. Please wait a few minutes before trying again.",

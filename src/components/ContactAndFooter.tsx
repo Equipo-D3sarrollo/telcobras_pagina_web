@@ -1,11 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { toast } from "sonner";
 import {
-  CALI_PHOTO,
+  CALI_IMAGE,
   CONTACT,
-  HORARIO,
-  LOGO_URL,
+  SUPPORT,
+  LOGO_IMAGE,
   NIT,
   PRIVACY_POLICY_URL,
   RAZON_SOCIAL,
@@ -30,6 +29,13 @@ import {
 } from "lucide-react";
 import { Facebook, Instagram, Linkedin, Music2 } from "lucide-react";
 import { BrandGlowBorder } from "./BrandGlowBorder";
+import { ResponsivePicture } from "./ResponsivePicture";
+import { notify } from "@/lib/notify";
+import { useIdleReady } from "@/hooks/use-idle-ready";
+
+// Avisos del formulario: el <Toaster> (y sonner) se cargan cuando el navegador queda
+// libre o con la primera interacción, siempre antes de que se pueda enviar el formulario.
+const Toaster = lazy(() => import("./ui/sonner").then((m) => ({ default: m.Toaster })));
 import { TURNSTILE_SITE_KEY, TurnstileWidget, type TurnstileWidgetHandle } from "./TurnstileWidget";
 import {
   useAccessibilityPreferences,
@@ -39,6 +45,7 @@ import { getTranslations } from "@/lib/translations";
 import { openCookiePreferences } from "@/lib/cookie-consent";
 import { useNonEssentialConsent } from "@/hooks/use-cookie-consent";
 
+const footerGroupTitleClass = "text-[0.6875rem] font-bold uppercase tracking-wider text-slate-300";
 const footerLinkClass =
   "rounded-sm text-left transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F3CB35]";
 
@@ -54,6 +61,7 @@ const INITIAL_FORM_DATA = {
 };
 
 export function ContactSection() {
+  const idleReady = useIdleReady();
   const translations = useTranslations();
   const t = translations.contact;
   const turnstileConfigured = TURNSTILE_SITE_KEY.length > 0;
@@ -113,7 +121,7 @@ export function ContactSection() {
     e.preventDefault();
     if (isSubmitting) return;
     if (!turnstileConfigured) {
-      toast.error(t.formUnavailableTitle, {
+      notify("error", t.formUnavailableTitle, {
         description: t.formUnavailableDescription.replace("{email}", CONTACT.emailDisplay),
       });
       return;
@@ -121,18 +129,18 @@ export function ContactSection() {
     const websiteField = new FormData(e.currentTarget).get("sitio_web");
     if (typeof websiteField === "string" && websiteField.trim()) return;
     if (!formData.nombre || !formData.correo || !formData.telefono) {
-      toast.error(t.requiredError);
+      notify("error", t.requiredError);
       return;
     }
     if (!formData.consentimiento) {
       setConsentAttempts((n) => n + 1);
-      toast.warning(t.consentWarning, {
+      notify("warning", t.consentWarning, {
         description: t.consentWarningDescription,
       });
       return;
     }
     if (!turnstileToken) {
-      toast.error(t.turnstileRequired);
+      notify("error", t.turnstileRequired);
       return;
     }
 
@@ -153,19 +161,19 @@ export function ContactSection() {
         setTurnstileToken("");
 
         if (response.status === 429) {
-          toast.error(getTranslations(languageRef.current).contact.tooManyRequests);
+          notify("error", getTranslations(languageRef.current).contact.tooManyRequests);
           return;
         }
 
         if (errorData?.error === "contacto_unavailable") {
-          toast.error(t.formUnavailableTitle, {
+          notify("error", t.formUnavailableTitle, {
             description: t.formUnavailableDescription.replace("{email}", CONTACT.emailDisplay),
           });
           return;
         }
 
         if (errorData?.error === "turnstile_verification_failed") {
-          toast.error(getTranslations(languageRef.current).contact.turnstileFailed);
+          notify("error", getTranslations(languageRef.current).contact.turnstileFailed);
           return;
         }
 
@@ -177,12 +185,13 @@ export function ContactSection() {
       setTurnstileToken("");
       turnstileRef.current?.reset();
       setFormSubmitted(true);
-      toast.success(getTranslations(languageRef.current).contact.successTitle);
+      notify("success", getTranslations(languageRef.current).contact.successTitle);
     } catch (error) {
       console.error("Falló el envío de la solicitud de contacto.", error);
       turnstileRef.current?.reset();
       setTurnstileToken("");
-      toast.error(
+      notify(
+        "error",
         getTranslations(languageRef.current).contact.submissionError.replace(
           "{email}",
           CONTACT.emailDisplay,
@@ -195,6 +204,13 @@ export function ContactSection() {
 
   return (
     <>
+      {/* Avisos del formulario (toast). Antes no había ningún <Toaster> montado y los
+          mensajes de error, consentimiento y éxito no se mostraban. */}
+      {idleReady && (
+        <Suspense fallback={null}>
+          <Toaster position="top-center" richColors closeButton />
+        </Suspense>
+      )}
       {/* 9. CONTACTO Y FORMULARIO */}
       <section
         ref={sectionRef}
@@ -203,11 +219,12 @@ export function ContactSection() {
         className="py-20 md:py-28 bg-slate-900 text-white relative overflow-hidden"
       >
         <div className="absolute inset-0 z-0 opacity-15">
-          <img
-            src={CALI_PHOTO}
+          <ResponsivePicture
+            image={CALI_IMAGE}
+            sizes="100vw"
             alt=""
-            width={1200}
-            height={800}
+            width={1376}
+            height={768}
             loading="lazy"
             decoding="async"
             className="w-full h-full object-cover"
@@ -869,10 +886,11 @@ export function SiteFooter() {
         <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-8 border-b border-slate-800">
           {/* Logo oficial transparente sobre fondo oscuro */}
           <div className="inline-flex items-center">
-            <img
-              src={LOGO_URL}
+            <ResponsivePicture
+              image={LOGO_IMAGE}
+              sizes="151px"
               alt={t.logoAlt}
-              width={160}
+              width={151}
               height={48}
               loading="lazy"
               decoding="async"
@@ -895,30 +913,50 @@ export function SiteFooter() {
 
         <div className="grid gap-8 pt-8 text-xs text-slate-400 sm:text-sm md:grid-cols-2 lg:grid-cols-3">
           <div className="space-y-3">
-            <address className="space-y-3 not-italic">
+            <address className="space-y-5 not-italic">
               <p className="flex items-start gap-2.5">
                 <MapPin aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-[#88BD4C]" />
                 <span>{CONTACT.address}</span>
               </p>
-              <p className="flex items-center gap-2.5">
-                <Phone aria-hidden="true" className="h-4 w-4 shrink-0 text-[#88BD4C]" />
-                <a href={CONTACT.phoneHref} className={footerLinkClass}>
-                  {CONTACT.phoneDisplay}
-                </a>
-              </p>
-              <p className="flex items-center gap-2.5">
-                <Mail aria-hidden="true" className="h-4 w-4 shrink-0 text-[#88BD4C]" />
-                <a href={CONTACT.emailHref} className={`${footerLinkClass} break-all`}>
-                  {CONTACT.emailDisplay}
-                </a>
-              </p>
+              <div className="space-y-2.5">
+                <p className={footerGroupTitleClass}>{t.commercialTitle}</p>
+                <p className="flex items-center gap-2.5">
+                  <Phone aria-hidden="true" className="h-4 w-4 shrink-0 text-[#88BD4C]" />
+                  <a href={CONTACT.phoneHref} className={footerLinkClass}>
+                    {CONTACT.phoneDisplay}
+                  </a>
+                </p>
+                <p className="flex items-center gap-2.5">
+                  <Mail aria-hidden="true" className="h-4 w-4 shrink-0 text-[#88BD4C]" />
+                  <a href={CONTACT.emailHref} className={`${footerLinkClass} break-all`}>
+                    {CONTACT.emailDisplay}
+                  </a>
+                </p>
+              </div>
+              <div className="space-y-2.5">
+                <p className={footerGroupTitleClass}>{t.supportTitle}</p>
+                <p className="flex items-start gap-2.5">
+                  <Phone aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-[#88BD4C]" />
+                  <span className="flex flex-wrap gap-x-3 gap-y-1">
+                    {SUPPORT.phones.map((phone) => (
+                      <a key={phone.href} href={phone.href} className={footerLinkClass}>
+                        {phone.display}
+                      </a>
+                    ))}
+                  </span>
+                </p>
+                <p className="flex items-center gap-2.5">
+                  <Mail aria-hidden="true" className="h-4 w-4 shrink-0 text-[#88BD4C]" />
+                  <a href={SUPPORT.emailHref} className={`${footerLinkClass} break-all`}>
+                    {SUPPORT.emailDisplay}
+                  </a>
+                </p>
+                <p className="flex items-start gap-2.5">
+                  <Clock aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-[#88BD4C]" />
+                  <span className="font-semibold text-slate-300">{t.supportHours}</span>
+                </p>
+              </div>
             </address>
-            <p className="flex items-start gap-2.5">
-              <Clock aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-[#88BD4C]" />
-              <span>
-                <span className="font-semibold text-slate-300">{t.hoursLabel}:</span> {HORARIO}
-              </span>
-            </p>
           </div>
           <nav
             aria-label={t.socialTitle}

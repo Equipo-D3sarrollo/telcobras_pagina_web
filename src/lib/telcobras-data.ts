@@ -14,15 +14,40 @@ export const SOCIAL_LINKS = {
 
 export const WHATSAPP_SERVICE_AVAILABLE = true;
 
-export const LOGO_URL =
-  "https://vibe.filesafe.space/1790689453956353174/attachments/147fd1a2-7658-455c-8a62-124542d73285.png";
+export const SITE_URL = "https://telcobras.com";
 
-export const HERO_PHOTO =
-  "https://vibe.filesafe.space/1790689453956353174/assets/6e489a04-f7b9-4071-8066-bde523d61662.png";
-export const TECHNICIAN_PHOTO =
-  "https://vibe.filesafe.space/1790689453956353174/assets/4a99b0ac-ad84-4bc8-a4de-3988548bdbc0.png";
-export const CALI_PHOTO =
-  "https://vibe.filesafe.space/1790689453956353174/assets/55766fcc-873a-42d0-9cce-be44aaaba6e8.png";
+/**
+ * Imagen propia en public/images/: existe `${base}-${ancho}.avif` y `.webp` para cada
+ * ancho (generadas desde los originales; ver contexto.md, «Imágenes»).
+ */
+export interface ResponsiveImage {
+  base: string;
+  widths: number[];
+}
+
+export const LOGO_IMAGE: ResponsiveImage = { base: "/images/logo", widths: [160, 320, 480] };
+/** URL absoluta del logo (PNG) para JSON-LD y usos fuera del sitio. */
+export const LOGO_URL = `${SITE_URL}/images/logo.png`;
+/** Imagen Open Graph (JPG de 1200 px) con URL absoluta del dominio. */
+export const OG_IMAGE_URL = `${SITE_URL}/images/og.jpg`;
+
+export const HERO_IMAGE: ResponsiveImage = { base: "/images/hero", widths: [480, 768, 1024] };
+export const TECHNICIAN_IMAGE: ResponsiveImage = {
+  base: "/images/tecnico",
+  widths: [480, 768, 1024],
+};
+export const CALI_IMAGE: ResponsiveImage = {
+  base: "/images/cali",
+  widths: [480, 768, 1024, 1280],
+};
+export const PROJECT_IMAGE_WIDTHS = [480, 768, 1200];
+/**
+ * Ancho real de la tarjeta de fotos del hero: ancho de pantalla menos márgenes en móvil,
+ * `max-w-md` (448 px) hasta `lg` y 5 de 12 columnas de `max-w-7xl` desde `lg`. Lo usan
+ * el <picture> y el preload del <head>.
+ */
+export const HERO_IMAGE_SIZES =
+  "(min-width: 1280px) 506px, (min-width: 1024px) 40vw, (min-width: 480px) 448px, calc(100vw - 32px)";
 
 export const BRAND_COLORS = {
   blue: "#0087C3",
@@ -42,8 +67,18 @@ export const CONTACT = {
   address: "Carrera 83A # 20 - 20, Cali, Valle del Cauca, Colombia",
 };
 
-// Pendiente de confirmar con gerencia; se muestra tal cual en el footer.
-export const HORARIO = "[PENDIENTE: horario de gerencia]";
+/** Soporte técnico (Centro de Gestión), datos entregados por gerencia el 28-10-2026. */
+export const SUPPORT = {
+  phones: [
+    { display: "+57 315 436 1138", href: "tel:+573154361138" },
+    { display: "+57 310 384 0548", href: "tel:+573103840548" },
+  ],
+  emailDisplay: "centrodegestion@telcobras.com",
+  emailHref: "mailto:centrodegestion@telcobras.com",
+};
+
+/** Horario del soporte técnico; el footer lo muestra con el texto de translations.ts. */
+export const HORARIO = "24/7";
 
 export const CHATBOT_PHONE = {
   display: "+57 310 677 7412",
@@ -148,6 +183,7 @@ export interface ProyectoItem {
   id: string;
   titulo: string;
   descripcion: string;
+  /** Base de la imagen en public/images/ (anchos en PROJECT_IMAGE_WIDTHS). */
   imagen: string;
   alt: string;
   categoria: string;
@@ -162,8 +198,7 @@ export const PROYECTOS_DATA: ProyectoItem[] = [
     titulo: "Vigilancia y mitigación de amenazas y riesgos en el municipio de Risaralda",
     descripcion:
       "Vigilancia y mitigación de amenazas y riesgos en el municipio de Risaralda, con despliegue de monitoreo sobre infraestructura de telecomunicaciones.",
-    imagen:
-      "https://vibe.filesafe.space/1790689453956353174/assets/1a6aea77-be1e-458d-aa3c-4ae83e2fc5da.png",
+    imagen: "/images/proyecto-vigilancia-risaralda",
     alt: "Técnicos trabajando en una torre de telecomunicaciones en Risaralda",
     categoria: "Seguridad y monitoreo",
     ubicacion: "Risaralda",
@@ -174,8 +209,7 @@ export const PROYECTOS_DATA: ProyectoItem[] = [
     titulo: "Chatbot para la ESPY",
     descripcion:
       "Solución de atención automatizada para las necesidades de la entidad, mediante un asistente conversacional integrado.",
-    imagen:
-      "https://vibe.filesafe.space/1790689453956353174/assets/2f97bb56-1ff4-4480-bca9-686f0d3c2116.png",
+    imagen: "/images/proyecto-chatbot-espy",
     alt: "Ilustración de un asistente virtual para la ESPY",
     categoria: "Inteligencia Artificial",
     destacado: false,
@@ -185,8 +219,7 @@ export const PROYECTOS_DATA: ProyectoItem[] = [
     titulo: "Automatización de plantas de tratamiento de agua en Cali",
     descripcion:
       "Automatización, control e instalación de controladores y sensores de variables de agua integrados por telemetría, para mejorar el servicio de agua potable a la comunidad.",
-    imagen:
-      "https://vibe.filesafe.space/1790689453956353174/assets/ad8085cb-07e6-4591-b2df-757a45ef5cbd.png",
+    imagen: "/images/proyecto-automatizacion-agua-cali",
     alt: "Planta industrial de tratamiento de agua en Cali",
     categoria: "Automatización y telemetría",
     ubicacion: "Cali",
@@ -197,8 +230,7 @@ export const PROYECTOS_DATA: ProyectoItem[] = [
     titulo: "Zonas Wi-Fi gratis en parques principales de corregimientos a nivel nacional",
     descripcion:
       "Instalación y puesta en marcha del proyecto insignia de gobierno de internet para todos.",
-    imagen:
-      "https://vibe.filesafe.space/1790689453956353174/assets/93272a4c-e38b-405c-9909-020e4723858c.png",
+    imagen: "/images/proyecto-zonas-wifi-corregimientos",
     alt: "Persona usando su celular en un parque con zona Wi-Fi gratis",
     categoria: "Conectividad",
     ubicacion: "Corregimientos a nivel nacional",
@@ -209,8 +241,7 @@ export const PROYECTOS_DATA: ProyectoItem[] = [
     titulo: "Nodos de telemetría en Santiago de Cali",
     descripcion:
       "Instalación de sensores LoRaWAN para la automatización y gestión de la energía en luminarias de alumbrado público.",
-    imagen:
-      "https://vibe.filesafe.space/1790689453956353174/assets/61394b6f-242d-4577-9d11-52de82f6af69.png",
+    imagen: "/images/proyecto-nodos-telemetria-cali",
     alt: "Alumbrado público nocturno en Santiago de Cali",
     categoria: "Telemetría IoT",
     ubicacion: "Santiago de Cali",
@@ -220,8 +251,7 @@ export const PROYECTOS_DATA: ProyectoItem[] = [
     id: "centros-digitales-claro",
     titulo: "Centros Digitales Claro",
     descripcion: "Instalación de zonas Wi-Fi en escuelas de zonas rurales.",
-    imagen:
-      "https://vibe.filesafe.space/1790689453956353174/assets/ed66df52-8cb3-4397-b286-b2d51d2b280a.png",
+    imagen: "/images/proyecto-centros-digitales-claro",
     alt: "Estudiantes con dispositivos en una escuela rural",
     categoria: "Conectividad",
     ubicacion: "Zonas rurales",

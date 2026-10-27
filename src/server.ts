@@ -19,9 +19,9 @@ const isDev = import.meta.env.DEV;
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com${isDev ? " 'unsafe-eval'" : ""}`,
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "font-src 'self' https://fonts.gstatic.com",
-  "img-src 'self' data: blob: https://vibe.filesafe.space",
+  "style-src 'self' 'unsafe-inline'",
+  "font-src 'self'",
+  "img-src 'self' data: blob:",
   "media-src 'self'",
   "frame-src 'self' https://challenges.cloudflare.com https://www.google.com https://maps.google.com",
   `connect-src 'self' https://challenges.cloudflare.com${isDev ? " ws: wss: http://localhost:* http://127.0.0.1:*" : ""}`,

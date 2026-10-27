@@ -30,14 +30,24 @@ export function readCookieConsent(): CookieConsent | null {
   return null;
 }
 
+// El banner se carga de forma diferida: si se pide abrirlo antes de que esté montado,
+// la petición queda pendiente y el banner la atiende al montarse.
+let pendingOpenRequest = false;
+
 /** Vuelve a mostrar el banner de cookies con el panel de preferencias abierto. */
 export function openCookiePreferences() {
+  pendingOpenRequest = true;
   window.dispatchEvent(new Event(OPEN_COOKIE_PREFERENCES_EVENT));
 }
 
 export function onOpenCookiePreferences(listener: () => void): () => void {
-  window.addEventListener(OPEN_COOKIE_PREFERENCES_EVENT, listener);
-  return () => window.removeEventListener(OPEN_COOKIE_PREFERENCES_EVENT, listener);
+  const handle = () => {
+    pendingOpenRequest = false;
+    listener();
+  };
+  if (pendingOpenRequest) handle();
+  window.addEventListener(OPEN_COOKIE_PREFERENCES_EVENT, handle);
+  return () => window.removeEventListener(OPEN_COOKIE_PREFERENCES_EVENT, handle);
 }
 
 /** Guarda la elección (puede lanzar si el almacenamiento falla) y avisa del cambio. */

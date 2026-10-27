@@ -6,6 +6,92 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
+ * Nunito autoalojada (public/fonts/, licencia OFL en public/fonts/OFL.txt): subconjunto
+ * latino de Google Fonts (U+0000-00FF y signos: tildes, ñ, ¿ y ¡). Normal variable 400-900, que cubre
+ * todos los grosores usados (font-normal a font-black), y cursiva solo en 700 (eslogan
+ * del hero). La normal se precarga en __root.tsx.
+ */
+@font-face {
+  font-family: "Nunito";
+  font-style: normal;
+  font-weight: 400 900;
+  font-display: swap;
+  src: url("/fonts/nunito-latin-400-900.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Nunito";
+  font-style: italic;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/nunito-latin-italic-700.woff2") format("woff2");
+}
+
+/*
+ * Reserva con métricas de Nunito mientras carga (evita que el texto cambie de tamaño y,
+ * por ejemplo, que el menú del header pase de dos líneas a una: CLS). size-adjust =
+ * ancho de Nunito / ancho de Arial (400-500) o Arial Bold (600-900), medido en Chrome
+ * con los textos reales del sitio para cada grosor: 400 párrafos 99,8 %, 600 menú
+ * 93,6 % (se usa 93,4 % para que nunca sea más ancho que Nunito y el menú no se parta),
+ * 700 97,9 %, 800 99,1 %, 900 títulos 101 %. ascent/descent = 1,016 y 0,359 em de
+ * Nunito divididos entre size-adjust.
+ */
+@font-face {
+  font-family: "Nunito Fallback";
+  font-style: normal;
+  font-weight: 400 500;
+  src: local("Arial"), local("ArialMT"), local("Helvetica");
+  size-adjust: 99.8%;
+  ascent-override: 101.8%;
+  descent-override: 36%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: "Nunito Fallback";
+  font-style: normal;
+  font-weight: 600;
+  src: local("Arial Bold"), local("Arial-BoldMT"), local("Helvetica Bold");
+  size-adjust: 93.4%;
+  ascent-override: 108.8%;
+  descent-override: 38.4%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: "Nunito Fallback";
+  font-style: normal;
+  font-weight: 700;
+  src: local("Arial Bold"), local("Arial-BoldMT"), local("Helvetica Bold");
+  size-adjust: 97.8%;
+  ascent-override: 103.9%;
+  descent-override: 36.7%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: "Nunito Fallback";
+  font-style: normal;
+  font-weight: 800;
+  src: local("Arial Bold"), local("Arial-BoldMT"), local("Helvetica Bold");
+  size-adjust: 99.1%;
+  ascent-override: 102.5%;
+  descent-override: 36.2%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: "Nunito Fallback";
+  font-style: normal;
+  font-weight: 900;
+  src: local("Arial Bold"), local("Arial-BoldMT"), local("Helvetica Bold");
+  size-adjust: 101%;
+  ascent-override: 100.6%;
+  descent-override: 35.5%;
+  line-gap-override: 0%;
+}
+
+/*
  * Design system definition.
  *
  * The @theme inline block maps CSS custom properties to Tailwind utility
@@ -27,7 +113,7 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
-  --font-sans: "Nunito", sans-serif;
+  --font-sans: "Nunito", "Nunito Fallback", sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -319,7 +405,7 @@
 }
 
 .telcobras-rounded-font {
-  font-family: "Arial Rounded MT Bold", "Arial Rounded", "Nunito", sans-serif;
+  font-family: "Arial Rounded MT Bold", "Arial Rounded", "Nunito", "Nunito Fallback", sans-serif;
 }
 
 .hero-aurora-blob {
@@ -386,7 +472,8 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
+/* También en móvil (< 768 px): animación decorativa continua, se detiene. */
+@media (prefers-reduced-motion: reduce), (max-width: 767px) {
   .hero-aurora-blob {
     animation: none;
   }
@@ -421,7 +508,8 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
+/* También en móvil (< 768 px): animación decorativa continua, se detiene. */
+@media (prefers-reduced-motion: reduce), (max-width: 767px) {
   .metric-icon-glow {
     animation: none;
   }
@@ -472,7 +560,8 @@
   animation-delay: -2.5s;
 }
 
-@media (prefers-reduced-motion: reduce) {
+/* También en móvil (< 768 px): animación decorativa continua, se detiene. */
+@media (prefers-reduced-motion: reduce), (max-width: 767px) {
   .chatbot-robot-vibrate,
   .ally-logo-rotation {
     animation: none;
@@ -701,7 +790,8 @@
 
 /* Movimiento reducido: sin giros ni flujos continuos. Las tarjetas siguen
    cambiando con fundido de opacidad y el enlace de respaldo queda visible fijo. */
-@media (prefers-reduced-motion: reduce) {
+/* También en móvil (< 768 px): animación decorativa continua, se detiene. */
+@media (prefers-reduced-motion: reduce), (max-width: 767px) {
   .brand-glow-ring-light,
   .network-flow {
     animation: none;
@@ -884,7 +974,8 @@
 
 /* Movimiento reducido: se mantienen el ciclo y los colores (fundidos), sin pulsos
    viajeros ni anillos pulsantes. */
-@media (prefers-reduced-motion: reduce) {
+/* También en móvil (< 768 px): animación decorativa continua, se detiene. */
+@media (prefers-reduced-motion: reduce), (max-width: 767px) {
   .network-active-pulse,
   .network-node-ring,
   .network-center-pulse {
@@ -917,7 +1008,8 @@
 
 /* Movimiento reducido: sin pulsos viajeros; los nodos quedan visibles con un
    valor estable (no se elimina la señal visual). */
-@media (prefers-reduced-motion: reduce) {
+/* También en móvil (< 768 px): animación decorativa continua, se detiene. */
+@media (prefers-reduced-motion: reduce), (max-width: 767px) {
   .contact-node-pulse {
     animation: none;
     opacity: 0.75;
@@ -1499,3 +1591,159 @@
 
 }
 /* === Fin ServicesSection === */
+
+/*
+ * Pantallas de menos de 768 px: menos trabajo continuo en el hilo de composición.
+ * Se detienen la señal del header y el pulso del botón de WhatsApp (las demás
+ * animaciones decorativas comparten las reglas de movimiento reducido) y los
+ * desenfoques de fondo bajan a 4 px (las capas que los usan son casi opacas).
+ */
+@media (max-width: 767px) {
+  .header-glass::after {
+    animation: none;
+    display: none;
+  }
+
+  .whatsapp-floating-button::before,
+  .whatsapp-floating-button::after {
+    animation: none;
+  }
+
+  .backdrop-blur-sm,
+  .backdrop-blur-md,
+  .backdrop-blur-xl {
+    --tw-backdrop-blur: blur(4px);
+  }
+
+  .header-glass-panel,
+  .services-card {
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+  }
+}
+
+/*
+ * Secciones por debajo del primer pantallazo: el navegador no calcula estilos, layout ni
+ * pintado de lo que no está cerca de la pantalla. contain-intrinsic-size reserva su
+ * altura aproximada (medida en Chrome a 360, 768 y 1280 px) para que el scroll y los
+ * enlaces del menú (#servicios, #contacto…) no salten; "auto" hace que, una vez pintada,
+ * se recuerde la altura real. Ninguna contiene elementos fixed/sticky (la contención de
+ * pintado los recortaría); diálogos, chat y avisos se montan fuera de ellas.
+ */
+#nosotros,
+#servicios,
+#inteligencia-artificial,
+#proyectos,
+#por-que,
+#contacto,
+#ubicacion {
+  content-visibility: auto;
+  contain-intrinsic-size: auto var(--section-estimated-height);
+}
+
+#nosotros {
+  --section-estimated-height: 2260px;
+}
+#servicios {
+  --section-estimated-height: 2470px;
+}
+#inteligencia-artificial {
+  --section-estimated-height: 640px;
+}
+#proyectos {
+  --section-estimated-height: 2900px;
+}
+#por-que {
+  --section-estimated-height: 2100px;
+}
+#contacto {
+  --section-estimated-height: 2050px;
+}
+#ubicacion {
+  --section-estimated-height: 720px;
+}
+
+@media (min-width: 768px) {
+  #nosotros {
+    --section-estimated-height: 1750px;
+  }
+  #servicios {
+    --section-estimated-height: 2060px;
+  }
+  #inteligencia-artificial {
+    --section-estimated-height: 620px;
+  }
+  #proyectos {
+    --section-estimated-height: 1870px;
+  }
+  #por-que {
+    --section-estimated-height: 1540px;
+  }
+  #contacto {
+    --section-estimated-height: 1670px;
+  }
+  #ubicacion {
+    --section-estimated-height: 890px;
+  }
+}
+
+@media (min-width: 1280px) {
+  #nosotros {
+    --section-estimated-height: 1540px;
+  }
+  #servicios {
+    --section-estimated-height: 1520px;
+  }
+  #proyectos {
+    --section-estimated-height: 1550px;
+  }
+  #por-que {
+    --section-estimated-height: 1110px;
+  }
+  #contacto {
+    --section-estimated-height: 1050px;
+  }
+}
+
+/*
+ * Al saltar a una sección desde el menú (#servicios, #contacto…), el header sticky no
+ * tapa su título: scroll-margin-top = altura del header (medida: 116 px por debajo de
+ * 640 px, 132 px entre 640 y 1023 px y 120 px desde 1024 px; en rem para que acompañe
+ * al tamaño de texto del menú de accesibilidad).
+ */
+#inicio,
+#nosotros,
+#servicios,
+#inteligencia-artificial,
+#proyectos,
+#por-que,
+#contacto,
+#ubicacion {
+  scroll-margin-top: 7.25rem;
+}
+
+@media (min-width: 640px) {
+  #inicio,
+  #nosotros,
+  #servicios,
+  #inteligencia-artificial,
+  #proyectos,
+  #por-que,
+  #contacto,
+  #ubicacion {
+    scroll-margin-top: 8.25rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  #inicio,
+  #nosotros,
+  #servicios,
+  #inteligencia-artificial,
+  #proyectos,
+  #por-que,
+  #contacto,
+  #ubicacion {
+    scroll-margin-top: 7.5rem;
+  }
+}

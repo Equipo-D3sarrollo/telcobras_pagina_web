@@ -108,7 +108,11 @@ se montan globalmente; el botón para volver al inicio se monta en la página pr
   TanStack Router, que se serializa a `<script type="application/ld+json">` en el
   `<head>`). El JSON-LD consume `RAZON_SOCIAL`, `LOGO_URL`, `CONTACT` y `SOCIAL_LINKS`
   de `src/lib/telcobras-data.ts` e incluye `name`, `url`, `logo`, `telephone`,
-  `address` y `sameAs`.
+  `address`, `contactPoint` y `sameAs`. `contactPoint` (28-10-2026) tiene dos entradas:
+  «customer support» (teléfonos y correo de `SUPPORT`, `hoursAvailable` 24/7 como
+  `OpeningHoursSpecification` de lunes a domingo 00:00-23:59 derivado de `HORARIO`,
+  `areaServed` CO, `availableLanguage` es) y «sales» (teléfono y correo de `CONTACT`).
+  Validado en validator.schema.org: 0 errores y 0 avisos.
 - Títulos y descripciones (27-10-2026): palabra clave al inicio y la marca al final,
   con títulos de 50-60 caracteres y descripciones de 140-160. La landing no define
   `title`/`description`/`og`/`twitter` propios: los pone el `head` raíz desde
@@ -126,11 +130,15 @@ se montan globalmente; el botón para volver al inicio se monta en la página pr
   (180×180, fondo blanco), generados a partir del isotipo (las tres velas) de
   `LOGO_URL` y enlazados en `head.links` de `__root.tsx`. No hay `icon.svg` porque no
   existe una versión vectorial del logo; añadirlo cuando se tenga el SVG oficial.
-- La optimización de imágenes para Core Web Vitals está aplicada en los componentes
-  principales: la imagen principal del hero usa `loading="eager"` +
-  `fetchPriority="high"` y las demás son `loading="lazy"`; todas declaran `width`/`height`
-  explícitos (evita CLS) y `decoding="async"`. Las imágenes de proyecto, aliados y
-  ubicación se cargan de forma diferida.
+- Imágenes (27-10-2026): todas son propias, en `public/images/`, como AVIF y WebP en
+  varios anchos (ver «Imágenes» en la sección 10). Se pintan con
+  `src/components/ResponsivePicture.tsx` (`<picture>` con `<source type="image/avif">`
+  y `<img>` WebP, `srcset` y `sizes` según el ancho real, y `width`/`height` para no
+  causar CLS). La primera foto del hero usa `loading="eager"` + `fetchPriority="high"`
+  y la landing la precarga con `<link rel="preload" as="image" type="image/avif"
+  imagesrcset imagesizes>` (`HERO_IMAGE_SIZES` es la misma cadena en el preload y en el
+  `<picture>`, para que el navegador no la descargue dos veces). Las demás son
+  `loading="lazy"`.
 - `public/sitemap.xml` está generado con las cuatro URLs públicas (`/`,
   `/politica-de-privacidad`, `/terminos-de-servicio`, `/sla`) bajo
   `https://telcobras.com`, con `<lastmod>` y código HTTP 200. `public/robots.txt`
@@ -152,7 +160,7 @@ se montan globalmente; el botón para volver al inicio se monta en la página pr
   | Mapa de Google (cookies de terceros) | no se carga; recuadro con «Ver mapa» | se carga |
 
   Al cambiar la elección, la cookie de preferencias existente pasa a persistente o a
-  sesión en el momento. Turnstile y Google Fonts no dejan cookies en el dominio.
+  sesión en el momento. Turnstile no deja cookies en el dominio; las fuentes son propias.
 - El menú de accesibilidad y la preferencia de idioma persisten en una cookie y se
   aplican también durante SSR para evitar flashes de contenido con idioma incorrecto.
 - La documentación legal debe revisarse con el responsable del tratamiento antes de
@@ -178,7 +186,8 @@ se montan globalmente; el botón para volver al inicio se monta en la página pr
 - TanStack Query está configurado en el contexto del router.
 - Nitro 3 (beta) genera el despliegue para Cloudflare con preset `cloudflare-module`;
   `nodeCompat` está habilitado.
-- Tipografía principal: Nunito, cargada desde Google Fonts en el shell raíz.
+- Tipografía principal: Nunito autoalojada en `public/fonts/` (ver «Tipografía» en la
+  sección 7); no se usa Google Fonts.
 - `vitest`, `jsdom`, Testing Library, `axe-core` y Playwright están instalados, pero
   sus archivos de configuración y pruebas siguen vacíos (0 bytes); no hay suite
   ejecutable ni script `test`.
@@ -232,7 +241,7 @@ agreguen pruebas.
 │   ├── lib/                        # Datos, preferencias, utilidades y manejo de errores
 │   ├── routes/                     # Rutas TanStack Start
 │   ├── routeTree.gen.ts            # Generado automáticamente; no editar
-│   ├── router.tsx                  # Crea router y QueryClient
+│   ├── router.tsx                  # Crea el router (sin React Query desde el 28-10-2026)
 │   ├── server.ts                   # Adaptador SSR, CSP y normalización de errores
 │   ├── start.ts                    # Middleware de servidor y CSRF para server functions
 │   └── styles.css                  # Tema, tokens y estilos globales/animaciones
@@ -263,7 +272,9 @@ con excepciones para `*.example`, aunque hoy no existe un `.env.example` version
 - `src/lib/cookie-consent.ts`: clave y lectura del consentimiento guardado, y
   `openCookiePreferences()` / `onOpenCookiePreferences()` para reabrir el banner.
 - `src/components/TurnstileWidget.tsx`: widget de Cloudflare Turnstile usado por el
-  formulario de contacto (carga explícita del script, callback, reset y errores).
+  formulario de contacto (carga explícita del script, callback, reset y errores). El
+  script solo se descarga cuando el formulario está a menos de ~600 px de la pantalla
+  (`IntersectionObserver` con `rootMargin: "600px 0px"`).
 - `src/routes/api.contacto.ts`: endpoint de contacto usado por el formulario. Valida
   honeypot, longitudes de campos, estructura de payload, Turnstile y limitación de tasa
   por IP antes de persistir en Supabase.
@@ -307,14 +318,22 @@ con excepciones para `*.example`, aunque hoy no existe un `.env.example` version
   publica en `head.links` como `{ rel: "stylesheet", href: appCss }` (líneas 120-127).
   En el build, `appCss` resuelve a `/assets/styles-<hash>.css`; el mismo hash debe
   aparecer en el bundle cliente y en el SSR. No hay `index.html` ni `src/main.tsx`.
-- Monta globalmente `FloatingChatbot` y `WhatsAppFloatingButton` (enlace flotante a
-  `wa.me` con el número comercial de `CONTACT`). Ambos viven en este archivo.
-- Carga la tipografía Nunito desde Google Fonts: las etiquetas `<link rel="preconnect">`
-  a `https://fonts.googleapis.com` y `https://fonts.gstatic.com` (esta última con
-  `crossOrigin="anonymous"`), más el `<link rel="stylesheet">` de la familia Nunito y
-  `styles.css`. Las `preconnect` se declaran en `head.links` del shell raíz, que es la
-  forma de inyectar `<link>` en el `<head>` con TanStack Router; no deben duplicarse
-  como JSX dentro del `<body>`. La CSP de `src/server.ts` permite ambos orígenes.
+- Monta globalmente `AccessibilityMenu` (solo el botón; el panel se carga al abrirlo)
+  y `WhatsAppFloatingButton` (enlace flotante a `wa.me` con el número comercial de
+  `CONTACT`, definido en este archivo). `FloatingChatbot` y `CookieBanner` se cargan
+  con `React.lazy` y se montan cuando el navegador queda libre tras la carga o con la
+  primera interacción (`useIdleReady`, `src/hooks/use-idle-ready.ts`:
+  `requestIdleCallback` con tope de 2 s, `setTimeout` donde no exista). En la primera
+  visita el banner aparece en cuanto el navegador queda libre, después del LCP.
+  «Preferencias de cookies» funciona aunque el banner aún no se haya cargado: la
+  petición queda pendiente (`openCookiePreferences`) y el banner la atiende al montarse.
+- La ruta raíz es `createRootRoute` sin contexto: React Query (`QueryClient`) se quitó
+  el 28-10-2026 porque no había ningún `useQuery` (24 KiB menos en el chunk principal).
+- En `head.links` precarga la Nunito normal autoalojada (`<link rel="preload"
+  href="/fonts/nunito-latin-400-900.woff2" as="font" type="font/woff2" crossorigin>`) y
+  enlaza `styles.css`. `head.links` es la forma de inyectar `<link>` en el `<head>` con
+  TanStack Router; no duplicarlos como JSX dentro del `<body>`. Desde el 27-10-2026 no
+  hay `preconnect` ni hoja de estilos de Google Fonts.
 - Tiene los componentes raíz de error (`ErrorComponent`, con `reportVibeError`) y 404.
 - El 404 (`NotFoundComponent`) ofrece dos salidas claras: «Ir al inicio» (`<Link to="/">`)
   y «Ver servicios» (`<Link to="/" hash="servicios">`, que produce `/#servicios` y
@@ -341,10 +360,10 @@ con excepciones para `*.example`, aunque hoy no existe un `.env.example` version
 - `src/lib/accessibility-preferences.server.ts` lee la cookie con las utilidades de
   petición de TanStack Start; el loader de la ruta raíz comparte el resultado con el
   shell SSR y la interfaz.
-- `src/components/AccessibilityMenu.tsx` proporciona el estado global y un control
-  flotante inferior izquierdo con opciones de apariencia (sistema/claro/oscuro), tamaño
-  de texto (100/125/150/200 %), idioma (español/inglés), modo daltonismo y restauración
-  de valores predeterminados.
+- `src/components/AccessibilityMenu.tsx` es el botón flotante inferior izquierdo; al
+  abrirlo carga `src/components/AccessibilityPanel.tsx` (con `React.lazy`), con opciones
+  de apariencia (sistema/claro/oscuro), tamaño de texto (100/125/150/200 %), idioma
+  (español/inglés), modo daltonismo y restauración de valores predeterminados.
 - `src/lib/accessibility-preferences-context.ts` y
   `src/lib/accessibility-preferences-provider.tsx` exponen las preferencias existentes
   al árbol React; no se debe crear un segundo estado de idioma.
@@ -460,7 +479,8 @@ o Remix: la guía local está en `src/routes/README.md`.
   ¿Por qué TELCOBRAS?, Ubicación y Contacto. El menú completo aparece en `xl`; por
   debajo se usa el panel móvil desplegable (`header-glass-panel`).
 - CTA «Solicita una cotización» (`header-cta`) apunta a `#contacto`.
-- Usa `LOGO_URL` y constantes de contacto de `telcobras-data.ts`.
+- Usa `LOGO_IMAGE` (con `ResponsivePicture`, `sizes="151px"`) y constantes de contacto
+  de `telcobras-data.ts`.
 - El estilo real (glass, links, indicadores) vive en clases de `styles.css`:
   `header-topbar`, `header-topbar-icon`, `header-glass`, `header-glass-panel`,
   `header-nav-link` (y `--block`), `header-cta`.
@@ -472,8 +492,10 @@ o Remix: la guía local está en `src/routes/README.md`.
   de entender las redes».
 - Fondo de video `/video_inicio.mp4`.
 - Tarjeta lateral con rotación automática de tres imágenes (`HERO_SLIDES`:
-  `HERO_PHOTO`, `TECHNICIAN_PHOTO`, `CALI_PHOTO`) cada 4 segundos y una tarjeta
-  superpuesta «Infraestructura de Red Propia».
+  `HERO_IMAGE`, `TECHNICIAN_IMAGE`, `CALI_IMAGE`) cada 4 segundos y una tarjeta
+  superpuesta «Infraestructura de Red Propia» con `min-h-[5.75rem]`: reserva dos líneas
+  de texto, porque al llegar la fuente Nunito el corte de línea cambiaba y la tarjeta
+  crecía (CLS).
 - Debajo presenta métricas como +20 años, 99,6 % de SLA, instalación en 15 días y
   soporte 24/7; los iconos usan la animación `metric-icon-glow`.
 - Cada métrica se envuelve en `MetricCard`, que añade `BrandGlowBorder` sin tocar su
@@ -611,8 +633,10 @@ Exporta dos componentes: `ContactSection` (`#contacto` y `#ubicacion`, dentro de
   de indicaciones.
 - Footer con logo, eslogan y copyright dinámico. Debajo, una rejilla (1 columna en
   móvil, 2 en tablet, 3 en escritorio) con: `<address>` con la dirección
-  (`CONTACT.address`), el teléfono (`<a href="tel:…">`) y el correo
-  (`<a href="mailto:…">`), y debajo el horario de atención (`HORARIO`); las redes
+  (`CONTACT.address`), el bloque «Atención comercial» (teléfono `tel:` y correo
+  `mailto:` de `CONTACT`) y el bloque «Soporte técnico (Centro de Gestión)» (los dos
+  teléfonos `tel:` y el correo `mailto:` de `SUPPORT`, más «Soporte técnico 24 horas,
+  7 días a la semana» / «Technical support 24/7»); las redes
   sociales; y los enlaces legales (Términos, Política de datos, SLA) más el botón
   «Preferencias de cookies», que reabre `CookieBanner`. Verificado sin desborde a 360,
   768 y 1440 px; en tablet las redes van a la izquierda para no quedar bajo el robot
@@ -697,14 +721,22 @@ antes de crear un control nuevo, revisar si ya existe una primitiva apropiada.
 
 Fuente de verdad para:
 
-- URLs alojadas externamente (`vibe.filesafe.space`): `LOGO_URL`, `HERO_PHOTO`,
-  `TECHNICIAN_PHOTO`, `CALI_PHOTO`.
+- Imágenes propias (`ResponsiveImage` = base en `public/images/` + anchos):
+  `LOGO_IMAGE`, `HERO_IMAGE`, `TECHNICIAN_IMAGE`, `CALI_IMAGE`, `PROJECT_IMAGE_WIDTHS`
+  (el campo `imagen` de cada proyecto es su base) y `HERO_IMAGE_SIZES`. URLs absolutas
+  del dominio para usos externos: `SITE_URL`, `LOGO_URL` (`/images/logo.png`, JSON-LD)
+  y `OG_IMAGE_URL` (`/images/og.jpg`, `og:image` y `twitter:image` de las 4 rutas).
 - Paleta de marca (`BRAND_COLORS`: azul `#0087C3`, verde `#88BD4C`, amarillo
   `#F3CB35`, gris `#888D91`, navy `#0A192F`).
 - Datos de contacto (`CONTACT`: teléfono, WhatsApp, correo, dirección) y el teléfono
   del chatbot (`CHATBOT_PHONE`).
-- `HORARIO`: horario de atención que muestra el footer. Hoy vale
-  `"[PENDIENTE: horario de gerencia]"` (pendiente 30).
+- `SUPPORT`: soporte técnico del Centro de Gestión, entregado por gerencia el
+  28-10-2026: +57 315 436 1138 y +57 310 384 0548 (`tel:`) y
+  centrodegestion@telcobras.com. Lo usan el footer, el SLA (sección 4), los Términos
+  (sección 13, PQR) y el JSON-LD. `CONTACT` sigue siendo el canal comercial.
+- `HORARIO`: `"24/7"` (soporte técnico). El footer lo muestra con el texto de
+  `translations.ts` (`contact.supportHours`) y el JSON-LD lo traduce a horario de
+  apertura.
 - Tipo `ServiceItem` y catálogo `SERVICIOS_DATA`.
 - Tipo `ProyectoItem` y catálogo `PROYECTOS_DATA`. Cada proyecto tiene `categoria`,
   `ubicacion` (opcional; el chatbot de la ESPY no la tiene porque ningún texto la
@@ -718,6 +750,32 @@ y la posición de cada proyecto en el bento de `ProjectsSection`.
 Los textos de los diferenciales de «¿Por qué TELCOBRAS?» no están aquí: viven en
 `DIFERENCIALES` dentro de `WhyUsSection.tsx`.
 
+### Tipografía
+
+- Nunito autoalojada en `public/fonts/` (licencia SIL OFL 1.1 en `public/fonts/OFL.txt`),
+  descargada el 27-10-2026 de la API de Google Fonts, subconjunto latino (U+0000-00FF:
+  tildes, ñ, ¿ y ¡; más comillas, guiones, € y ™):
+  - `nunito-latin-400-900.woff2` (39 KiB): normal variable de 400 a 900. Cubre todos los
+    grosores que usa el sitio (`font-normal`, `medium`, `semibold`, `bold`, `extrabold`,
+    `black`); no se usa 300. Es la única que se precarga.
+  - `nunito-latin-italic-700.woff2` (17 KiB): cursiva solo en 700, para el único texto
+    en cursiva (eslogan del hero). Se descarga solo cuando la página la usa.
+  - La flecha «→» (U+2192) no está en el subconjunto y se pinta con la fuente del
+    sistema, igual que antes con Google Fonts.
+- `@font-face` en `src/styles.css` con `font-display: swap`. Fuente de reserva
+  `"Nunito Fallback"`: Arial (400-500) y Arial Bold (600, 700, 800, 900, una cara por
+  grosor) con `size-adjust`, `ascent-override`, `descent-override` y
+  `line-gap-override` medidos en Chrome con los textos reales del sitio. Con las fuentes
+  bloqueadas, el header, el hero y Servicios ocupan exactamente lo mismo que con Nunito
+  (quedan diferencias de ~25 px más abajo en la página).
+- Los enlaces del menú de escritorio llevan `whitespace-nowrap`: el header no deja
+  margen a 1280 px y una diferencia de 3 px partía en dos líneas los enlaces de dos
+  palabras. Con Nunito no se parten en ningún ancho de escritorio, así que no cambia el
+  diseño.
+- Para regenerar: pedir a la API `family=Nunito:ital,wght@0,400..900;1,700` con un
+  User-Agent de Chrome y quedarse con los bloques `/* latin */` (¡no el primero del CSS,
+  que es cirílico!). Si cambian los grosores usados, volver a medir la reserva.
+
 ### `src/styles.css`
 
 - Entrada única del CSS global. Usa Tailwind v4 con detección automática desactivada:
@@ -730,7 +788,8 @@ Los textos de los diferenciales de «¿Por qué TELCOBRAS?» no están aquí: vi
   `componentTagger` solo en desarrollo y está ignorado por Git, así que no participa
   del build de producción.
 - Define variables de color/tema mediante OKLCH.
-- Define tokens semánticos y fuente Nunito.
+- Define tokens semánticos y la fuente (`--font-sans: "Nunito", "Nunito Fallback",
+  sans-serif`) con sus `@font-face` (ver «Tipografía» más abajo).
 - Contiene estilos globales y animaciones. Familias de clases propias:
   - `header-*` (`header-topbar`, `header-topbar-icon`, `header-glass`,
     `header-glass-panel`, `header-nav-link`, `header-nav-link--block`, `header-cta`).
@@ -776,8 +835,14 @@ Los textos de los diferenciales de «¿Por qué TELCOBRAS?» no están aquí: vi
   silenciado, en bucle, `playsInline`, `poster` `.webp` (primer fotograma, mismo nombre
   que el `.mp4` en `public/`), `preload="none"` y **sin `autoPlay`**. Se reproduce desde
   el cliente con `play()` salvo con `prefers-reduced-motion: reduce`, en cuyo caso se
-  queda en el poster y ni siquiera descarga el video. `playing` permite pausarlo fuera
-  de pantalla (lo usa `WhyUsSection`).
+  queda en el poster y ni siquiera descarga el video. Desde el 28-10-2026 cada video
+  solo se reproduce mientras está a la vista (`IntersectionObserver` propio) y se pausa
+  al salir; `playing` añade una condición externa (la usa `WhyUsSection`). El del hero
+  usa `startAfterLcp`: no arranca hasta que la imagen principal
+  (`img[fetchpriority="high"]`) se ha cargado y pintado (`whenLcpImagePainted`,
+  `src/lib/when-lcp-painted.ts`). El del hero lleva además `desktopOnly`: por debajo de
+  768 px no se reproduce ni se descarga y queda el poster fijo, igual que con
+  movimiento reducido (28-10-2026).
 - La preferencia se lee con `useReducedMotion()` / `prefersReducedMotion()` de
   `src/hooks/use-reduced-motion.ts`.
 - Compresión (27-10-2026, `ffmpeg` 9.0.2): H.264 `-preset veryfast -crf 28`, sin audio,
@@ -889,9 +954,18 @@ exitosa y repetible con el módulo Webhook response configurado correctamente.
   `compatibility_flags: ["nodejs_compat"]`, `no_bundle: true` y reglas ESModule.
 - `.output/server/index.mjs` incluye `public_assets_data_default`, el mapa de assets
   públicos; el CSS aparece como `/assets/styles-<hash>.css` con
-  `type: "text/css; charset=utf-8"`. `.output/public/_headers` solo añade
-  `cache-control: public, max-age=31536000, immutable` para `/assets/*`; no hay
-  `_routes.json` ni `_redirects`.
+  `type: "text/css; charset=utf-8"`. `.output/public/_headers` (lo lee Workers Static
+  Assets) se arma con `public/_headers` y, al final, la regla de Nitro para `/assets/*`
+  (`public, max-age=31536000, immutable`, porque llevan hash). Desde el 28-10-2026
+  `public/_headers` da a los estáticos sin hash (`/images/*`, `/fonts/*`, `/video_*`
+  —videos y posters—, `/logo_*`, `/favicon.ico`, `/apple-touch-icon.png`)
+  `cache-control: public, max-age=2592000, stale-while-revalidate=604800`: 30 días y,
+  al caducar, revalidación con ETag (304 si no cambió), sirviendo la copia vieja hasta
+  7 días mientras revalida. No se usa `immutable` de un año porque los nombres no
+  cambian al sustituir un archivo; si se sustituye uno, conviene renombrarlo. El HTML
+  (dinámico) no lleva caché y `robots.txt`/`sitemap.xml` usan el valor por defecto
+  (`max-age=0, must-revalidate`). `_headers` no se sirve (404). Comprobado con el build
+  servido por Wrangler. No hay `_routes.json` ni `_redirects`.
 - `src/server.ts` importa dinámicamente la entrada SSR y reemplaza determinadas
   respuestas JSON 500 genéricas de H3 por la página de error del proyecto. En rutas
   `/api/*` devuelve `{ "error": "internal_error" }` con `cache-control: no-store` en
@@ -902,8 +976,10 @@ exitosa y repetible con el módulo Webhook response configurado correctamente.
   `Strict-Transport-Security` (solo sobre HTTPS). La CSP está en modo **bloqueante**
   (cabecera `Content-Security-Policy`); ya no se emite
   `Content-Security-Policy-Report-Only`, así que cualquier origen no permitido bloquea
-  el recurso en lugar de solo reportarse. La CSP permite Turnstile, Google
-  Fonts, el iframe de Google Maps y `vibe.filesafe.space`; en desarrollo añade
+  el recurso en lugar de solo reportarse. La CSP permite Turnstile y el iframe de
+  Google Maps; las imágenes y las fuentes solo pueden venir del propio origen
+  (`img-src 'self' data: blob:`, `font-src 'self'`, `style-src 'self' 'unsafe-inline'`);
+  en desarrollo añade
   `'unsafe-eval'`, `ws:`/`wss:` y localhost porque Vite lo requiere. `script-src`
   conserva `'unsafe-inline'` por los scripts inline de hidratación de TanStack Start;
   endurecerlo con nonces/hashes es el siguiente paso natural. No se usa
@@ -930,7 +1006,7 @@ exitosa y repetible con el módulo Webhook response configurado correctamente.
   (`core.hooksPath=.githooks`). CI lo repite en `.github/workflows/gitleaks.yml`
   (v8.30.1 fijado y verificado por checksum). `.gitignore` cubre `.env`, `.env.*` y
   `.dev.vars*`, con excepción para los archivos `*.example`.
-- `src/router.tsx` construye QueryClient y el router con restauración de scroll.
+- `src/router.tsx` construye el router con restauración de scroll (sin QueryClient).
 - `tsconfig.json` está en modo estricto y define alias `@/*` → `src/*`.
 - `components.json` refleja la configuración de componentes tipo shadcn.
 - El `README.md` del repositorio cubre el arranque y el contrato/configuración de chat;
@@ -982,9 +1058,35 @@ Los archivos de la carpeta `public/` se sirven desde raíz (por ejemplo,
 `public/video_inicio.mp4` se solicita como `/video_inicio.mp4`). Ya no hay copias de
 medios en la raíz del repositorio (se eliminaron el 27-10-2026, ver pendiente 23).
 
-Las fotos de hero, sede y otras secciones usan URLs externas alojadas en
-`vibe.filesafe.space`. Si la entrega debe funcionar sin ese proveedor, habrá que
-descargarlas con autorización y migrarlas a `public/`.
+### Imágenes
+
+Desde el 27-10-2026 no hay imágenes externas: las 11 que venían de
+`vibe.filesafe.space` se descargaron a `public/images/` y se generaron con Pillow
+(AVIF calidad 55, WebP calidad 78, sin ampliar nunca el original):
+
+| Imagen | Original (PNG) | AVIF servido en móvil (360 px) | AVIF servido en escritorio (1280 px) | Anchos |
+|---|---|---|---|---|
+| `hero` (LCP) | 178 KiB | 12 KiB (480) | 24 KiB (768) | 480, 768, 1024 |
+| `tecnico` | 288 KiB | 24 KiB | 51 KiB | 480, 768, 1024 |
+| `cali` (hero y fondo de Contacto) | 301 KiB | 18 KiB | 41 KiB / 93 KiB (fondo, 1280) | 480, 768, 1024, 1280 |
+| `logo` | 128 KiB | 4 KiB (160) | 4-9 KiB (160/320) | 160, 320, 480 + `logo.png` 44 KiB |
+| `proyecto-vigilancia-risaralda` | 318 KiB | 24 KiB | 24 KiB (480) | 480, 768, 1200 |
+| `proyecto-automatizacion-agua-cali` | 327 KiB | 23 KiB | 52 KiB (768) | 480, 768, 1200 |
+| `proyecto-zonas-wifi-corregimientos` | 318 KiB | 30 KiB | 60 KiB (768) | 480, 768, 1200 |
+| `proyecto-nodos-telemetria-cali` | 350 KiB | 27 KiB | 27 KiB (480) | 480, 768, 1200 |
+| `proyecto-centros-digitales-claro` | 234 KiB | 20 KiB | 41 KiB (768) | 480, 768, 1200 |
+| `proyecto-chatbot-espy` | 83 KiB | — (la tarjeta usa una ilustración) | — | 480, 768, 1200 |
+| `og` (Open Graph) | 223 KiB | — | — | `og.jpg` 1200 px, 150 KiB |
+
+Total de imágenes de la landing: unos 2.440 KiB antes; unos 182 KiB en móvil y unos
+420 KiB en escritorio después. Para regenerarlas: `Image.resize(..., LANCZOS)` al
+ancho y `save(..., "AVIF", quality=55)` / `save(..., "WEBP", quality=78, method=6)`
+desde los PNG originales (siguen en el historial: commit anterior a este cambio, en
+`src/lib/telcobras-data.ts`).
+
+`og:image`, `twitter:image` y el `logo` del JSON-LD apuntan a URLs absolutas de
+`https://telcobras.com/images/...`: no funcionarán hasta que esta app se despliegue en
+ese dominio (hoy `telcobras.com` sirve otro sitio, ver pendiente 17).
 
 ## 11. Estado funcional y pendientes conocidos
 
@@ -1015,7 +1117,8 @@ descargarlas con autorización y migrarlas a `public/`.
   apple-touch-icon.
 - Optimización de imágenes para Core Web Vitals: `loading`/`decoding`/`fetchPriority`
   explícitos y `width`/`height` declarados para evitar CLS y priorizar el LCP.
-- `preconnect` a Google Fonts y `fonts.gstatic.com` en el shell global (`head.links`).
+- Nunito autoalojada con `preload` y fuente de reserva con métricas ajustadas (sin CLS
+  por cambio de fuente).
 - Página 404 con enlaces de salida a «Ir al inicio» (`/`) y «Ver servicios» (`/#servicios`).
 - Higiene de secretos: auditoría del código, historial completo (incluidos objetos
   huérfanos) y bundle de cliente sin hallazgos; `.gitignore` cubre `.env*`/`.dev.vars*`,
@@ -1149,7 +1252,12 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
    El 27-10-2026 se reescribió la sección 6 («Cookies y almacenamiento local») de la
    política, ES/EN, para que describa el funcionamiento real (esencial frente a
    opcional, sesión del chat, mapa de Google) y se cambió su fecha de actualización:
-   **pendiente de revisión jurídica**, igual que el texto nuevo del banner.
+   **pendiente de revisión jurídica**, igual que el texto nuevo del banner. También el
+   27-10-2026 se quitó Google Fonts de la sección 5 («Proveedores», ES/EN), porque la
+   tipografía pasó a servirse desde el propio sitio: **este cambio también lo revisa
+   jurídica**. El 28-10-2026 se añadió a la sección 5 (ES/EN) Cloudflare Turnstile como
+   proveedor que recibe datos técnicos del navegador y de la conexión (IP, señales del
+   dispositivo) al verificar el formulario: **también va a revisión de jurídica**.
 8. **Protección de endpoints HTTP:** `/api/contacto` tiene Turnstile y rate limit por IP
    (5 envíos cada 10 min) y `/api/chat` tiene rate limit (20 mensajes cada 5 min), ambos
    con el limitador compartido `src/lib/rate-limit.ts` basado en `cf-connecting-ip`. El
@@ -1194,8 +1302,8 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
     se quitaron Supabase, Make e Integromat porque el navegador solo llama a `/api/*`.
     Verificado: ninguna violación de CSP recorriendo landing, formulario con Turnstile,
     chat, mapa y páginas legales, y un `fetch` del navegador a Make queda bloqueado.
-    `img-src` tampoco incluye ya `*.supabase.co` (27-10-2026): las imágenes vienen de
-    `'self'` y `https://vibe.filesafe.space`.
+    `img-src` es `'self' data: blob:` desde el 27-10-2026: se quitaron `*.supabase.co`
+    y `vibe.filesafe.space` porque todas las imágenes son propias.
 17. **Empaquetado y despliegue (CSS):** el pipeline está correcto — `src/routes/__root.tsx:14`
     importa `styles.css?url`, `head.links` lo enlaza, Tailwind v4 lo genera en
     `.output/public/assets/styles-<hash>.css` (~162 KB) y el mismo hash está en SSR y
@@ -1293,10 +1401,211 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
 29. **`sitemap.xml`:** `<lastmod>` de las cuatro URLs se actualizó a 2026-10-27.
     Volver a actualizar el de `/terminos-de-servicio` y `/sla` cuando se publiquen los
     textos aprobados.
-30. **Horario de atención:** `HORARIO` en `src/lib/telcobras-data.ts` vale
-    `"[PENDIENTE: horario de gerencia]"` y el footer lo muestra tal cual. Sustituirlo por
-    el horario que confirme gerencia; si debe variar por idioma, moverlo a
-    `translations.ts`.
+30. **Horario de atención — resuelto (28-10-2026):** gerencia confirmó soporte técnico
+    24/7. `HORARIO = "24/7"` y el footer muestra «Soporte técnico 24 horas, 7 días a la
+    semana» / «Technical support 24/7» junto con los datos de `SUPPORT`. Ya no queda
+    ningún `[PENDIENTE` visible. Los canales de soporte del SLA (sección 4) y de los
+    Términos (sección 13) leen `SUPPORT`; se quitó «(llamada o WhatsApp)» de esos
+    canales porque no consta que las líneas de soporte tengan WhatsApp (la línea
+    comercial sí). Confirmarlo con gerencia y con la revisión jurídica de esos textos.
+31. **Rendimiento — línea base de Lighthouse (27-10-2026, sin cambios de código):**
+    build de producción (`npm run build`) servido en local con Wrangler
+    (`wrangler dev --config .output/server/wrangler.json --compatibility-date 2026-10-26`)
+    y Lighthouse 12.8.2 con Chrome 156 headless, perfil limpio y sin extensiones.
+    Móvil: emulación por defecto (Moto G, 412×823, 4G lento simulado: RTT 150 ms,
+    1,6 Mbps, CPU ×4), 3 corridas; escritorio: `--preset=desktop`, 1 corrida. Reportes
+    HTML en `documentacion/lighthouse/2026-10-27-antes/`.
+
+    | Métrica | Móvil 1 | Móvil 2 | Móvil 3 | **Mediana móvil** | Escritorio |
+    |---|---|---|---|---|---|
+    | Rendimiento | 46 | 54 | 53 | **53** | 80 |
+    | FCP | 4,9 s | 4,9 s | 4,8 s | **4,9 s** | 1,2 s |
+    | LCP | 10,5 s | 10,5 s | 8,6 s | **10,5 s** | 2,2 s |
+    | TBT | 214 ms | 260 ms | 282 ms | **260 ms** | 5 ms |
+    | CLS | 0,185 | 0 | 0 | **0** | 0,029 |
+    | Speed Index | 8,0 s | 7,7 s | 7,6 s | **7,7 s** | 2,4 s |
+
+    La mediana es por métrica. Otras categorías (móvil y escritorio): Accesibilidad 96,
+    Buenas prácticas 78-79, SEO 100.
+
+    **Elemento LCP:** la imagen del hero (`HERO_PHOTO`, PNG de 178 KiB en
+    `vibe.filesafe.space`, `fetchpriority="high"`). Fases en la corrida mediana: TTFB
+    482 ms, retraso de carga 0 ms, carga 2.193 ms y **retraso de renderizado 5.964 ms
+    (69 %)**: la imagen llega a tiempo pero el hilo principal está ocupado (9,0 s de
+    trabajo: 3,4 s «Other», 3,2 s estilo y layout, 1,1 s de scripts).
+
+    **Oportunidades y diagnósticos con más impacto (móvil):**
+    1. Retraso de renderizado del LCP: 5,96 s (ver arriba).
+    2. Entrega de imágenes: ~776 KiB ahorrables en 4 PNG de `vibe.filesafe.space` (foto
+       de Cali 301 KiB, técnico 288 KiB, hero 178 KiB, logo 128 KiB).
+    3. Formatos modernos (WebP/AVIF): 425 KiB, ~1,35 s de LCP.
+    4. Recursos que bloquean el renderizado: ~1.060 ms de FCP (CSS de Google Fonts
+       ~1.011 ms y `styles-*.css` ~635 ms).
+    5. Tamaño adecuado de imágenes: 387 KiB, ~850 ms de LCP (técnico, logo y hero se
+       sirven más grandes de lo que se muestran).
+    6. JavaScript sin usar: 59 KiB del chunk principal (156 KiB), ~750 ms de FCP y
+       ~350 ms de LCP.
+    7. Trabajo del hilo principal: 9,0 s; ejecución de JS 1,2 s.
+    8. Tamaño del DOM: 1.213 elementos (~350 ms de TBT).
+    9. Peso total: 3.080 KiB. Lo encabezan los videos que se reproducen al cargar
+       (`video_inicio` 727 KiB, `video_conectividad` 586 KiB, `video_tel` 230 KiB) y
+       Turnstile, que se carga al inicio aunque el formulario esté al final (205 KiB).
+    10. Caché: los `.mp4` de `public/` se sirven sin `cache-control` de larga duración
+        (solo `/assets/*` lo tiene). Corregido el 28-10-2026 con `public/_headers`.
+
+    Otros hallazgos: una corrida tuvo CLS 0,185 por la tarjeta «Infraestructura de Red
+    Propia» del hero (intermitente), y `vibe.filesafe.space` deja la cookie de terceros
+    `__cf_bm` (gestión de bots de Cloudflare) al servir las imágenes.
+
+    **Optimización 1, imágenes (27-10-2026, sin medir aún con Lighthouse):** imágenes
+    propias en AVIF/WebP con `srcset`/`sizes`, preload del hero, CSP sin orígenes de
+    imágenes externos (desaparece la cookie `__cf_bm`) y altura reservada en la tarjeta
+    del hero (sección 10, «Imágenes»).
+
+    **Optimización 2, fuentes (27-10-2026, sin medir aún con Lighthouse):** Nunito
+    autoalojada (sin la petición de ~1 s que bloqueaba el renderizado a Google Fonts),
+    precargada, y fuente de reserva con métricas ajustadas. Corrige el CLS de ~0,03 del
+    menú del header en escritorio: en el navegador ya no hay ningún layout shift al
+    cargar, ni a 360 ni a 1280 px (ver «Tipografía» en la sección 7).
+
+    **Optimización 3, hilo principal (28-10-2026, sin medir aún con Lighthouse):**
+
+    | Chunk (gzip) | Antes | Después |
+    |---|---|---|
+    | Principal (`index`) | 161,3 KB (502,5 KB sin comprimir) | 133,5 KB (408,9 KB) |
+    | Landing (`routes`) | 50,3 KB (184,6 KB) | 15,8 KB (66,0 KB) |
+    | Inicial de la landing (suma) | 211,6 KB | 149,3 KB (−29 %) |
+
+    Fuera de la carga inicial: `LetyIaAndWhyUs` (Inteligencia Artificial, Proyectos con
+    Radix Dialog y `tailwind-merge`, «¿Por qué?»; 29,6 KB, con `React.lazy` + `Suspense`,
+    sigue en el HTML del SSR), chat 3,6 KB, banner 1,4 KB, panel de accesibilidad
+    1,1 KB, `sonner` 9,4 KB (el `<Toaster>` se monta al quedar libre el navegador y los
+    avisos usan `notify()` de `src/lib/notify.ts`, que importa `sonner` bajo demanda) y
+    los textos legales, que ya solo se descargan en su página (sus metadatos están en
+    `src/lib/legal-meta.ts` para que el `head()` no arrastre el contenido). Se quitó
+    React Query (sin uso). `recharts` y los componentes de `components/ui` sin usar no
+    estaban en el bundle (el build ya los descartaba). También: Turnstile solo cerca del
+    formulario, videos solo a la vista (el del hero tras el LCP) y, en pantallas de
+    menos de 768 px, sin animaciones decorativas continuas (las mismas reglas que el
+    movimiento reducido, más la señal del header y el pulso de WhatsApp) y desenfoques
+    de fondo de 4 px.
+
+    **Fallo corregido de paso:** no había ningún `<Toaster>` montado, así que ninguno de
+    los avisos del formulario de contacto (campos obligatorios, consentimiento,
+    Turnstile, demasiados intentos, error de envío, éxito) se mostraba. Ahora se
+    muestran arriba en el centro.
+
+    Chrome avisa de que la fuente precargada «no se usó en unos segundos», pero en el
+    build de producción se descarga una sola vez (por la precarga) y la usa el texto:
+    es un falso positivo.
+
+    **Optimización 4, caché de estáticos (28-10-2026):** ver `public/_headers` en la
+    sección 9.
+
+    **Medición después (28-10-2026, misma configuración que la línea base):** build de
+    producción servido con Wrangler en local, Lighthouse 12.8.2, Chrome 156 headless con
+    perfil limpio, 3 corridas en móvil (mediana) y 1 en escritorio. Reportes HTML en
+    `documentacion/lighthouse/2026-10-27-despues/` (la carpeta lleva la fecha del plan;
+    las corridas son del 28-10-2026).
+
+    | Métrica | Móvil antes | Móvil después | Escritorio antes | Escritorio después |
+    |---|---|---|---|---|
+    | Rendimiento | 53 | **75** | 80 | **96** |
+    | FCP | 4,9 s | **2,6 s** | 1,2 s | **0,6 s** |
+    | LCP | 10,5 s | **4,2 s** | 2,2 s | **0,9 s** |
+    | TBT | 260 ms | **140 ms** | 5 ms | **0 ms** |
+    | CLS | 0 | **0** | 0,029 | **0** |
+    | Speed Index | 7,7 s | **6,4 s** | 2,4 s | **1,8 s** |
+    | Peso total | 3.073 KiB | **1.221 KiB** | 3.067 KiB | **1.215 KiB** |
+    | Accesibilidad | 96 | 96 | 96 | 96 |
+    | Buenas prácticas | 79 | **100** | 78 | **100** |
+    | SEO | 100 | 100 | 100 | 100 |
+
+    Móvil por corrida: rendimiento 73 / 75 / 76; LCP 4,2 / 4,3 / 4,2 s; TBT 210 / 140 /
+    108 ms.
+
+    **El móvil no llega a 85.** Elemento LCP: ahora es el **poster del video de fondo del
+    hero** (`<video poster="/video_inicio.webp">`, que ocupa más que la tarjeta de fotos);
+    fases: TTFB 496 ms, carga 0 ms y **retraso de renderizado 3.764 ms**. Las 5
+    oportunidades que quedan (corrida mediana):
+    1. Retraso de renderizado del LCP: ~1.750 ms de ahorro estimado. El hilo principal
+       está ocupado al inicio: 4,7 s de trabajo, de ellos 2,3 s de estilo y layout, con
+       una tarea larga de 943 ms del documento a ~1 s de cargar.
+    2. JavaScript sin usar: 48 KiB del chunk principal (129 KiB), ~300 ms de LCP y
+       ~150 ms de FCP.
+    3. Trabajo del hilo principal 4,7 s y 13 tareas largas: ~150 ms de TBT.
+    4. CSS que bloquea el renderizado: `styles-*.css` (26 KiB), ~150-196 ms de FCP.
+    5. Entrega de imágenes: 46 KiB (técnico 20 KiB y Cali 12 KiB del carrusel del hero,
+       que se descargan al inicio aunque empiezan ocultos; posters y logo), ~150 ms de
+       LCP.
+    Además, el video del hero (727 KiB) sigue entrando en la medición porque arranca
+    tras el LCP. Buenas prácticas pasó de 79 a 100 (ya no hay cookie de terceros
+    `__cf_bm` ni recursos de Google).
+
+    **Optimización 5, móvil (28-10-2026):**
+    - `content-visibility: auto` con `contain-intrinsic-size: auto <alto>` en
+      `#nosotros`, `#servicios`, `#inteligencia-artificial`, `#proyectos`, `#por-que`,
+      `#contacto` y `#ubicacion` (alturas medidas a 360, 768 y 1280 px, al final de
+      `styles.css`). Ninguna contiene elementos fixed/sticky. Comprobado: los enlaces del
+      menú y los saltos por `#hash` llevan a la sección y no saltan al pintarse (solo
+      `#ubicacion` se movió 12 px a 360 px); la altura total de la página cambia 0 px
+      (360) y 18 px (1280) al recorrerla.
+    - Hero en móvil (< 768 px): sin video de fondo (`desktopOnly`), sin el resplandor
+      difuminado detrás de la tarjeta de fotos y sin el pulso del punto de la etiqueta
+      superior. Escritorio sin cambios (capturas comparadas a 360 y 1280 px).
+    - Carrusel del hero: las fotos 2 y 3 solo se montan (y descargan) cuando la primera
+      ya se pintó y el navegador queda libre; la rotación empieza entonces.
+    - JavaScript sin usar (48 KiB del chunk principal): no se quitó. El chunk es ya casi
+      solo el marco (`react-dom` 202 KiB, router y Start ~90 KiB, `seroval` 24 KiB) y el
+      catálogo de traducciones (37 KiB, con el inglés sin usar cuando el idioma es
+      español). Reducirlo exigiría tocar el framework/router o cargar las traducciones
+      de forma asíncrona en todo el sitio (SSR y cambio de idioma incluidos).
+    - Corregido el 28-10-2026: el header es `sticky` y las secciones no tenían
+      `scroll-margin-top`, así que al saltar a una sección el título quedaba bajo el
+      header. Ahora `scroll-margin-top` = altura del header (7,25 rem por debajo de
+      640 px, 8,25 rem entre 640 y 1023 px, 7,5 rem desde 1024 px; al final de
+      `styles.css`): la sección empieza justo bajo el header.
+
+    **Medición tras la optimización 5** (misma configuración; reportes en
+    `documentacion/lighthouse/2026-10-28-optim5/`):
+
+    | Móvil (mediana de 3) | Línea base | Tras optim. 4 | Tras optim. 5 |
+    |---|---|---|---|
+    | Rendimiento | 53 | 75 | **81** |
+    | FCP | 4,9 s | 2,6 s | **2,5 s** |
+    | LCP | 10,5 s | 4,2 s | **3,7 s** |
+    | TBT | 260 ms | 140 ms | **100 ms** |
+    | CLS | 0 | 0 | **0** |
+    | Speed Index | 7,7 s | 6,4 s | **5,3 s** |
+    | Peso total | 3.073 KiB | 1.221 KiB | **494 KiB** |
+    | Accesibilidad / Buenas prácticas / SEO | 96 / 79 / 100 | 96 / 100 / 100 | **96 / 100 / 100** |
+
+    | Escritorio (1 corrida) | Línea base | Tras optim. 4 | Tras optim. 5 |
+    |---|---|---|---|
+    | Rendimiento | 80 | 96 | **96** |
+    | FCP | 1,2 s | 0,6 s | **0,7 s** |
+    | LCP | 2,2 s | 0,9 s | **0,9 s** |
+    | TBT | 5 ms | 0 ms | **0 ms** |
+    | CLS | 0,029 | 0 | **0** |
+    | Speed Index | 2,4 s | 1,8 s | **1,8 s** |
+    | Peso total | 3.067 KiB | 1.215 KiB | **1.216 KiB** |
+    | Accesibilidad / Buenas prácticas / SEO | 96 / 78 / 100 | 96 / 100 / 100 | **96 / 100 / 100** |
+
+    Móvil por corrida: rendimiento 79 / 82 / 81; LCP 3,9 / 3,4 / 3,7 s; CLS 0 / 0,145 /
+    0. El LCP sigue siendo el poster del video del hero (retraso de renderizado 3,3 s;
+    trabajo del hilo principal 3,7 s, de ellos 1,9 s de estilo y layout).
+
+    **CLS de 0,145 en una corrida (la que Lighthouse marcó con CPU más lenta):**
+    reproducido retrasando la fuente 3 s a 412 px. La etiqueta «Sede Principal en
+    Cali • Cobertura Nacional en Colombia» (`text-xs font-bold`) mide 338 px con Nunito
+    y 332 px con la reserva, con 336 px disponibles: con la reserva cabe en una línea y
+    al llegar Nunito pasa a dos, y todo el hero baja 18 px. Solo ocurre si la fuente
+    llega después del primer pintado y en anchos de ~410 px. Opciones: `font-display:
+    optional` para Nunito (sin cambio de fuente tras el primer pintado; en una primera
+    visita lenta se vería la reserva) o reservar dos líneas para esa etiqueta por debajo
+    de 640 px. **Aplicado el 28-10-2026:** `min-h-[2.875rem] sm:min-h-0` en la etiqueta;
+    con la fuente retrasada 3 s a 412 px el CLS baja de 0,145 a 0,041 (quedan 2 px de
+    diferencia de altura de línea en el header con la reserva).
 
 ## 12. Operación y privacidad del formulario
 
