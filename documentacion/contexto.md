@@ -1297,6 +1297,54 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
     `"[PENDIENTE: horario de gerencia]"` y el footer lo muestra tal cual. Sustituirlo por
     el horario que confirme gerencia; si debe variar por idioma, moverlo a
     `translations.ts`.
+31. **Rendimiento — línea base de Lighthouse (27-10-2026, sin cambios de código):**
+    build de producción (`npm run build`) servido en local con Wrangler
+    (`wrangler dev --config .output/server/wrangler.json --compatibility-date 2026-10-26`)
+    y Lighthouse 12.8.2 con Chrome 156 headless, perfil limpio y sin extensiones.
+    Móvil: emulación por defecto (Moto G, 412×823, 4G lento simulado: RTT 150 ms,
+    1,6 Mbps, CPU ×4), 3 corridas; escritorio: `--preset=desktop`, 1 corrida. Reportes
+    HTML en `documentacion/lighthouse/2026-10-27-antes/`.
+
+    | Métrica | Móvil 1 | Móvil 2 | Móvil 3 | **Mediana móvil** | Escritorio |
+    |---|---|---|---|---|---|
+    | Rendimiento | 46 | 54 | 53 | **53** | 80 |
+    | FCP | 4,9 s | 4,9 s | 4,8 s | **4,9 s** | 1,2 s |
+    | LCP | 10,5 s | 10,5 s | 8,6 s | **10,5 s** | 2,2 s |
+    | TBT | 214 ms | 260 ms | 282 ms | **260 ms** | 5 ms |
+    | CLS | 0,185 | 0 | 0 | **0** | 0,029 |
+    | Speed Index | 8,0 s | 7,7 s | 7,6 s | **7,7 s** | 2,4 s |
+
+    La mediana es por métrica. Otras categorías (móvil y escritorio): Accesibilidad 96,
+    Buenas prácticas 78-79, SEO 100.
+
+    **Elemento LCP:** la imagen del hero (`HERO_PHOTO`, PNG de 178 KiB en
+    `vibe.filesafe.space`, `fetchpriority="high"`). Fases en la corrida mediana: TTFB
+    482 ms, retraso de carga 0 ms, carga 2.193 ms y **retraso de renderizado 5.964 ms
+    (69 %)**: la imagen llega a tiempo pero el hilo principal está ocupado (9,0 s de
+    trabajo: 3,4 s «Other», 3,2 s estilo y layout, 1,1 s de scripts).
+
+    **Oportunidades y diagnósticos con más impacto (móvil):**
+    1. Retraso de renderizado del LCP: 5,96 s (ver arriba).
+    2. Entrega de imágenes: ~776 KiB ahorrables en 4 PNG de `vibe.filesafe.space` (foto
+       de Cali 301 KiB, técnico 288 KiB, hero 178 KiB, logo 128 KiB).
+    3. Formatos modernos (WebP/AVIF): 425 KiB, ~1,35 s de LCP.
+    4. Recursos que bloquean el renderizado: ~1.060 ms de FCP (CSS de Google Fonts
+       ~1.011 ms y `styles-*.css` ~635 ms).
+    5. Tamaño adecuado de imágenes: 387 KiB, ~850 ms de LCP (técnico, logo y hero se
+       sirven más grandes de lo que se muestran).
+    6. JavaScript sin usar: 59 KiB del chunk principal (156 KiB), ~750 ms de FCP y
+       ~350 ms de LCP.
+    7. Trabajo del hilo principal: 9,0 s; ejecución de JS 1,2 s.
+    8. Tamaño del DOM: 1.213 elementos (~350 ms de TBT).
+    9. Peso total: 3.080 KiB. Lo encabezan los videos que se reproducen al cargar
+       (`video_inicio` 727 KiB, `video_conectividad` 586 KiB, `video_tel` 230 KiB) y
+       Turnstile, que se carga al inicio aunque el formulario esté al final (205 KiB).
+    10. Caché: los `.mp4` de `public/` se sirven sin `cache-control` de larga duración
+        (solo `/assets/*` lo tiene).
+
+    Otros hallazgos: una corrida tuvo CLS 0,185 por la tarjeta «Infraestructura de Red
+    Propia» del hero (intermitente), y `vibe.filesafe.space` deja la cookie de terceros
+    `__cf_bm` (gestión de bots de Cloudflare) al servir las imágenes.
 
 ## 12. Operación y privacidad del formulario
 
