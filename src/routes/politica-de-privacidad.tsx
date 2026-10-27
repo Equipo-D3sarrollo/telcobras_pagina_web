@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { useAccessibilityPreferences } from "@/lib/accessibility-preferences-context";
+import { htmlLang } from "@/lib/accessibility-preferences";
 import { CONTACT, NIT, RAZON_SOCIAL } from "@/lib/telcobras-data";
 
 const SITE_URL = "https://telcobras.com";
@@ -11,29 +12,17 @@ const OG_IMAGE =
 export const Route = createFileRoute("/politica-de-privacidad")({
   head: () => ({
     meta: [
-      { title: `Política Privacidad | ${RAZON_SOCIAL}` },
-      {
-        name: "description",
-        content:
-          "Política de privacidad y tratamiento de datos personales de TELCOBRAS S.A.S. conforme a la Ley 1581 de 2012 y el RGPD cuando aplica.",
-      },
-      { property: "og:title", content: `Política Privacidad | ${RAZON_SOCIAL}` },
-      {
-        property: "og:description",
-        content:
-          "Política de privacidad y tratamiento de datos personales de TELCOBRAS S.A.S. conforme a la Ley 1581 de 2012 y el RGPD cuando aplica.",
-      },
+      { title: policyCopy.es.metaTitle },
+      { name: "description", content: policyCopy.es.metaDescription },
+      { property: "og:title", content: policyCopy.es.metaTitle },
+      { property: "og:description", content: policyCopy.es.metaDescription },
       { property: "og:image", content: OG_IMAGE },
       { property: "og:url", content: `${SITE_URL}/politica-de-privacidad` },
       { property: "og:type", content: "website" },
       { property: "og:locale", content: "es_CO" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: `Política Privacidad | ${RAZON_SOCIAL}` },
-      {
-        name: "twitter:description",
-        content:
-          "Política de privacidad y tratamiento de datos personales de TELCOBRAS S.A.S. conforme a la Ley 1581 de 2012 y el RGPD cuando aplica.",
-      },
+      { name: "twitter:title", content: policyCopy.es.metaTitle },
+      { name: "twitter:description", content: policyCopy.es.metaDescription },
       { name: "twitter:image", content: OG_IMAGE },
     ],
     links: [{ rel: "canonical", href: `${SITE_URL}/politica-de-privacidad` }],
@@ -44,6 +33,9 @@ export const Route = createFileRoute("/politica-de-privacidad")({
 const policyCopy = {
   es: {
     backToHome: "Volver al inicio",
+    metaTitle: "Política de privacidad y tratamiento de datos | TELCOBRAS",
+    metaDescription:
+      "Cómo TELCOBRAS S.A.S. trata tus datos personales según la Ley 1581 de 2012 y el RGPD cuando aplica: finalidades, derechos, conservación y cómo ejercerlos.",
     title: "Política de Privacidad y Tratamiento de Datos Personales",
     description:
       "Política de privacidad y tratamiento de datos personales de TELCOBRAS S.A.S., conforme a la Ley Estatutaria 1581 de 2012 y, cuando corresponda, al RGPD.",
@@ -131,6 +123,9 @@ const policyCopy = {
   },
   en: {
     backToHome: "Back to home",
+    metaTitle: "Privacy and personal data processing policy | TELCOBRAS",
+    metaDescription:
+      "How TELCOBRAS S.A.S. processes your personal data under Colombian Law 1581 of 2012 and the GDPR where applicable: purposes, rights, retention and requests.",
     title: "Privacy Policy and Personal Data Processing",
     description:
       "TELCOBRAS S.A.S. privacy and personal data processing policy under Colombian Statutory Law 1581 of 2012 and, where applicable, the GDPR.",
@@ -228,13 +223,15 @@ function PrivacyPolicyPage() {
   const linkClass = "font-semibold text-primary underline";
 
   useEffect(() => {
-    document.title = `${copy.title} | ${RAZON_SOCIAL}`;
-    document.querySelector('meta[name="description"]')?.setAttribute("content", copy.description);
-  }, [copy.description, copy.title]);
+    document.title = copy.metaTitle;
+    document
+      .querySelector('meta[name="description"]')
+      ?.setAttribute("content", copy.metaDescription);
+  }, [copy.metaDescription, copy.metaTitle]);
 
   return (
     <main
-      lang={language}
+      lang={htmlLang(language)}
       className="min-h-screen bg-background px-4 py-10 font-sans text-foreground sm:px-6 sm:py-16"
     >
       <article className="mx-auto max-w-4xl rounded-3xl border border-border bg-card p-6 shadow-xl sm:p-10 lg:p-14">

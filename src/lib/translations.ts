@@ -749,9 +749,9 @@ const es: Catalog = {
     services: "Ver servicios",
   },
   metadata: {
-    title: "TELCOBRAS S.A.S. | Una nueva forma de entender las redes",
+    title: "Conectividad, ciberseguridad e IA para empresas | TELCOBRAS",
     description:
-      "Soluciones integrales de tecnología, conectividad e Inteligencia Artificial con infraestructura propia en Cali y Colombia. Conectividad, ciberseguridad y nube híbrida.",
+      "Conectividad, ciberseguridad, colaboración, nube híbrida e inteligencia artificial para empresas en Cali y Colombia, con soporte 24/7 y NOC especializado.",
     socialTitle: "TELCOBRAS S.A.S. | Conectividad, Ciberseguridad e IA",
     socialDescription:
       "El aliado tecnológico de confianza para empresas en crecimiento y transformación digital.",
@@ -1207,9 +1207,9 @@ const en: Catalog = {
     services: "View services",
   },
   metadata: {
-    title: "TELCOBRAS S.A.S. | A new way to understand networks",
+    title: "Connectivity, cybersecurity & AI for businesses | TELCOBRAS",
     description:
-      "End-to-end technology, connectivity, and Artificial Intelligence solutions with our own infrastructure in Cali and across Colombia. Connectivity, cybersecurity, and hybrid cloud.",
+      "Connectivity, cybersecurity, collaboration, hybrid cloud and AI for businesses in Cali and Colombia, backed by 24/7 support and a specialized NOC team.",
     socialTitle: "TELCOBRAS S.A.S. | Connectivity, Cybersecurity & AI",
     socialDescription:
       "The trusted technology partner for businesses growing and transforming for the future.",

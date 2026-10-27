@@ -3,6 +3,7 @@ import { useState, type ReactNode } from "react";
 import {
   ACCESSIBILITY_PREFERENCES_COOKIE,
   ACCESSIBILITY_PREFERENCES_MAX_AGE_SECONDS,
+  htmlLang,
   parseAccessibilityPreferences,
   type AccessibilityPreferences,
 } from "@/lib/accessibility-preferences";
@@ -10,7 +11,7 @@ import { AccessibilityPreferencesContext } from "@/lib/accessibility-preferences
 
 function applyAccessibilityPreferences(preferences: AccessibilityPreferences) {
   const root = document.documentElement;
-  root.lang = preferences.language;
+  root.lang = htmlLang(preferences.language);
   root.dataset["theme"] = preferences.theme;
   root.dataset["fontSize"] = preferences.fontSize;
   root.dataset["colorblindMode"] = String(preferences.colorblindMode);

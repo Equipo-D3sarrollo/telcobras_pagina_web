@@ -109,6 +109,23 @@ se montan globalmente; el botón para volver al inicio se monta en la página pr
   `<head>`). El JSON-LD consume `RAZON_SOCIAL`, `LOGO_URL`, `CONTACT` y `SOCIAL_LINKS`
   de `src/lib/telcobras-data.ts` e incluye `name`, `url`, `logo`, `telephone`,
   `address` y `sameAs`.
+- Títulos y descripciones (27-10-2026): palabra clave al inicio y la marca al final,
+  con títulos de 50-60 caracteres y descripciones de 140-160. La landing no define
+  `title`/`description`/`og`/`twitter` propios: los pone el `head` raíz desde
+  `metadata` de `translations.ts` según el idioma de la cookie (una sola fuente para el
+  SSR y para `LocalizedMetadata`). La política de privacidad usa `metaTitle` y
+  `metaDescription` de `policyCopy` (separados del título y la introducción visibles).
+  Términos y SLA usan `metaTitle`/`description` de `terms-content.ts`/`sla-content.ts`.
+- Estructura de la landing: un solo `<main>` (de Hero a Contacto/Ubicación), con
+  `HeaderNav` antes y `SiteFooter` después, y un solo `<h1>` (en `HeroAndMetrics`).
+- `<html lang>` vale `es-CO` en español y `en` en inglés (`htmlLang()` en
+  `src/lib/accessibility-preferences.ts`); se usa también en el `lang` de las páginas
+  legales, los mensajes del chatbot y la página de error. La preferencia y la cookie
+  `telcobras_a11y` siguen guardando `es`/`en`.
+- Iconos: `public/favicon.ico` (32×32, más 16 y 48) y `public/apple-touch-icon.png`
+  (180×180, fondo blanco), generados a partir del isotipo (las tres velas) de
+  `LOGO_URL` y enlazados en `head.links` de `__root.tsx`. No hay `icon.svg` porque no
+  existe una versión vectorial del logo; añadirlo cuando se tenga el SVG oficial.
 - La optimización de imágenes para Core Web Vitals está aplicada en los componentes
   principales: la imagen principal del hero usa `loading="eager"` +
   `fetchPriority="high"` y las demás son `loading="lazy"`; todas declaran `width`/`height`
@@ -224,8 +241,9 @@ con excepciones para `*.example`, aunque hoy no existe un `.env.example` version
 
 - `src/lib/telcobras-data.ts`: contiene datos corporativos oficiales, enlaces de
   redes sociales, URL interna de privacidad y datos de contacto.
-- `src/components/ContactAndFooter.tsx`: footer semántico, redes sociales, consent
-  legal, formulario, mapa, ubicación y enlaces legales.
+- `src/components/ContactAndFooter.tsx`: exporta `ContactSection` (formulario,
+  consentimiento legal, mapa y ubicación) y `SiteFooter` (footer semántico, contacto,
+  redes sociales y enlaces legales).
 - `src/components/CookieBanner.tsx`: aceptación/rechazo de cookies y persistencia en
   `localStorage`; se reabre desde el footer.
 - `src/lib/cookie-consent.ts`: clave y lectura del consentimiento guardado, y
@@ -260,10 +278,11 @@ con excepciones para `*.example`, aunque hoy no existe un `.env.example` version
   `<HeadContent />`. No hace falta escribir el `<script>` a mano ni usar `dangerouslySetInnerHTML`.
   Los datos (`name`, `url`, `logo`, `telephone`, `address`, `sameAs`) salen de
   `src/lib/telcobras-data.ts`.
-- Compone la landing en este orden: `HeaderNav`, `HeroAndMetrics`,
-  `AboutAndValues`, `ServicesSection`, `LetyIaAndWhyUs`,
-  `ContactAndFooter` y `ScrollToTopButton`.
-- El formulario, ubicación y footer están juntos dentro de `ContactAndFooter`.
+- Compone la landing en este orden: `HeaderNav`; dentro de `<main>`,
+  `HeroAndMetrics`, `AboutAndValues`, `ServicesSection`, `LetyIaAndWhyUs` y
+  `ContactSection`; después `SiteFooter` y `ScrollToTopButton`.
+- El formulario y la ubicación están en `ContactSection`; el footer es `SiteFooter`
+  (ambos en `ContactAndFooter.tsx`).
 
 ### `src/routes/__root.tsx`
 
@@ -289,7 +308,8 @@ con excepciones para `*.example`, aunque hoy no existe un `.env.example` version
   `errors.services` de `src/lib/translations.ts` (ES/EN).
 - El loader raíz obtiene las preferencias de accesibilidad desde la cookie
   `telcobras_a11y` en el servidor y las aplica a los atributos de `<html>`, incluido
-  `lang`, antes de renderizar. El idioma predeterminado es `es`.
+  `lang` (`es-CO` o `en`, vía `htmlLang()`), antes de renderizar. El idioma
+  predeterminado es `es`.
 - `src/components/CookieBanner.tsx` se monta desde el shell global. Guarda la elección
   en `localStorage` bajo `telcobras_cookie_consent` (esenciales siempre activas y una
   preferencia booleana para las no esenciales); si la clave existe, no vuelve a mostrar
@@ -561,7 +581,8 @@ las tarjetas del formulario de contacto (`ContactAndFooter`).
 
 ### `src/components/ContactAndFooter.tsx`
 
-Reúne tres bloques en un solo componente: `#contacto`, `#ubicacion` y el pie de página.
+Exporta dos componentes: `ContactSection` (`#contacto` y `#ubicacion`, dentro del
+`<main>` de la landing) y `SiteFooter` (el pie de página, fuera de `<main>`).
 
 - Contacto con teléfono, correo, dirección y redes sociales (Facebook, Instagram,
   LinkedIn; los `href` son genéricos `facebook.com`/`instagram.com`/`linkedin.com` sin
@@ -893,8 +914,10 @@ En `public/` se encontraron:
 | `video_tel.mp4` | Fondo de «Quiénes Somos» (`AboutAndValues.tsx`) |
 | `logo_aquora.png` | Aliado Aquora |
 | `logo_xpertic.png` | Aliado Xpertic |
+| `favicon.ico` | Favicon (32×32, más 16 y 48), isotipo de TELCOBRAS |
+| `apple-touch-icon.png` | Icono de iOS (180×180, fondo blanco) |
 | `robots.txt` | Reglas básicas para rastreo + referencia al sitemap |
-| `sitemap.xml` | Mapa del sitio con las cuatro URLs públicas (`/`, `/politica-de-privacidad`, `/terminos-de-servicio`, `/sla`) bajo `https://telcobras.com`, con `<lastmod>` |
+| `sitemap.xml` | Mapa del sitio con las cuatro URLs públicas (`/`, `/politica-de-privacidad`, `/terminos-de-servicio`, `/sla`) bajo `https://telcobras.com`, con `<lastmod>` (2026-10-27) |
 
 **Versionado:** al auditar el repositorio, todos los recursos de la tabla de `public/`
 estaban versionados en Git. `video_tel.mp4`, que antes estaba solo en la raíz y daba
@@ -933,7 +956,9 @@ descargarlas con autorización y migrarlas a `public/`.
 - SEO técnico: metadatos por ruta (`title`, `description`, `canonical`), etiquetas
   Open Graph y Twitter Card en las cuatro rutas públicas, datos estructurados JSON-LD
   de `Organization` en la landing y `public/sitemap.xml` referenciado desde
-  `robots.txt`.
+  `robots.txt`. Desde el 27-10-2026: títulos de 50-60 y descripciones de 140-160
+  caracteres, `<main>` único en la landing, `lang="es-CO"`, favicon y
+  apple-touch-icon.
 - Optimización de imágenes para Core Web Vitals: `loading`/`decoding`/`fetchPriority`
   explícitos y `width`/`height` declarados para evitar CLS y priorizar el LCP.
 - `preconnect` a Google Fonts y `fonts.gstatic.com` en el shell global (`head.links`).
@@ -1158,10 +1183,11 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
     uso de cookies» («By browsing this website, you accept…»), lo que contradice los
     botones de rechazar y configurar. El consentimiento implícito no es válido para
     cookies no esenciales; ajustar el texto en `translations.ts` y revisarlo con jurídica.
-26. **Metadatos de las páginas legales:** `head()` en `sla.tsx` y
-    `terminos-de-servicio.tsx` usa siempre la versión en español. `LegalDocument`
-    actualiza `title` y `description` en el cliente, pero el HTML SSR y las etiquetas
-    Open Graph y Twitter siguen en español para quien tenga el idioma en inglés.
+26. **Metadatos de las páginas legales:** `head()` en `sla.tsx`,
+    `terminos-de-servicio.tsx` y `politica-de-privacidad.tsx` usa siempre la versión en
+    español. Las páginas actualizan `title` y `description` en el cliente, pero el HTML
+    SSR y las etiquetas Open Graph y Twitter siguen en español para quien tenga el
+    idioma en inglés (la landing ya no tiene este problema: usa el `head` raíz).
 27. **Textos fuera del catálogo — corregido (27-10-2026):** los mensajes de Turnstile y
     de rate limit del envío del formulario (antes `language === "en" ? … : …`) y los
     textos de `TurnstileWidget.tsx` (errores de carga y `aria-label`, antes solo en
@@ -1169,8 +1195,9 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
 28. **Validación de Turnstile:** `api.contacto.ts` acepta la respuesta de `siteverify`
     sin comprobar `hostname` (ni `action`). Comprobar que el hostname corresponde al
     dominio de producción.
-29. **`sitemap.xml`:** `<lastmod>` de `/terminos-de-servicio` y `/sla` sigue en
-    2026-10-22; actualizarlo cuando se publiquen los textos aprobados.
+29. **`sitemap.xml`:** `<lastmod>` de las cuatro URLs se actualizó a 2026-10-27.
+    Volver a actualizar el de `/terminos-de-servicio` y `/sla` cuando se publiquen los
+    textos aprobados.
 30. **Horario de atención:** `HORARIO` en `src/lib/telcobras-data.ts` vale
     `"[PENDIENTE: horario de gerencia]"` y el footer lo muestra tal cual. Sustituirlo por
     el horario que confirme gerencia; si debe variar por idioma, moverlo a

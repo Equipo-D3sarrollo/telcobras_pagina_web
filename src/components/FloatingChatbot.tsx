@@ -4,7 +4,7 @@ import {
   useAccessibilityPreferences,
   useTranslations,
 } from "@/lib/accessibility-preferences-context";
-import type { LanguagePreference } from "@/lib/accessibility-preferences";
+import { htmlLang, type LanguagePreference } from "@/lib/accessibility-preferences";
 import { getTranslations } from "@/lib/translations";
 
 type ChatMessage = {
@@ -234,7 +234,7 @@ export function FloatingChatbot() {
                         {t.errorTitle}
                       </span>
                     )}
-                    <span lang={message.language}>
+                    <span lang={htmlLang(message.language)}>
                       {isBotMessage ? formatBotText(message.text) : message.text}
                     </span>
                   </div>

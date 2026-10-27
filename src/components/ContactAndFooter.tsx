@@ -38,6 +38,9 @@ import {
 import { getTranslations } from "@/lib/translations";
 import { openCookiePreferences } from "@/lib/cookie-consent";
 
+const footerLinkClass =
+  "rounded-sm text-left transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F3CB35]";
+
 const INITIAL_FORM_DATA = {
   nombre: "",
   empresa: "",
@@ -49,7 +52,7 @@ const INITIAL_FORM_DATA = {
   consentimiento: false,
 };
 
-export function ContactAndFooter() {
+export function ContactSection() {
   const translations = useTranslations();
   const t = translations.contact;
   const turnstileConfigured = TURNSTILE_SITE_KEY.length > 0;
@@ -100,8 +103,6 @@ export function ContactAndFooter() {
   }, []);
 
   const labelClass = "mb-2 block text-sm font-semibold text-slate-200";
-  const footerLinkClass =
-    "rounded-sm text-left transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F3CB35]";
   const fieldIconClass =
     "pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-[#0087C3]";
   const fieldClass =
@@ -820,123 +821,129 @@ export function ContactAndFooter() {
           </div>
         </div>
       </section>
+    </>
+  );
+}
 
-      {/* 10. PIE DE PÁGINA */}
-      <footer className="bg-[#0A192F] text-slate-400 border-t border-slate-800 pt-12 pb-32">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-8 border-b border-slate-800">
-            {/* Logo oficial transparente sobre fondo oscuro */}
-            <div className="inline-flex items-center">
-              <img
-                src={LOGO_URL}
-                alt={t.logoAlt}
-                width={160}
-                height={48}
-                className="h-12 w-auto object-contain"
-              />
-            </div>
+/** Pie de página del sitio; va fuera de <main> en la landing. */
+export function SiteFooter() {
+  const t = useTranslations().contact;
 
-            <div className="text-center md:text-right">
-              <p className="text-xs sm:text-sm font-extrabold text-white tracking-widest uppercase">
-                {t.footerTagline}
-              </p>
-              <p className="text-xs text-slate-400 mt-1">
-                {t.copyright
-                  .replace("{company}", RAZON_SOCIAL)
-                  .replace("{nit}", NIT)
-                  .replace("{year}", String(new Date().getFullYear()))}
-              </p>
-            </div>
+  return (
+    <footer className="bg-[#0A192F] text-slate-400 border-t border-slate-800 pt-12 pb-32">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-8 border-b border-slate-800">
+          {/* Logo oficial transparente sobre fondo oscuro */}
+          <div className="inline-flex items-center">
+            <img
+              src={LOGO_URL}
+              alt={t.logoAlt}
+              width={160}
+              height={48}
+              className="h-12 w-auto object-contain"
+            />
           </div>
 
-          <div className="grid gap-8 pt-8 text-xs text-slate-400 sm:text-sm md:grid-cols-2 lg:grid-cols-3">
-            <div className="space-y-3">
-              <address className="space-y-3 not-italic">
-                <p className="flex items-start gap-2.5">
-                  <MapPin aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-[#88BD4C]" />
-                  <span>{CONTACT.address}</span>
-                </p>
-                <p className="flex items-center gap-2.5">
-                  <Phone aria-hidden="true" className="h-4 w-4 shrink-0 text-[#88BD4C]" />
-                  <a href={CONTACT.phoneHref} className={footerLinkClass}>
-                    {CONTACT.phoneDisplay}
-                  </a>
-                </p>
-                <p className="flex items-center gap-2.5">
-                  <Mail aria-hidden="true" className="h-4 w-4 shrink-0 text-[#88BD4C]" />
-                  <a href={CONTACT.emailHref} className={`${footerLinkClass} break-all`}>
-                    {CONTACT.emailDisplay}
-                  </a>
-                </p>
-              </address>
-              <p className="flex items-start gap-2.5">
-                <Clock aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-[#88BD4C]" />
-                <span>
-                  <span className="font-semibold text-slate-300">{t.hoursLabel}:</span> {HORARIO}
-                </span>
-              </p>
-            </div>
-            <nav
-              aria-label={t.socialTitle}
-              className="flex items-center gap-3 lg:justify-center lg:self-start"
-            >
-              <a
-                href={SOCIAL_LINKS.facebook}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={t.socialLabels.facebook}
-                className="rounded-lg p-2 text-slate-300 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F3CB35]"
-              >
-                <Facebook aria-hidden="true" className="h-5 w-5" />
-              </a>
-              <a
-                href={SOCIAL_LINKS.instagram}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={t.socialLabels.instagram}
-                className="rounded-lg p-2 text-slate-300 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F3CB35]"
-              >
-                <Instagram aria-hidden="true" className="h-5 w-5" />
-              </a>
-              <a
-                href={SOCIAL_LINKS.linkedin}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={t.socialLabels.linkedin}
-                className="rounded-lg p-2 text-slate-300 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F3CB35]"
-              >
-                <Linkedin aria-hidden="true" className="h-5 w-5" />
-              </a>
-              <a
-                href={SOCIAL_LINKS.tiktok}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={t.socialLabels.tiktok}
-                className="rounded-lg p-2 text-slate-300 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F3CB35]"
-              >
-                <Music2 aria-hidden="true" className="h-5 w-5" />
-              </a>
-            </nav>
-            <nav
-              aria-label={t.legalLinksLabel}
-              className="flex flex-wrap gap-x-6 gap-y-3 md:col-span-2 lg:col-span-1 lg:justify-end lg:self-start"
-            >
-              <Link to={TERMS_OF_SERVICE_URL} className={footerLinkClass}>
-                {t.terms}
-              </Link>
-              <Link to={PRIVACY_POLICY_URL} className={footerLinkClass}>
-                {t.privacy}
-              </Link>
-              <Link to={SLA_URL} className={footerLinkClass}>
-                {t.sla}
-              </Link>
-              <button type="button" onClick={openCookiePreferences} className={footerLinkClass}>
-                {t.cookiePreferences}
-              </button>
-            </nav>
+          <div className="text-center md:text-right">
+            <p className="text-xs sm:text-sm font-extrabold text-white tracking-widest uppercase">
+              {t.footerTagline}
+            </p>
+            <p className="text-xs text-slate-400 mt-1">
+              {t.copyright
+                .replace("{company}", RAZON_SOCIAL)
+                .replace("{nit}", NIT)
+                .replace("{year}", String(new Date().getFullYear()))}
+            </p>
           </div>
         </div>
-      </footer>
-    </>
+
+        <div className="grid gap-8 pt-8 text-xs text-slate-400 sm:text-sm md:grid-cols-2 lg:grid-cols-3">
+          <div className="space-y-3">
+            <address className="space-y-3 not-italic">
+              <p className="flex items-start gap-2.5">
+                <MapPin aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-[#88BD4C]" />
+                <span>{CONTACT.address}</span>
+              </p>
+              <p className="flex items-center gap-2.5">
+                <Phone aria-hidden="true" className="h-4 w-4 shrink-0 text-[#88BD4C]" />
+                <a href={CONTACT.phoneHref} className={footerLinkClass}>
+                  {CONTACT.phoneDisplay}
+                </a>
+              </p>
+              <p className="flex items-center gap-2.5">
+                <Mail aria-hidden="true" className="h-4 w-4 shrink-0 text-[#88BD4C]" />
+                <a href={CONTACT.emailHref} className={`${footerLinkClass} break-all`}>
+                  {CONTACT.emailDisplay}
+                </a>
+              </p>
+            </address>
+            <p className="flex items-start gap-2.5">
+              <Clock aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-[#88BD4C]" />
+              <span>
+                <span className="font-semibold text-slate-300">{t.hoursLabel}:</span> {HORARIO}
+              </span>
+            </p>
+          </div>
+          <nav
+            aria-label={t.socialTitle}
+            className="flex items-center gap-3 lg:justify-center lg:self-start"
+          >
+            <a
+              href={SOCIAL_LINKS.facebook}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={t.socialLabels.facebook}
+              className="rounded-lg p-2 text-slate-300 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F3CB35]"
+            >
+              <Facebook aria-hidden="true" className="h-5 w-5" />
+            </a>
+            <a
+              href={SOCIAL_LINKS.instagram}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={t.socialLabels.instagram}
+              className="rounded-lg p-2 text-slate-300 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F3CB35]"
+            >
+              <Instagram aria-hidden="true" className="h-5 w-5" />
+            </a>
+            <a
+              href={SOCIAL_LINKS.linkedin}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={t.socialLabels.linkedin}
+              className="rounded-lg p-2 text-slate-300 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F3CB35]"
+            >
+              <Linkedin aria-hidden="true" className="h-5 w-5" />
+            </a>
+            <a
+              href={SOCIAL_LINKS.tiktok}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={t.socialLabels.tiktok}
+              className="rounded-lg p-2 text-slate-300 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F3CB35]"
+            >
+              <Music2 aria-hidden="true" className="h-5 w-5" />
+            </a>
+          </nav>
+          <nav
+            aria-label={t.legalLinksLabel}
+            className="flex flex-wrap gap-x-6 gap-y-3 md:col-span-2 lg:col-span-1 lg:justify-end lg:self-start"
+          >
+            <Link to={TERMS_OF_SERVICE_URL} className={footerLinkClass}>
+              {t.terms}
+            </Link>
+            <Link to={PRIVACY_POLICY_URL} className={footerLinkClass}>
+              {t.privacy}
+            </Link>
+            <Link to={SLA_URL} className={footerLinkClass}>
+              {t.sla}
+            </Link>
+            <button type="button" onClick={openCookiePreferences} className={footerLinkClass}>
+              {t.cookiePreferences}
+            </button>
+          </nav>
+        </div>
+      </div>
+    </footer>
   );
 }
