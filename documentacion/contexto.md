@@ -873,10 +873,14 @@ exitosa y repetible con el módulo Webhook response configurado correctamente.
   No duplicar plugins manualmente. El wrapper añade `@tailwindcss/vite` siempre; el
   `componentTagger` solo en `serve` + `development`.
 - El destino Nitro es Cloudflare: el wrapper lo usa como target por defecto
-  (`cloudflare-module`) y `vite.config.ts:11-13` solo activa
-  `nitro.cloudflare.nodeCompat`. No existe `nitro.json`; el
-  `.output/server/wrangler.json` generado fija `compatibility_date: 2026-10-22`
-  (coincide con la fecha de ese build).
+  (`cloudflare-module`). `vite.config.ts` activa `nitro.cloudflare.nodeCompat` y fija
+  el nombre del Worker con `nitro.cloudflare.wrangler.name: "telcobras-web"` (desde el
+  27-10-2026; antes Nitro lo derivaba del remoto de git y, al cambiar `origin` al repo
+  del equipo, pasó a `equipo-d3sarrollo-telcobras-pagina-web`). No existe
+  `nitro.json`; el `.output/server/wrangler.json` generado lleva ese `name` y una
+  `compatibility_date` igual a la fecha del build. Si un Wrangler local no admite la
+  fecha del día, para probar en local se puede pasar `--compatibility-date` con una
+  anterior sin tocar archivos.
 - `npm run build` escribe el artefacto canónico en `.output/` (cliente en
   `.output/public/`, servidor en `.output/server/`). `dist/` es un build legado del
   7-10-2026 y no debe desplegarse.
@@ -1190,7 +1194,8 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
     se quitaron Supabase, Make e Integromat porque el navegador solo llama a `/api/*`.
     Verificado: ninguna violación de CSP recorriendo landing, formulario con Turnstile,
     chat, mapa y páginas legales, y un `fetch` del navegador a Make queda bloqueado.
-    `img-src` aún incluye `*.supabase.co`, que tampoco se usa.
+    `img-src` tampoco incluye ya `*.supabase.co` (27-10-2026): las imágenes vienen de
+    `'self'` y `https://vibe.filesafe.space`.
 17. **Empaquetado y despliegue (CSS):** el pipeline está correcto — `src/routes/__root.tsx:14`
     importa `styles.css?url`, `head.links` lo enlaza, Tailwind v4 lo genera en
     `.output/public/assets/styles-<hash>.css` (~162 KB) y el mismo hash está en SSR y

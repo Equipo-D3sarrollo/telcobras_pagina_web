@@ -21,7 +21,7 @@ const CONTENT_SECURITY_POLICY = [
   `script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com${isDev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com",
-  "img-src 'self' data: blob: https://vibe.filesafe.space https://*.supabase.co",
+  "img-src 'self' data: blob: https://vibe.filesafe.space",
   "media-src 'self'",
   "frame-src 'self' https://challenges.cloudflare.com https://www.google.com https://maps.google.com",
   `connect-src 'self' https://challenges.cloudflare.com${isDev ? " ws: wss: http://localhost:* http://127.0.0.1:*" : ""}`,
