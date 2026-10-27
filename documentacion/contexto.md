@@ -953,9 +953,8 @@ estaban versionados en Git. `video_tel.mp4`, que antes estaba solo en la raíz y
 404, se movió a `public/` con `git mv` el 27-10-2026.
 
 Los archivos de la carpeta `public/` se sirven desde raíz (por ejemplo,
-`public/video_inicio.mp4` se solicita como `/video_inicio.mp4`). También existen
-copias originales de algunos medios en la raíz del repositorio; el código de navegador
-no debería apuntar a esos archivos raíz.
+`public/video_inicio.mp4` se solicita como `/video_inicio.mp4`). Ya no hay copias de
+medios en la raíz del repositorio (se eliminaron el 27-10-2026, ver pendiente 23).
 
 Las fotos de hero, sede y otras secciones usan URLs externas alojadas en
 `vibe.filesafe.space`. Si la entrega debe funcionar sin ese proveedor, habrá que
@@ -1021,7 +1020,7 @@ punto están en la lista «Pendiente/por confirmar» (número entre paréntesis)
 | Alta (corregida) | `/video_tel.mp4` daba 404: se movió a `public/` | 4 |
 | Media | Rate limit en memoria por isolate; `/api/chat` sin Turnstile | 8 |
 | Media (resuelta) | `conexion.php` de prueba con credenciales por defecto y salida de datos personales: eliminado | 22 |
-| Media (corregida) | Videos pesados: comprimidos de 76,9 MB a 16,5 MB en total (`video_agentes.mp4` 49 → 3,5 MB); duplicados de la raíz pendientes de borrar | 6, 23 |
+| Media (corregida) | Videos pesados: comprimidos de 76,9 MB a 16,5 MB en total (`video_agentes.mp4` 49 → 3,5 MB); duplicados de la raíz eliminados | 6, 23 |
 | Media (corregida) | Videos y animaciones que ignoraban `prefers-reduced-motion` | 14 |
 | Media | El banner de cookies dice «al navegar aceptas» aunque ofrece rechazar | 25 |
 | Baja | CSP `connect-src` con dominios que el navegador no usa | 16 |
@@ -1210,10 +1209,16 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
     Se eliminó con `git rm` tras comprobar que nada en el código, la configuración ni el
     build lo referenciaba. Sigue en el historial de Git; no contenía secretos (las
     credenciales venían de variables de entorno).
-23. **Peso del repositorio:** los videos de `public/` ya están comprimidos (pendiente 6),
-    pero los originales siguen en el historial de Git. `video_agentes.mp4`,
-    `video_conectividad.mp4`, `video_inicio.mp4` y `video_seguridad.mp4` siguen también
-    en la raíz, sin comprimir y sin usarse (`video_tel.mp4` ya se movió a `public/`).
+23. **Peso del repositorio — duplicados eliminados (27-10-2026):** los videos de
+    `public/` están comprimidos (pendiente 6) y se eliminaron con `git rm` las copias sin
+    usar de la raíz (`video_agentes.mp4`, `video_conectividad.mp4`, `video_inicio.mp4` y
+    `video_seguridad.mp4`, 53 MiB; `video_tel.mp4` ya se había movido a `public/`). Los
+    originales siguen en el historial de Git, así que el clon no adelgaza: reducirlo
+    exigiría reescribir historia, que no se hace en este repo.
+    **Recuperar un original** (los de la raíz eran idénticos a los de `public/` antes de
+    comprimir): `git show f5b2d90:video_agentes.mp4 > video_agentes.mp4` (mismo patrón
+    para los otros tres), o la versión de `public/` previa a la compresión:
+    `git show ab17f5a~1:public/video_tel.mp4 > video_tel_original.mp4`.
 24. **Páginas legales publicadas sin aprobar:** `0cef096` ya está en el `main` del
     repo personal (PR #2) y en la rama que se sube al repo oficial. Si se despliega, `/terminos-de-servicio` y `/sla` quedarán públicas con compromisos
     (disponibilidad, tiempos y créditos de `SLA_VALUES`) que gerencia y jurídica aún no
