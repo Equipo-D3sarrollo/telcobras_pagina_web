@@ -67,8 +67,18 @@ export const CONTACT = {
   address: "Carrera 83A # 20 - 20, Cali, Valle del Cauca, Colombia",
 };
 
-// Pendiente de confirmar con gerencia; se muestra tal cual en el footer.
-export const HORARIO = "[PENDIENTE: horario de gerencia]";
+/** Soporte técnico (Centro de Gestión), datos entregados por gerencia el 28-10-2026. */
+export const SUPPORT = {
+  phones: [
+    { display: "+57 315 436 1138", href: "tel:+573154361138" },
+    { display: "+57 310 384 0548", href: "tel:+573103840548" },
+  ],
+  emailDisplay: "centrodegestion@telcobras.com",
+  emailHref: "mailto:centrodegestion@telcobras.com",
+};
+
+/** Horario del soporte técnico; el footer lo muestra con el texto de translations.ts. */
+export const HORARIO = "24/7";
 
 export const CHATBOT_PHONE = {
   display: "+57 310 677 7412",

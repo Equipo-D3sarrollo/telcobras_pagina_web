@@ -113,7 +113,9 @@ export function HeroAndMetrics() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="grid min-w-0 items-center gap-12 lg:grid-cols-12">
             <div className="min-w-0 space-y-6 text-center lg:col-span-7 lg:text-left">
-              <div className="inline-flex max-w-full flex-wrap items-center justify-center gap-2 rounded-full border border-white/15 bg-white/10 px-3.5 py-1.5 text-xs font-bold tracking-wide text-sky-200 backdrop-blur-md">
+              {/* min-h: reserva dos líneas por debajo de 640 px; si no, el cambio de la fuente de
+                  reserva a Nunito podía pasar el texto de una a dos líneas y mover el hero (CLS). */}
+              <div className="inline-flex min-h-[2.875rem] max-w-full flex-wrap items-center justify-center gap-2 rounded-full border border-white/15 bg-white/10 px-3.5 py-1.5 text-xs font-bold tracking-wide text-sky-200 backdrop-blur-md sm:min-h-0">
                 <span className="w-2 h-2 rounded-full bg-[#88BD4C] md:animate-pulse" />
                 {t.eyebrow}
               </div>

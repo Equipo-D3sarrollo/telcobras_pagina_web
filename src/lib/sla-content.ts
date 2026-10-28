@@ -1,4 +1,4 @@
-import { CONTACT, RAZON_SOCIAL } from "@/lib/telcobras-data";
+import { RAZON_SOCIAL, SUPPORT } from "@/lib/telcobras-data";
 import type { LegalDocumentCopy } from "@/lib/legal-types";
 import { LEGAL_META } from "@/lib/legal-meta";
 
@@ -93,8 +93,10 @@ export const SLA_VALUES = {
 } as const;
 
 const v = SLA_VALUES;
-const channels = `${CONTACT.phoneDisplay} (llamada o WhatsApp) y ${CONTACT.emailDisplay}`;
-const channelsEn = `${CONTACT.phoneDisplay} (call or WhatsApp) and ${CONTACT.emailDisplay}`;
+// Canales del Centro de Gestión (soporte técnico 24/7), desde SUPPORT en telcobras-data.ts.
+const supportPhones = SUPPORT.phones.map((phone) => phone.display).join(", ");
+const channels = `${supportPhones} y ${SUPPORT.emailDisplay}`;
+const channelsEn = `${supportPhones} and ${SUPPORT.emailDisplay}`;
 
 const es: LegalDocumentCopy = {
   metaTitle: LEGAL_META.sla.es.metaTitle,

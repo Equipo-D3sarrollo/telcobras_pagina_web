@@ -1,6 +1,10 @@
-import { CONTACT, RAZON_SOCIAL } from "@/lib/telcobras-data";
+import { CONTACT, RAZON_SOCIAL, SUPPORT } from "@/lib/telcobras-data";
 import type { LegalDocumentCopy } from "@/lib/legal-types";
 import { LEGAL_META } from "@/lib/legal-meta";
+
+// Canales de PQR: los del Centro de Gestión (SUPPORT en telcobras-data.ts).
+const supportPhonesEs = SUPPORT.phones.map((phone) => phone.display).join(" y ");
+const supportPhonesEn = SUPPORT.phones.map((phone) => phone.display).join(" and ");
 
 /**
  * Términos de servicio de TELCOBRAS S.A.S. Texto propio, redactado tomando como
@@ -158,7 +162,7 @@ const es: LegalDocumentCopy = {
       title: "13. Peticiones, quejas y reclamos",
       highlight: true,
       paragraphs: [
-        `El cliente puede presentar peticiones, quejas, reclamos y recursos por estos canales: ${CONTACT.phoneDisplay} (llamada o WhatsApp), ${CONTACT.emailDisplay} o en la sede: ${CONTACT.address}. Cada solicitud recibe un número de radicado.`,
+        `El cliente puede presentar peticiones, quejas, reclamos y recursos por estos canales: ${supportPhonesEs}, ${SUPPORT.emailDisplay} o en la sede: ${CONTACT.address}. Cada solicitud recibe un número de radicado.`,
         "TELCOBRAS responde dentro de los 15 días hábiles siguientes a la recepción. Cuando aplica el Régimen de Protección de los Derechos de los Usuarios de la CRC, el cliente tiene además los derechos que ese régimen establece, incluido el silencio administrativo positivo si no recibe respuesta a tiempo.",
       ],
     },
@@ -334,7 +338,7 @@ const en: LegalDocumentCopy = {
       title: "13. Requests, complaints and claims",
       highlight: true,
       paragraphs: [
-        `Clients may submit requests, complaints, claims and appeals through these channels: ${CONTACT.phoneDisplay} (call or WhatsApp), ${CONTACT.emailDisplay} or at our office: ${CONTACT.address}. Each submission receives a filing number.`,
+        `Clients may submit requests, complaints, claims and appeals through these channels: ${supportPhonesEn}, ${SUPPORT.emailDisplay} or at our office: ${CONTACT.address}. Each submission receives a filing number.`,
         "TELCOBRAS responds within 15 business days of receipt. Where the CRC User Rights Protection Regime applies, the client also has the rights that regime grants, including positive administrative silence if no timely response is received.",
       ],
     },

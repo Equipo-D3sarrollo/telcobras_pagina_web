@@ -1704,3 +1704,46 @@
     --section-estimated-height: 1050px;
   }
 }
+
+/*
+ * Al saltar a una sección desde el menú (#servicios, #contacto…), el header sticky no
+ * tapa su título: scroll-margin-top = altura del header (medida: 116 px por debajo de
+ * 640 px, 132 px entre 640 y 1023 px y 120 px desde 1024 px; en rem para que acompañe
+ * al tamaño de texto del menú de accesibilidad).
+ */
+#inicio,
+#nosotros,
+#servicios,
+#inteligencia-artificial,
+#proyectos,
+#por-que,
+#contacto,
+#ubicacion {
+  scroll-margin-top: 7.25rem;
+}
+
+@media (min-width: 640px) {
+  #inicio,
+  #nosotros,
+  #servicios,
+  #inteligencia-artificial,
+  #proyectos,
+  #por-que,
+  #contacto,
+  #ubicacion {
+    scroll-margin-top: 8.25rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  #inicio,
+  #nosotros,
+  #servicios,
+  #inteligencia-artificial,
+  #proyectos,
+  #por-que,
+  #contacto,
+  #ubicacion {
+    scroll-margin-top: 7.5rem;
+  }
+}

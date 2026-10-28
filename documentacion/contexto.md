@@ -108,7 +108,11 @@ se montan globalmente; el botón para volver al inicio se monta en la página pr
   TanStack Router, que se serializa a `<script type="application/ld+json">` en el
   `<head>`). El JSON-LD consume `RAZON_SOCIAL`, `LOGO_URL`, `CONTACT` y `SOCIAL_LINKS`
   de `src/lib/telcobras-data.ts` e incluye `name`, `url`, `logo`, `telephone`,
-  `address` y `sameAs`.
+  `address`, `contactPoint` y `sameAs`. `contactPoint` (28-10-2026) tiene dos entradas:
+  «customer support» (teléfonos y correo de `SUPPORT`, `hoursAvailable` 24/7 como
+  `OpeningHoursSpecification` de lunes a domingo 00:00-23:59 derivado de `HORARIO`,
+  `areaServed` CO, `availableLanguage` es) y «sales» (teléfono y correo de `CONTACT`).
+  Validado en validator.schema.org: 0 errores y 0 avisos.
 - Títulos y descripciones (27-10-2026): palabra clave al inicio y la marca al final,
   con títulos de 50-60 caracteres y descripciones de 140-160. La landing no define
   `title`/`description`/`og`/`twitter` propios: los pone el `head` raíz desde
@@ -629,8 +633,10 @@ Exporta dos componentes: `ContactSection` (`#contacto` y `#ubicacion`, dentro de
   de indicaciones.
 - Footer con logo, eslogan y copyright dinámico. Debajo, una rejilla (1 columna en
   móvil, 2 en tablet, 3 en escritorio) con: `<address>` con la dirección
-  (`CONTACT.address`), el teléfono (`<a href="tel:…">`) y el correo
-  (`<a href="mailto:…">`), y debajo el horario de atención (`HORARIO`); las redes
+  (`CONTACT.address`), el bloque «Atención comercial» (teléfono `tel:` y correo
+  `mailto:` de `CONTACT`) y el bloque «Soporte técnico (Centro de Gestión)» (los dos
+  teléfonos `tel:` y el correo `mailto:` de `SUPPORT`, más «Soporte técnico 24 horas,
+  7 días a la semana» / «Technical support 24/7»); las redes
   sociales; y los enlaces legales (Términos, Política de datos, SLA) más el botón
   «Preferencias de cookies», que reabre `CookieBanner`. Verificado sin desborde a 360,
   768 y 1440 px; en tablet las redes van a la izquierda para no quedar bajo el robot
@@ -724,8 +730,13 @@ Fuente de verdad para:
   `#F3CB35`, gris `#888D91`, navy `#0A192F`).
 - Datos de contacto (`CONTACT`: teléfono, WhatsApp, correo, dirección) y el teléfono
   del chatbot (`CHATBOT_PHONE`).
-- `HORARIO`: horario de atención que muestra el footer. Hoy vale
-  `"[PENDIENTE: horario de gerencia]"` (pendiente 30).
+- `SUPPORT`: soporte técnico del Centro de Gestión, entregado por gerencia el
+  28-10-2026: +57 315 436 1138 y +57 310 384 0548 (`tel:`) y
+  centrodegestion@telcobras.com. Lo usan el footer, el SLA (sección 4), los Términos
+  (sección 13, PQR) y el JSON-LD. `CONTACT` sigue siendo el canal comercial.
+- `HORARIO`: `"24/7"` (soporte técnico). El footer lo muestra con el texto de
+  `translations.ts` (`contact.supportHours`) y el JSON-LD lo traduce a horario de
+  apertura.
 - Tipo `ServiceItem` y catálogo `SERVICIOS_DATA`.
 - Tipo `ProyectoItem` y catálogo `PROYECTOS_DATA`. Cada proyecto tiene `categoria`,
   `ubicacion` (opcional; el chatbot de la ESPY no la tiene porque ningún texto la
@@ -1390,10 +1401,13 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
 29. **`sitemap.xml`:** `<lastmod>` de las cuatro URLs se actualizó a 2026-10-27.
     Volver a actualizar el de `/terminos-de-servicio` y `/sla` cuando se publiquen los
     textos aprobados.
-30. **Horario de atención:** `HORARIO` en `src/lib/telcobras-data.ts` vale
-    `"[PENDIENTE: horario de gerencia]"` y el footer lo muestra tal cual. Sustituirlo por
-    el horario que confirme gerencia; si debe variar por idioma, moverlo a
-    `translations.ts`.
+30. **Horario de atención — resuelto (28-10-2026):** gerencia confirmó soporte técnico
+    24/7. `HORARIO = "24/7"` y el footer muestra «Soporte técnico 24 horas, 7 días a la
+    semana» / «Technical support 24/7» junto con los datos de `SUPPORT`. Ya no queda
+    ningún `[PENDIENTE` visible. Los canales de soporte del SLA (sección 4) y de los
+    Términos (sección 13) leen `SUPPORT`; se quitó «(llamada o WhatsApp)» de esos
+    canales porque no consta que las líneas de soporte tengan WhatsApp (la línea
+    comercial sí). Confirmarlo con gerencia y con la revisión jurídica de esos textos.
 31. **Rendimiento — línea base de Lighthouse (27-10-2026, sin cambios de código):**
     build de producción (`npm run build`) servido en local con Wrangler
     (`wrangler dev --config .output/server/wrangler.json --compatibility-date 2026-10-26`)
@@ -1546,9 +1560,11 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
       catálogo de traducciones (37 KiB, con el inglés sin usar cuando el idioma es
       español). Reducirlo exigiría tocar el framework/router o cargar las traducciones
       de forma asíncrona en todo el sitio (SSR y cambio de idioma incluidos).
-    - Pendiente conocido (ya existía): el header es `sticky` y las secciones no tienen
-      `scroll-margin-top`, así que al saltar a una sección su parte superior queda bajo
-      el header (en escritorio, unos 40 px del título).
+    - Corregido el 28-10-2026: el header es `sticky` y las secciones no tenían
+      `scroll-margin-top`, así que al saltar a una sección el título quedaba bajo el
+      header. Ahora `scroll-margin-top` = altura del header (7,25 rem por debajo de
+      640 px, 8,25 rem entre 640 y 1023 px, 7,5 rem desde 1024 px; al final de
+      `styles.css`): la sección empieza justo bajo el header.
 
     **Medición tras la optimización 5** (misma configuración; reportes en
     `documentacion/lighthouse/2026-10-28-optim5/`):
@@ -1587,7 +1603,9 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
     llega después del primer pintado y en anchos de ~410 px. Opciones: `font-display:
     optional` para Nunito (sin cambio de fuente tras el primer pintado; en una primera
     visita lenta se vería la reserva) o reservar dos líneas para esa etiqueta por debajo
-    de 640 px.
+    de 640 px. **Aplicado el 28-10-2026:** `min-h-[2.875rem] sm:min-h-0` en la etiqueta;
+    con la fuente retrasada 3 s a 412 px el CLS baja de 0,145 a 0,041 (quedan 2 px de
+    diferencia de altura de línea en el header con la reserva).
 
 ## 12. Operación y privacidad del formulario
 

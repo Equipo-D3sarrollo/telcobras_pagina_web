@@ -10,10 +10,12 @@ import {
   CONTACT,
   HERO_IMAGE,
   HERO_IMAGE_SIZES,
+  HORARIO,
   LOGO_URL,
   OG_IMAGE_URL,
   RAZON_SOCIAL,
   SOCIAL_LINKS,
+  SUPPORT,
 } from "@/lib/telcobras-data";
 import { imageSrcSet } from "@/lib/responsive-image";
 
@@ -33,6 +35,42 @@ const ORGANIZATION_JSON_LD = {
     addressRegion: "Valle del Cauca",
     addressCountry: "CO",
   },
+  contactPoint: [
+    {
+      "@type": "ContactPoint",
+      contactType: "customer support",
+      telephone: SUPPORT.phones.map((phone) => phone.display),
+      email: SUPPORT.emailDisplay,
+      // HORARIO = "24/7": todos los días, todo el día.
+      hoursAvailable:
+        HORARIO === "24/7"
+          ? {
+              "@type": "OpeningHoursSpecification",
+              dayOfWeek: [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday",
+              ],
+              opens: "00:00",
+              closes: "23:59",
+            }
+          : undefined,
+      areaServed: "CO",
+      availableLanguage: "es",
+    },
+    {
+      "@type": "ContactPoint",
+      contactType: "sales",
+      telephone: CONTACT.phoneDisplay,
+      email: CONTACT.emailDisplay,
+      areaServed: "CO",
+      availableLanguage: "es",
+    },
+  ],
   sameAs: [
     SOCIAL_LINKS.facebook,
     SOCIAL_LINKS.instagram,

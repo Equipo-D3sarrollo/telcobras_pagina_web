@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import {
   CALI_IMAGE,
   CONTACT,
-  HORARIO,
+  SUPPORT,
   LOGO_IMAGE,
   NIT,
   PRIVACY_POLICY_URL,
@@ -45,6 +45,7 @@ import { getTranslations } from "@/lib/translations";
 import { openCookiePreferences } from "@/lib/cookie-consent";
 import { useNonEssentialConsent } from "@/hooks/use-cookie-consent";
 
+const footerGroupTitleClass = "text-[0.6875rem] font-bold uppercase tracking-wider text-slate-300";
 const footerLinkClass =
   "rounded-sm text-left transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F3CB35]";
 
@@ -912,30 +913,50 @@ export function SiteFooter() {
 
         <div className="grid gap-8 pt-8 text-xs text-slate-400 sm:text-sm md:grid-cols-2 lg:grid-cols-3">
           <div className="space-y-3">
-            <address className="space-y-3 not-italic">
+            <address className="space-y-5 not-italic">
               <p className="flex items-start gap-2.5">
                 <MapPin aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-[#88BD4C]" />
                 <span>{CONTACT.address}</span>
               </p>
-              <p className="flex items-center gap-2.5">
-                <Phone aria-hidden="true" className="h-4 w-4 shrink-0 text-[#88BD4C]" />
-                <a href={CONTACT.phoneHref} className={footerLinkClass}>
-                  {CONTACT.phoneDisplay}
-                </a>
-              </p>
-              <p className="flex items-center gap-2.5">
-                <Mail aria-hidden="true" className="h-4 w-4 shrink-0 text-[#88BD4C]" />
-                <a href={CONTACT.emailHref} className={`${footerLinkClass} break-all`}>
-                  {CONTACT.emailDisplay}
-                </a>
-              </p>
+              <div className="space-y-2.5">
+                <p className={footerGroupTitleClass}>{t.commercialTitle}</p>
+                <p className="flex items-center gap-2.5">
+                  <Phone aria-hidden="true" className="h-4 w-4 shrink-0 text-[#88BD4C]" />
+                  <a href={CONTACT.phoneHref} className={footerLinkClass}>
+                    {CONTACT.phoneDisplay}
+                  </a>
+                </p>
+                <p className="flex items-center gap-2.5">
+                  <Mail aria-hidden="true" className="h-4 w-4 shrink-0 text-[#88BD4C]" />
+                  <a href={CONTACT.emailHref} className={`${footerLinkClass} break-all`}>
+                    {CONTACT.emailDisplay}
+                  </a>
+                </p>
+              </div>
+              <div className="space-y-2.5">
+                <p className={footerGroupTitleClass}>{t.supportTitle}</p>
+                <p className="flex items-start gap-2.5">
+                  <Phone aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-[#88BD4C]" />
+                  <span className="flex flex-wrap gap-x-3 gap-y-1">
+                    {SUPPORT.phones.map((phone) => (
+                      <a key={phone.href} href={phone.href} className={footerLinkClass}>
+                        {phone.display}
+                      </a>
+                    ))}
+                  </span>
+                </p>
+                <p className="flex items-center gap-2.5">
+                  <Mail aria-hidden="true" className="h-4 w-4 shrink-0 text-[#88BD4C]" />
+                  <a href={SUPPORT.emailHref} className={`${footerLinkClass} break-all`}>
+                    {SUPPORT.emailDisplay}
+                  </a>
+                </p>
+                <p className="flex items-start gap-2.5">
+                  <Clock aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-[#88BD4C]" />
+                  <span className="font-semibold text-slate-300">{t.supportHours}</span>
+                </p>
+              </div>
             </address>
-            <p className="flex items-start gap-2.5">
-              <Clock aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-[#88BD4C]" />
-              <span>
-                <span className="font-semibold text-slate-300">{t.hoursLabel}:</span> {HORARIO}
-              </span>
-            </p>
           </div>
           <nav
             aria-label={t.socialTitle}
