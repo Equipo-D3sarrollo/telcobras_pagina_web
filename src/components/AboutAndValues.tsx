@@ -12,10 +12,56 @@ import {
   Heart,
 } from "lucide-react";
 import { useTranslations } from "@/lib/accessibility-preferences-context";
+import { useNearViewport } from "@/hooks/use-near-viewport";
+import { ABOUT_PHOTOS, type AboutPhotoId } from "@/lib/telcobras-data";
 import { BackgroundVideo } from "./BackgroundVideo";
+import { ResponsivePicture } from "./ResponsivePicture";
+
+/**
+ * Mosaico en una cuadrícula de 6 × 5 desde `md` (equipo 4 × 3 y torre 2 × 3 arriba; las
+ * otras tres fotos de 2 × 2 abajo) y de 2 columnas en móvil (equipo a todo el ancho).
+ * `sizes` es el ancho real de cada celda: columna derecha de `max-w-7xl` desde `lg`
+ * (≈ 464 px a 1024 y ≈ 592 px desde 1280), mosaico de `max-w-2xl` en tablet y ancho de
+ * pantalla menos márgenes en móvil.
+ */
+const PHOTO_LAYOUT: { id: AboutPhotoId; cell: string; sizes: string }[] = [
+  {
+    id: "equipo",
+    cell: "col-span-2 aspect-[4/3] md:col-span-4 md:row-span-3 md:aspect-auto",
+    sizes:
+      "(min-width: 1280px) 390px, (min-width: 1024px) 31vw, (min-width: 768px) 444px, calc(100vw - 3rem)",
+  },
+  {
+    id: "torre",
+    cell: "aspect-square md:col-span-2 md:row-span-3 md:aspect-auto",
+    sizes:
+      "(min-width: 1280px) 190px, (min-width: 1024px) 15vw, (min-width: 768px) 215px, calc((100vw - 3.75rem) / 2)",
+  },
+  {
+    id: "tecnico",
+    cell: "aspect-square md:col-span-2 md:row-span-2 md:aspect-auto",
+    sizes:
+      "(min-width: 1280px) 190px, (min-width: 1024px) 15vw, (min-width: 768px) 215px, calc((100vw - 3.75rem) / 2)",
+  },
+  {
+    id: "tablero",
+    cell: "aspect-square md:col-span-2 md:row-span-2 md:aspect-auto",
+    sizes:
+      "(min-width: 1280px) 190px, (min-width: 1024px) 15vw, (min-width: 768px) 215px, calc((100vw - 3.75rem) / 2)",
+  },
+  {
+    id: "rio",
+    cell: "aspect-square md:col-span-2 md:row-span-2 md:aspect-auto",
+    sizes:
+      "(min-width: 1280px) 190px, (min-width: 1024px) 15vw, (min-width: 768px) 215px, calc((100vw - 3.75rem) / 2)",
+  },
+];
 
 export function AboutAndValues() {
   const t = useTranslations().about;
+  // Las fotos se piden al acercarse al mosaico (no durante la carga inicial); las celdas
+  // ya reservan su proporción, así que no hay saltos de diseño.
+  const [mosaicRef, mosaicNear] = useNearViewport<HTMLDivElement>();
   const valores: { key: keyof typeof t.values; icon: typeof Handshake; color: string }[] = [
     { key: "compromiso", icon: Handshake, color: "#2491CC" },
     { key: "integridad", icon: ShieldCheck, color: "#88BD4C" },
@@ -69,6 +115,38 @@ export function AboutAndValues() {
                 </div>
               </div>
             </div>
+          </div>
+
+          <div
+            ref={mosaicRef}
+            className="mx-auto grid w-full max-w-2xl grid-cols-2 gap-3 md:aspect-[6/5] md:grid-cols-6 md:grid-rows-5 lg:max-w-none"
+          >
+            {PHOTO_LAYOUT.map(({ id, cell, sizes }) => {
+              const { image, width, height } = ABOUT_PHOTOS[id];
+              const photo = t.photos[id];
+              return (
+                <figure
+                  key={id}
+                  className={`group relative isolate overflow-hidden rounded-3xl border border-white/70 bg-slate-200 shadow-xl shadow-slate-900/15 ${cell}`}
+                >
+                  {mosaicNear && (
+                    <ResponsivePicture
+                      image={image}
+                      sizes={sizes}
+                      width={width}
+                      height={height}
+                      alt={photo.alt}
+                      loading="lazy"
+                      decoding="async"
+                      className="absolute inset-0 h-full w-full object-cover motion-safe:transition-transform motion-safe:duration-500 motion-safe:ease-out motion-safe:group-hover:scale-[1.04]"
+                    />
+                  )}
+                  <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/85 via-slate-950/45 to-transparent px-3 pb-3 pt-10 text-xs font-extrabold leading-snug text-white sm:px-4 sm:pb-4 sm:text-sm">
+                    {photo.caption}
+                  </figcaption>
+                </figure>
+              );
+            })}
           </div>
 
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:col-span-2 lg:gap-6">

@@ -1,4 +1,5 @@
 import type { LanguagePreference } from "@/lib/accessibility-preferences";
+import type { AboutPhotoId } from "@/lib/telcobras-data";
 
 type ServiceId = "conectividad" | "seguridad" | "colaboracion" | "nube" | "agentes-ia";
 type ProjectId =
@@ -104,6 +105,7 @@ interface Catalog {
     valuesTitle: string;
     valuesDescription: string;
     values: Record<ValueId, string>;
+    photos: Record<AboutPhotoId, { caption: string; alt: string }>;
   };
   services: {
     badge: string;
@@ -413,6 +415,28 @@ const es: Catalog = {
       responsabilidadSocial: "Responsabilidad Social",
       aprendizajeContinuo: "Aprendizaje Continuo",
       empatia: "Empatía",
+    },
+    photos: {
+      equipo: {
+        caption: "Centro de Gestión 24/7",
+        alt: "Equipo de Telcobras trabajando en el Centro de Gestión",
+      },
+      torre: {
+        caption: "Infraestructura propia",
+        alt: "Torre de telecomunicaciones de Telcobras con antenas de radioenlace",
+      },
+      tecnico: {
+        caption: "Personal certificado en campo",
+        alt: "Técnico de Telcobras con equipo de seguridad realizando trabajo en campo",
+      },
+      tablero: {
+        caption: "Automatización y control",
+        alt: "Tablero de automatización y control con equipos instalados por Telcobras",
+      },
+      rio: {
+        caption: "Radioenlaces y fibra óptica",
+        alt: "Enlace de radio de Telcobras que cruza un río en un tramo de la red",
+      },
     },
   },
   services: {
@@ -881,6 +905,28 @@ const en: Catalog = {
       responsabilidadSocial: "Social Responsibility",
       aprendizajeContinuo: "Continuous Learning",
       empatia: "Empathy",
+    },
+    photos: {
+      equipo: {
+        caption: "24/7 Network Operations Center",
+        alt: "Telcobras team working in the Network Operations Center",
+      },
+      torre: {
+        caption: "Our own infrastructure",
+        alt: "Telcobras telecommunications tower with microwave link antennas",
+      },
+      tecnico: {
+        caption: "Certified field technicians",
+        alt: "Telcobras technician wearing safety gear working in the field",
+      },
+      tablero: {
+        caption: "Automation and control",
+        alt: "Automation and control panel with equipment installed by Telcobras",
+      },
+      rio: {
+        caption: "Microwave links and fiber optics",
+        alt: "Telcobras radio link crossing a river along the network route",
+      },
     },
   },
   services: {
