@@ -941,9 +941,18 @@ exitosa y repetible con el módulo Webhook response configurado correctamente.
   `compatibility_flags: ["nodejs_compat"]`, `no_bundle: true` y reglas ESModule.
 - `.output/server/index.mjs` incluye `public_assets_data_default`, el mapa de assets
   públicos; el CSS aparece como `/assets/styles-<hash>.css` con
-  `type: "text/css; charset=utf-8"`. `.output/public/_headers` solo añade
-  `cache-control: public, max-age=31536000, immutable` para `/assets/*`; no hay
-  `_routes.json` ni `_redirects`.
+  `type: "text/css; charset=utf-8"`. `.output/public/_headers` (lo lee Workers Static
+  Assets) se arma con `public/_headers` y, al final, la regla de Nitro para `/assets/*`
+  (`public, max-age=31536000, immutable`, porque llevan hash). Desde el 28-10-2026
+  `public/_headers` da a los estáticos sin hash (`/images/*`, `/fonts/*`, `/video_*`
+  —videos y posters—, `/logo_*`, `/favicon.ico`, `/apple-touch-icon.png`)
+  `cache-control: public, max-age=2592000, stale-while-revalidate=604800`: 30 días y,
+  al caducar, revalidación con ETag (304 si no cambió), sirviendo la copia vieja hasta
+  7 días mientras revalida. No se usa `immutable` de un año porque los nombres no
+  cambian al sustituir un archivo; si se sustituye uno, conviene renombrarlo. El HTML
+  (dinámico) no lleva caché y `robots.txt`/`sitemap.xml` usan el valor por defecto
+  (`max-age=0, must-revalidate`). `_headers` no se sirve (404). Comprobado con el build
+  servido por Wrangler. No hay `_routes.json` ni `_redirects`.
 - `src/server.ts` importa dinámicamente la entrada SSR y reemplaza determinadas
   respuestas JSON 500 genéricas de H3 por la página de error del proyecto. En rutas
   `/api/*` devuelve `{ "error": "internal_error" }` con `cache-control: no-store` en
@@ -1426,7 +1435,7 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
        (`video_inicio` 727 KiB, `video_conectividad` 586 KiB, `video_tel` 230 KiB) y
        Turnstile, que se carga al inicio aunque el formulario esté al final (205 KiB).
     10. Caché: los `.mp4` de `public/` se sirven sin `cache-control` de larga duración
-        (solo `/assets/*` lo tiene).
+        (solo `/assets/*` lo tiene). Corregido el 28-10-2026 con `public/_headers`.
 
     Otros hallazgos: una corrida tuvo CLS 0,185 por la tarjeta «Infraestructura de Red
     Propia» del hero (intermitente), y `vibe.filesafe.space` deja la cookie de terceros
@@ -1473,6 +1482,49 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
     Chrome avisa de que la fuente precargada «no se usó en unos segundos», pero en el
     build de producción se descarga una sola vez (por la precarga) y la usa el texto:
     es un falso positivo.
+
+    **Optimización 4, caché de estáticos (28-10-2026):** ver `public/_headers` en la
+    sección 9.
+
+    **Medición después (28-10-2026, misma configuración que la línea base):** build de
+    producción servido con Wrangler en local, Lighthouse 12.8.2, Chrome 156 headless con
+    perfil limpio, 3 corridas en móvil (mediana) y 1 en escritorio. Reportes HTML en
+    `documentacion/lighthouse/2026-10-27-despues/` (la carpeta lleva la fecha del plan;
+    las corridas son del 28-10-2026).
+
+    | Métrica | Móvil antes | Móvil después | Escritorio antes | Escritorio después |
+    |---|---|---|---|---|
+    | Rendimiento | 53 | **75** | 80 | **96** |
+    | FCP | 4,9 s | **2,6 s** | 1,2 s | **0,6 s** |
+    | LCP | 10,5 s | **4,2 s** | 2,2 s | **0,9 s** |
+    | TBT | 260 ms | **140 ms** | 5 ms | **0 ms** |
+    | CLS | 0 | **0** | 0,029 | **0** |
+    | Speed Index | 7,7 s | **6,4 s** | 2,4 s | **1,8 s** |
+    | Peso total | 3.073 KiB | **1.221 KiB** | 3.067 KiB | **1.215 KiB** |
+    | Accesibilidad | 96 | 96 | 96 | 96 |
+    | Buenas prácticas | 79 | **100** | 78 | **100** |
+    | SEO | 100 | 100 | 100 | 100 |
+
+    Móvil por corrida: rendimiento 73 / 75 / 76; LCP 4,2 / 4,3 / 4,2 s; TBT 210 / 140 /
+    108 ms.
+
+    **El móvil no llega a 85.** Elemento LCP: ahora es el **poster del video de fondo del
+    hero** (`<video poster="/video_inicio.webp">`, que ocupa más que la tarjeta de fotos);
+    fases: TTFB 496 ms, carga 0 ms y **retraso de renderizado 3.764 ms**. Las 5
+    oportunidades que quedan (corrida mediana):
+    1. Retraso de renderizado del LCP: ~1.750 ms de ahorro estimado. El hilo principal
+       está ocupado al inicio: 4,7 s de trabajo, de ellos 2,3 s de estilo y layout, con
+       una tarea larga de 943 ms del documento a ~1 s de cargar.
+    2. JavaScript sin usar: 48 KiB del chunk principal (129 KiB), ~300 ms de LCP y
+       ~150 ms de FCP.
+    3. Trabajo del hilo principal 4,7 s y 13 tareas largas: ~150 ms de TBT.
+    4. CSS que bloquea el renderizado: `styles-*.css` (26 KiB), ~150-196 ms de FCP.
+    5. Entrega de imágenes: 46 KiB (técnico 20 KiB y Cali 12 KiB del carrusel del hero,
+       que se descargan al inicio aunque empiezan ocultos; posters y logo), ~150 ms de
+       LCP.
+    Además, el video del hero (727 KiB) sigue entrando en la medición porque arranca
+    tras el LCP. Buenas prácticas pasó de 79 a 100 (ya no hay cookie de terceros
+    `__cf_bm` ni recursos de Google).
 
 ## 12. Operación y privacidad del formulario
 
