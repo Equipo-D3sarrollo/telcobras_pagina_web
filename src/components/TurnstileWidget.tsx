@@ -43,6 +43,9 @@ export const TurnstileWidget = forwardRef<TurnstileWidgetHandle, TurnstileWidget
     const widgetIdRef = useRef<string | null>(null);
     const t = useTranslations().contact;
     const [loadError, setLoadError] = useState<"render" | "script" | null>(null);
+    // El script de Cloudflare (~200 KiB con el desafío) solo se descarga cuando el
+    // formulario se acerca a la pantalla, no al cargar la página.
+    const [isNearViewport, setIsNearViewport] = useState(false);
     const activeSiteKey = TURNSTILE_SITE_KEY;
     // Los callbacks llegan inline desde el formulario y cambian en cada render; se leen
     // desde refs para que el efecto que monta el widget no lo destruya en cada tecla.
@@ -70,7 +73,27 @@ export const TurnstileWidget = forwardRef<TurnstileWidgetHandle, TurnstileWidget
     );
 
     useEffect(() => {
-      if (!activeSiteKey) return;
+      const container = containerRef.current;
+      if (!activeSiteKey || !container || isNearViewport) return;
+      if (typeof IntersectionObserver === "undefined") {
+        setIsNearViewport(true);
+        return;
+      }
+      const observer = new IntersectionObserver(
+        ([entry]) => {
+          if (entry?.isIntersecting) {
+            setIsNearViewport(true);
+            observer.disconnect();
+          }
+        },
+        { rootMargin: "600px 0px" },
+      );
+      observer.observe(container);
+      return () => observer.disconnect();
+    }, [activeSiteKey, isNearViewport]);
+
+    useEffect(() => {
+      if (!activeSiteKey || !isNearViewport) return;
 
       let isMounted = true;
       let checkInterval: ReturnType<typeof setInterval> | null = null;
@@ -153,7 +176,7 @@ export const TurnstileWidget = forwardRef<TurnstileWidgetHandle, TurnstileWidget
           widgetIdRef.current = null;
         }
       };
-    }, [activeSiteKey, theme]);
+    }, [activeSiteKey, theme, isNearViewport]);
 
     if (!activeSiteKey) return null;
 

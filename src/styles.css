@@ -472,7 +472,8 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
+/* También en móvil (< 768 px): animación decorativa continua, se detiene. */
+@media (prefers-reduced-motion: reduce), (max-width: 767px) {
   .hero-aurora-blob {
     animation: none;
   }
@@ -507,7 +508,8 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
+/* También en móvil (< 768 px): animación decorativa continua, se detiene. */
+@media (prefers-reduced-motion: reduce), (max-width: 767px) {
   .metric-icon-glow {
     animation: none;
   }
@@ -558,7 +560,8 @@
   animation-delay: -2.5s;
 }
 
-@media (prefers-reduced-motion: reduce) {
+/* También en móvil (< 768 px): animación decorativa continua, se detiene. */
+@media (prefers-reduced-motion: reduce), (max-width: 767px) {
   .chatbot-robot-vibrate,
   .ally-logo-rotation {
     animation: none;
@@ -787,7 +790,8 @@
 
 /* Movimiento reducido: sin giros ni flujos continuos. Las tarjetas siguen
    cambiando con fundido de opacidad y el enlace de respaldo queda visible fijo. */
-@media (prefers-reduced-motion: reduce) {
+/* También en móvil (< 768 px): animación decorativa continua, se detiene. */
+@media (prefers-reduced-motion: reduce), (max-width: 767px) {
   .brand-glow-ring-light,
   .network-flow {
     animation: none;
@@ -970,7 +974,8 @@
 
 /* Movimiento reducido: se mantienen el ciclo y los colores (fundidos), sin pulsos
    viajeros ni anillos pulsantes. */
-@media (prefers-reduced-motion: reduce) {
+/* También en móvil (< 768 px): animación decorativa continua, se detiene. */
+@media (prefers-reduced-motion: reduce), (max-width: 767px) {
   .network-active-pulse,
   .network-node-ring,
   .network-center-pulse {
@@ -1003,7 +1008,8 @@
 
 /* Movimiento reducido: sin pulsos viajeros; los nodos quedan visibles con un
    valor estable (no se elimina la señal visual). */
-@media (prefers-reduced-motion: reduce) {
+/* También en móvil (< 768 px): animación decorativa continua, se detiene. */
+@media (prefers-reduced-motion: reduce), (max-width: 767px) {
   .contact-node-pulse {
     animation: none;
     opacity: 0.75;
@@ -1585,3 +1591,33 @@
 
 }
 /* === Fin ServicesSection === */
+
+/*
+ * Pantallas de menos de 768 px: menos trabajo continuo en el hilo de composición.
+ * Se detienen la señal del header y el pulso del botón de WhatsApp (las demás
+ * animaciones decorativas comparten las reglas de movimiento reducido) y los
+ * desenfoques de fondo bajan a 4 px (las capas que los usan son casi opacas).
+ */
+@media (max-width: 767px) {
+  .header-glass::after {
+    animation: none;
+    display: none;
+  }
+
+  .whatsapp-floating-button::before,
+  .whatsapp-floating-button::after {
+    animation: none;
+  }
+
+  .backdrop-blur-sm,
+  .backdrop-blur-md,
+  .backdrop-blur-xl {
+    --tw-backdrop-blur: blur(4px);
+  }
+
+  .header-glass-panel,
+  .services-card {
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+  }
+}

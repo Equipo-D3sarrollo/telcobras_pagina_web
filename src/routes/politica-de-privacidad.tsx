@@ -3,6 +3,7 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { useAccessibilityPreferences } from "@/lib/accessibility-preferences-context";
 import { htmlLang } from "@/lib/accessibility-preferences";
+import { LEGAL_META } from "@/lib/legal-meta";
 import { CONTACT, NIT, OG_IMAGE_URL, RAZON_SOCIAL } from "@/lib/telcobras-data";
 
 const SITE_URL = "https://telcobras.com";
@@ -10,17 +11,17 @@ const SITE_URL = "https://telcobras.com";
 export const Route = createFileRoute("/politica-de-privacidad")({
   head: () => ({
     meta: [
-      { title: policyCopy.es.metaTitle },
-      { name: "description", content: policyCopy.es.metaDescription },
-      { property: "og:title", content: policyCopy.es.metaTitle },
-      { property: "og:description", content: policyCopy.es.metaDescription },
+      { title: LEGAL_META.privacy.es.metaTitle },
+      { name: "description", content: LEGAL_META.privacy.es.description },
+      { property: "og:title", content: LEGAL_META.privacy.es.metaTitle },
+      { property: "og:description", content: LEGAL_META.privacy.es.description },
       { property: "og:image", content: OG_IMAGE_URL },
       { property: "og:url", content: `${SITE_URL}/politica-de-privacidad` },
       { property: "og:type", content: "website" },
       { property: "og:locale", content: "es_CO" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: policyCopy.es.metaTitle },
-      { name: "twitter:description", content: policyCopy.es.metaDescription },
+      { name: "twitter:title", content: LEGAL_META.privacy.es.metaTitle },
+      { name: "twitter:description", content: LEGAL_META.privacy.es.description },
       { name: "twitter:image", content: OG_IMAGE_URL },
     ],
     links: [{ rel: "canonical", href: `${SITE_URL}/politica-de-privacidad` }],
@@ -31,9 +32,8 @@ export const Route = createFileRoute("/politica-de-privacidad")({
 const policyCopy = {
   es: {
     backToHome: "Volver al inicio",
-    metaTitle: "Política de privacidad y tratamiento de datos | TELCOBRAS",
-    metaDescription:
-      "Cómo TELCOBRAS S.A.S. trata tus datos personales según la Ley 1581 de 2012 y el RGPD cuando aplica: finalidades, derechos, conservación y cómo ejercerlos.",
+    metaTitle: LEGAL_META.privacy.es.metaTitle,
+    metaDescription: LEGAL_META.privacy.es.description,
     title: "Política de Privacidad y Tratamiento de Datos Personales",
     description:
       "Política de privacidad y tratamiento de datos personales de TELCOBRAS S.A.S., conforme a la Ley Estatutaria 1581 de 2012 y, cuando corresponda, al RGPD.",
@@ -65,7 +65,7 @@ const policyCopy = {
       },
       providers: {
         title: "5. Proveedores y transferencias",
-        text: "Para operar los servicios descritos, la información puede ser procesada por proveedores tecnológicos que apoyan el almacenamiento de solicitudes y la atención automatizada. El sitio también integra recursos externos como el mapa de Google Maps, que puede recibir datos técnicos de conexión cuando el navegador lo carga (ver sección 6). La tipografía se sirve desde el propio sitio. La ubicación de los proveedores y las condiciones aplicables a eventuales transmisiones internacionales deben revisarse conforme a la normativa vigente.",
+        text: "Para operar los servicios descritos, la información puede ser procesada por proveedores tecnológicos que apoyan el almacenamiento de solicitudes y la atención automatizada. El sitio también integra recursos externos como el mapa de Google Maps, que puede recibir datos técnicos de conexión cuando el navegador lo carga (ver sección 6). Para proteger el formulario de contacto contra el uso automatizado se usa Cloudflare Turnstile: al verificar el formulario, Cloudflare recibe datos técnicos del navegador y de la conexión (como la dirección IP y señales del dispositivo). La tipografía se sirve desde el propio sitio. La ubicación de los proveedores y las condiciones aplicables a eventuales transmisiones internacionales deben revisarse conforme a la normativa vigente.",
       },
       cookies: {
         title: "6. Cookies y almacenamiento local",
@@ -121,9 +121,8 @@ const policyCopy = {
   },
   en: {
     backToHome: "Back to home",
-    metaTitle: "Privacy and personal data processing policy | TELCOBRAS",
-    metaDescription:
-      "How TELCOBRAS S.A.S. processes your personal data under Colombian Law 1581 of 2012 and the GDPR where applicable: purposes, rights, retention and requests.",
+    metaTitle: LEGAL_META.privacy.en.metaTitle,
+    metaDescription: LEGAL_META.privacy.en.description,
     title: "Privacy Policy and Personal Data Processing",
     description:
       "TELCOBRAS S.A.S. privacy and personal data processing policy under Colombian Statutory Law 1581 of 2012 and, where applicable, the GDPR.",
@@ -155,7 +154,7 @@ const policyCopy = {
       },
       providers: {
         title: "5. Providers and transfers",
-        text: "To operate the services described, information may be processed by technology providers that support request storage and automated assistance. The site also integrates external resources such as the Google Maps map, which may receive technical connection data when your browser loads it (see section 6). Fonts are served from the site itself. Provider locations and the conditions applicable to any international transfers must be reviewed in accordance with current law.",
+        text: "To operate the services described, information may be processed by technology providers that support request storage and automated assistance. The site also integrates external resources such as the Google Maps map, which may receive technical connection data when your browser loads it (see section 6). To protect the contact form against automated abuse, the site uses Cloudflare Turnstile: when the form is verified, Cloudflare receives technical browser and connection data (such as the IP address and device signals). Fonts are served from the site itself. Provider locations and the conditions applicable to any international transfers must be reviewed in accordance with current law.",
       },
       cookies: {
         title: "6. Cookies and local storage",

@@ -1,5 +1,6 @@
 import { CONTACT, RAZON_SOCIAL } from "@/lib/telcobras-data";
 import type { LegalDocumentCopy } from "@/lib/legal-types";
+import { LEGAL_META } from "@/lib/legal-meta";
 
 /**
  * Términos de servicio de TELCOBRAS S.A.S. Texto propio, redactado tomando como
@@ -10,10 +11,9 @@ import type { LegalDocumentCopy } from "@/lib/legal-types";
  */
 
 const es: LegalDocumentCopy = {
-  metaTitle: `Términos y condiciones del servicio | ${RAZON_SOCIAL}`,
+  metaTitle: LEGAL_META.terms.es.metaTitle,
   title: "Términos de servicio",
-  description:
-    "Términos y condiciones de TELCOBRAS S.A.S. para sus servicios de conectividad, ciberseguridad, nube e inteligencia artificial y para el uso de su sitio web.",
+  description: LEGAL_META.terms.es.description,
   updated: "Fecha de actualización: 26 de octubre de 2026",
   intro: `Estos términos explican las reglas con las que ${RAZON_SOCIAL} (en adelante, TELCOBRAS) presta sus servicios a empresas y entidades, y las condiciones para usar este sitio web. Al contratar un servicio o al usar el sitio, el cliente o el visitante los acepta. Le recomendamos leerlos junto con el SLA y garantías y la Política de privacidad.`,
   backToHome: "Volver al inicio",
@@ -187,10 +187,9 @@ const es: LegalDocumentCopy = {
 };
 
 const en: LegalDocumentCopy = {
-  metaTitle: `Terms and Conditions of Service | ${RAZON_SOCIAL}`,
+  metaTitle: LEGAL_META.terms.en.metaTitle,
   title: "Terms of Service",
-  description:
-    "TELCOBRAS S.A.S. terms and conditions for its connectivity, cybersecurity, cloud and artificial intelligence services and for the use of its website.",
+  description: LEGAL_META.terms.en.description,
   updated: "Last updated: October 26, 2026",
   intro: `These terms explain the rules under which ${RAZON_SOCIAL} (hereinafter, TELCOBRAS) provides its services to companies and organizations, and the conditions for using this website. By contracting a service or using the site, the client or visitor accepts them. We recommend reading them together with the SLA and warranties and the Privacy Policy. The Spanish version prevails in case of discrepancy.`,
   backToHome: "Back to home",

@@ -82,6 +82,7 @@ export function HeroAndMetrics() {
         <BackgroundVideo
           src="/video_inicio.mp4"
           poster="/video_inicio.webp"
+          startAfterLcp
           className="absolute inset-0 z-0 h-full w-full object-cover"
         />
         <div aria-hidden="true" className="absolute inset-0 z-[1] bg-slate-950/55" />

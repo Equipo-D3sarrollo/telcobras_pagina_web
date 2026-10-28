@@ -1,12 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { LegalDocument } from "@/components/LegalDocument";
 import { OG_IMAGE_URL } from "@/lib/telcobras-data";
+import { LEGAL_META } from "@/lib/legal-meta";
 import { LEGAL_DRAFT_META } from "@/lib/legal-status";
 import { useAccessibilityPreferences } from "@/lib/accessibility-preferences-context";
 import { slaContent } from "@/lib/sla-content";
 
 const SITE_URL = "https://telcobras.com";
-const { metaTitle, description } = slaContent.es;
+const { metaTitle, description } = LEGAL_META.sla.es;
 
 export const Route = createFileRoute("/sla")({
   head: () => ({

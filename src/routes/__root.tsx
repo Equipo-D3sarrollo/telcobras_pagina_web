@@ -1,23 +1,21 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
   Link,
-  createRootRouteWithContext,
+  createRootRoute,
   useRouter,
   HeadContent,
   Scripts,
   useRouterState,
   type ErrorComponentProps,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, type ReactNode } from "react";
 import { getAccessibilityPreferences } from "../lib/accessibility-preferences.server";
 import { htmlLang } from "../lib/accessibility-preferences";
 
 import appCss from "../styles.css?url";
 import { reportVibeError } from "../lib/vibe-error-reporting";
 import { AccessibilityMenu } from "../components/AccessibilityMenu";
-import { CookieBanner } from "../components/CookieBanner";
-import { FloatingChatbot } from "../components/FloatingChatbot";
+import { useIdleReady } from "@/hooks/use-idle-ready";
 import { useTranslations } from "@/lib/accessibility-preferences-context";
 import { AccessibilityPreferencesProvider } from "@/lib/accessibility-preferences-provider";
 import { getTranslations } from "@/lib/translations";
@@ -87,7 +85,16 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
   );
 }
 
-export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+// UI secundaria que no se ve al inicio: se descarga y monta cuando el navegador queda
+// libre tras la carga (o con la primera interacción), sin competir con el LCP.
+const FloatingChatbot = lazy(() =>
+  import("../components/FloatingChatbot").then((m) => ({ default: m.FloatingChatbot })),
+);
+const CookieBanner = lazy(() =>
+  import("../components/CookieBanner").then((m) => ({ default: m.CookieBanner })),
+);
+
+export const Route = createRootRoute({
   loader: async () => ({
     accessibilityPreferences: await getAccessibilityPreferences(),
   }),
@@ -174,21 +181,23 @@ function RootShell({ children }: { children: ReactNode }) {
 }
 
 function RootComponent() {
-  const { queryClient } = Route.useRouteContext();
   const { accessibilityPreferences } = Route.useLoaderData();
+  const idleReady = useIdleReady();
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <AccessibilityPreferencesProvider initialPreferences={accessibilityPreferences}>
-        <LocalizedMetadata />
-        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-        <Outlet />
-        <AccessibilityMenu />
-        <FloatingChatbot />
-        <WhatsAppFloatingButton />
-        <CookieBanner />
-      </AccessibilityPreferencesProvider>
-    </QueryClientProvider>
+    <AccessibilityPreferencesProvider initialPreferences={accessibilityPreferences}>
+      <LocalizedMetadata />
+      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+      <Outlet />
+      <AccessibilityMenu />
+      <WhatsAppFloatingButton />
+      {idleReady && (
+        <Suspense fallback={null}>
+          <FloatingChatbot />
+          <CookieBanner />
+        </Suspense>
+      )}
+    </AccessibilityPreferencesProvider>
   );
 }
 

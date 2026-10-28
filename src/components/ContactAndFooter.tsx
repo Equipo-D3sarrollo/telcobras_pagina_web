@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { toast } from "sonner";
 import {
   CALI_IMAGE,
   CONTACT,
@@ -31,6 +30,12 @@ import {
 import { Facebook, Instagram, Linkedin, Music2 } from "lucide-react";
 import { BrandGlowBorder } from "./BrandGlowBorder";
 import { ResponsivePicture } from "./ResponsivePicture";
+import { notify } from "@/lib/notify";
+import { useIdleReady } from "@/hooks/use-idle-ready";
+
+// Avisos del formulario: el <Toaster> (y sonner) se cargan cuando el navegador queda
+// libre o con la primera interacción, siempre antes de que se pueda enviar el formulario.
+const Toaster = lazy(() => import("./ui/sonner").then((m) => ({ default: m.Toaster })));
 import { TURNSTILE_SITE_KEY, TurnstileWidget, type TurnstileWidgetHandle } from "./TurnstileWidget";
 import {
   useAccessibilityPreferences,
@@ -55,6 +60,7 @@ const INITIAL_FORM_DATA = {
 };
 
 export function ContactSection() {
+  const idleReady = useIdleReady();
   const translations = useTranslations();
   const t = translations.contact;
   const turnstileConfigured = TURNSTILE_SITE_KEY.length > 0;
@@ -114,7 +120,7 @@ export function ContactSection() {
     e.preventDefault();
     if (isSubmitting) return;
     if (!turnstileConfigured) {
-      toast.error(t.formUnavailableTitle, {
+      notify("error", t.formUnavailableTitle, {
         description: t.formUnavailableDescription.replace("{email}", CONTACT.emailDisplay),
       });
       return;
@@ -122,18 +128,18 @@ export function ContactSection() {
     const websiteField = new FormData(e.currentTarget).get("sitio_web");
     if (typeof websiteField === "string" && websiteField.trim()) return;
     if (!formData.nombre || !formData.correo || !formData.telefono) {
-      toast.error(t.requiredError);
+      notify("error", t.requiredError);
       return;
     }
     if (!formData.consentimiento) {
       setConsentAttempts((n) => n + 1);
-      toast.warning(t.consentWarning, {
+      notify("warning", t.consentWarning, {
         description: t.consentWarningDescription,
       });
       return;
     }
     if (!turnstileToken) {
-      toast.error(t.turnstileRequired);
+      notify("error", t.turnstileRequired);
       return;
     }
 
@@ -154,19 +160,19 @@ export function ContactSection() {
         setTurnstileToken("");
 
         if (response.status === 429) {
-          toast.error(getTranslations(languageRef.current).contact.tooManyRequests);
+          notify("error", getTranslations(languageRef.current).contact.tooManyRequests);
           return;
         }
 
         if (errorData?.error === "contacto_unavailable") {
-          toast.error(t.formUnavailableTitle, {
+          notify("error", t.formUnavailableTitle, {
             description: t.formUnavailableDescription.replace("{email}", CONTACT.emailDisplay),
           });
           return;
         }
 
         if (errorData?.error === "turnstile_verification_failed") {
-          toast.error(getTranslations(languageRef.current).contact.turnstileFailed);
+          notify("error", getTranslations(languageRef.current).contact.turnstileFailed);
           return;
         }
 
@@ -178,12 +184,13 @@ export function ContactSection() {
       setTurnstileToken("");
       turnstileRef.current?.reset();
       setFormSubmitted(true);
-      toast.success(getTranslations(languageRef.current).contact.successTitle);
+      notify("success", getTranslations(languageRef.current).contact.successTitle);
     } catch (error) {
       console.error("Falló el envío de la solicitud de contacto.", error);
       turnstileRef.current?.reset();
       setTurnstileToken("");
-      toast.error(
+      notify(
+        "error",
         getTranslations(languageRef.current).contact.submissionError.replace(
           "{email}",
           CONTACT.emailDisplay,
@@ -196,6 +203,13 @@ export function ContactSection() {
 
   return (
     <>
+      {/* Avisos del formulario (toast). Antes no había ningún <Toaster> montado y los
+          mensajes de error, consentimiento y éxito no se mostraban. */}
+      {idleReady && (
+        <Suspense fallback={null}>
+          <Toaster position="top-center" richColors closeButton />
+        </Suspense>
+      )}
       {/* 9. CONTACTO Y FORMULARIO */}
       <section
         ref={sectionRef}

@@ -237,7 +237,7 @@ agreguen pruebas.
 │   ├── lib/                        # Datos, preferencias, utilidades y manejo de errores
 │   ├── routes/                     # Rutas TanStack Start
 │   ├── routeTree.gen.ts            # Generado automáticamente; no editar
-│   ├── router.tsx                  # Crea router y QueryClient
+│   ├── router.tsx                  # Crea el router (sin React Query desde el 28-10-2026)
 │   ├── server.ts                   # Adaptador SSR, CSP y normalización de errores
 │   ├── start.ts                    # Middleware de servidor y CSRF para server functions
 │   └── styles.css                  # Tema, tokens y estilos globales/animaciones
@@ -268,7 +268,9 @@ con excepciones para `*.example`, aunque hoy no existe un `.env.example` version
 - `src/lib/cookie-consent.ts`: clave y lectura del consentimiento guardado, y
   `openCookiePreferences()` / `onOpenCookiePreferences()` para reabrir el banner.
 - `src/components/TurnstileWidget.tsx`: widget de Cloudflare Turnstile usado por el
-  formulario de contacto (carga explícita del script, callback, reset y errores).
+  formulario de contacto (carga explícita del script, callback, reset y errores). El
+  script solo se descarga cuando el formulario está a menos de ~600 px de la pantalla
+  (`IntersectionObserver` con `rootMargin: "600px 0px"`).
 - `src/routes/api.contacto.ts`: endpoint de contacto usado por el formulario. Valida
   honeypot, longitudes de campos, estructura de payload, Turnstile y limitación de tasa
   por IP antes de persistir en Supabase.
@@ -312,8 +314,17 @@ con excepciones para `*.example`, aunque hoy no existe un `.env.example` version
   publica en `head.links` como `{ rel: "stylesheet", href: appCss }` (líneas 120-127).
   En el build, `appCss` resuelve a `/assets/styles-<hash>.css`; el mismo hash debe
   aparecer en el bundle cliente y en el SSR. No hay `index.html` ni `src/main.tsx`.
-- Monta globalmente `FloatingChatbot` y `WhatsAppFloatingButton` (enlace flotante a
-  `wa.me` con el número comercial de `CONTACT`). Ambos viven en este archivo.
+- Monta globalmente `AccessibilityMenu` (solo el botón; el panel se carga al abrirlo)
+  y `WhatsAppFloatingButton` (enlace flotante a `wa.me` con el número comercial de
+  `CONTACT`, definido en este archivo). `FloatingChatbot` y `CookieBanner` se cargan
+  con `React.lazy` y se montan cuando el navegador queda libre tras la carga o con la
+  primera interacción (`useIdleReady`, `src/hooks/use-idle-ready.ts`:
+  `requestIdleCallback` con tope de 2 s, `setTimeout` donde no exista). En la primera
+  visita el banner aparece en cuanto el navegador queda libre, después del LCP.
+  «Preferencias de cookies» funciona aunque el banner aún no se haya cargado: la
+  petición queda pendiente (`openCookiePreferences`) y el banner la atiende al montarse.
+- La ruta raíz es `createRootRoute` sin contexto: React Query (`QueryClient`) se quitó
+  el 28-10-2026 porque no había ningún `useQuery` (24 KiB menos en el chunk principal).
 - En `head.links` precarga la Nunito normal autoalojada (`<link rel="preload"
   href="/fonts/nunito-latin-400-900.woff2" as="font" type="font/woff2" crossorigin>`) y
   enlaza `styles.css`. `head.links` es la forma de inyectar `<link>` en el `<head>` con
@@ -345,10 +356,10 @@ con excepciones para `*.example`, aunque hoy no existe un `.env.example` version
 - `src/lib/accessibility-preferences.server.ts` lee la cookie con las utilidades de
   petición de TanStack Start; el loader de la ruta raíz comparte el resultado con el
   shell SSR y la interfaz.
-- `src/components/AccessibilityMenu.tsx` proporciona el estado global y un control
-  flotante inferior izquierdo con opciones de apariencia (sistema/claro/oscuro), tamaño
-  de texto (100/125/150/200 %), idioma (español/inglés), modo daltonismo y restauración
-  de valores predeterminados.
+- `src/components/AccessibilityMenu.tsx` es el botón flotante inferior izquierdo; al
+  abrirlo carga `src/components/AccessibilityPanel.tsx` (con `React.lazy`), con opciones
+  de apariencia (sistema/claro/oscuro), tamaño de texto (100/125/150/200 %), idioma
+  (español/inglés), modo daltonismo y restauración de valores predeterminados.
 - `src/lib/accessibility-preferences-context.ts` y
   `src/lib/accessibility-preferences-provider.tsx` exponen las preferencias existentes
   al árbol React; no se debe crear un segundo estado de idioma.
@@ -813,8 +824,12 @@ Los textos de los diferenciales de «¿Por qué TELCOBRAS?» no están aquí: vi
   silenciado, en bucle, `playsInline`, `poster` `.webp` (primer fotograma, mismo nombre
   que el `.mp4` en `public/`), `preload="none"` y **sin `autoPlay`**. Se reproduce desde
   el cliente con `play()` salvo con `prefers-reduced-motion: reduce`, en cuyo caso se
-  queda en el poster y ni siquiera descarga el video. `playing` permite pausarlo fuera
-  de pantalla (lo usa `WhyUsSection`).
+  queda en el poster y ni siquiera descarga el video. Desde el 28-10-2026 cada video
+  solo se reproduce mientras está a la vista (`IntersectionObserver` propio) y se pausa
+  al salir; `playing` añade una condición externa (la usa `WhyUsSection`). El del hero
+  usa `startAfterLcp`: no arranca hasta que la imagen principal
+  (`img[fetchpriority="high"]`) se ha cargado y pintado (`whenLcpImagePainted`,
+  `src/lib/when-lcp-painted.ts`).
 - La preferencia se lee con `useReducedMotion()` / `prefersReducedMotion()` de
   `src/hooks/use-reduced-motion.ts`.
 - Compresión (27-10-2026, `ffmpeg` 9.0.2): H.264 `-preset veryfast -crf 28`, sin audio,
@@ -969,7 +984,7 @@ exitosa y repetible con el módulo Webhook response configurado correctamente.
   (`core.hooksPath=.githooks`). CI lo repite en `.github/workflows/gitleaks.yml`
   (v8.30.1 fijado y verificado por checksum). `.gitignore` cubre `.env`, `.env.*` y
   `.dev.vars*`, con excepción para los archivos `*.example`.
-- `src/router.tsx` construye QueryClient y el router con restauración de scroll.
+- `src/router.tsx` construye el router con restauración de scroll (sin QueryClient).
 - `tsconfig.json` está en modo estricto y define alias `@/*` → `src/*`.
 - `components.json` refleja la configuración de componentes tipo shadcn.
 - El `README.md` del repositorio cubre el arranque y el contrato/configuración de chat;
@@ -1218,8 +1233,9 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
    **pendiente de revisión jurídica**, igual que el texto nuevo del banner. También el
    27-10-2026 se quitó Google Fonts de la sección 5 («Proveedores», ES/EN), porque la
    tipografía pasó a servirse desde el propio sitio: **este cambio también lo revisa
-   jurídica**. Nota para esa revisión: la sección 5 no menciona Cloudflare Turnstile,
-   que recibe datos técnicos del navegador al verificar el formulario.
+   jurídica**. El 28-10-2026 se añadió a la sección 5 (ES/EN) Cloudflare Turnstile como
+   proveedor que recibe datos técnicos del navegador y de la conexión (IP, señales del
+   dispositivo) al verificar el formulario: **también va a revisión de jurídica**.
 8. **Protección de endpoints HTTP:** `/api/contacto` tiene Turnstile y rate limit por IP
    (5 envíos cada 10 min) y `/api/chat` tiene rate limit (20 mensajes cada 5 min), ambos
    con el limitador compartido `src/lib/rate-limit.ts` basado en `cf-connecting-ip`. El
@@ -1426,6 +1442,37 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
     precargada, y fuente de reserva con métricas ajustadas. Corrige el CLS de ~0,03 del
     menú del header en escritorio: en el navegador ya no hay ningún layout shift al
     cargar, ni a 360 ni a 1280 px (ver «Tipografía» en la sección 7).
+
+    **Optimización 3, hilo principal (28-10-2026, sin medir aún con Lighthouse):**
+
+    | Chunk (gzip) | Antes | Después |
+    |---|---|---|
+    | Principal (`index`) | 161,3 KB (502,5 KB sin comprimir) | 133,5 KB (408,9 KB) |
+    | Landing (`routes`) | 50,3 KB (184,6 KB) | 15,8 KB (66,0 KB) |
+    | Inicial de la landing (suma) | 211,6 KB | 149,3 KB (−29 %) |
+
+    Fuera de la carga inicial: `LetyIaAndWhyUs` (Inteligencia Artificial, Proyectos con
+    Radix Dialog y `tailwind-merge`, «¿Por qué?»; 29,6 KB, con `React.lazy` + `Suspense`,
+    sigue en el HTML del SSR), chat 3,6 KB, banner 1,4 KB, panel de accesibilidad
+    1,1 KB, `sonner` 9,4 KB (el `<Toaster>` se monta al quedar libre el navegador y los
+    avisos usan `notify()` de `src/lib/notify.ts`, que importa `sonner` bajo demanda) y
+    los textos legales, que ya solo se descargan en su página (sus metadatos están en
+    `src/lib/legal-meta.ts` para que el `head()` no arrastre el contenido). Se quitó
+    React Query (sin uso). `recharts` y los componentes de `components/ui` sin usar no
+    estaban en el bundle (el build ya los descartaba). También: Turnstile solo cerca del
+    formulario, videos solo a la vista (el del hero tras el LCP) y, en pantallas de
+    menos de 768 px, sin animaciones decorativas continuas (las mismas reglas que el
+    movimiento reducido, más la señal del header y el pulso de WhatsApp) y desenfoques
+    de fondo de 4 px.
+
+    **Fallo corregido de paso:** no había ningún `<Toaster>` montado, así que ninguno de
+    los avisos del formulario de contacto (campos obligatorios, consentimiento,
+    Turnstile, demasiados intentos, error de envío, éxito) se mostraba. Ahora se
+    muestran arriba en el centro.
+
+    Chrome avisa de que la fuente precargada «no se usó en unos segundos», pero en el
+    build de producción se descarga una sola vez (por la precarga) y la usa el texto:
+    es un falso positivo.
 
 ## 12. Operación y privacidad del formulario
 

@@ -1,9 +1,9 @@
+import { lazy, Suspense } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { HeaderNav } from "@/components/HeaderNav";
 import { HeroAndMetrics } from "@/components/HeroAndMetrics";
 import { AboutAndValues } from "@/components/AboutAndValues";
 import { ServicesSection } from "@/components/ServicesSection";
-import { LetyIaAndWhyUs } from "@/components/LetyIaAndWhyUs";
 import { ContactSection, SiteFooter } from "@/components/ContactAndFooter";
 import { ScrollToTopButton } from "@/components/ScrollToTopButton";
 import {
@@ -40,6 +40,13 @@ const ORGANIZATION_JSON_LD = {
     SOCIAL_LINKS.tiktok,
   ],
 };
+
+// Inteligencia Artificial, Proyectos (con su diálogo) y «¿Por qué TELCOBRAS?» quedan por
+// debajo del pliegue: su JS va en un chunk aparte. El servidor sigue pintando su HTML
+// (React resuelve el lazy en el SSR), así que el contenido y el SEO no cambian.
+const LetyIaAndWhyUs = lazy(() =>
+  import("@/components/LetyIaAndWhyUs").then((m) => ({ default: m.LetyIaAndWhyUs })),
+);
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -88,7 +95,9 @@ function TelcobrasLandingPage() {
         <ServicesSection />
 
         {/* 6, 7 & 8. LETY.IA, ¿Por qué TELCOBRAS? y Aliados Estratégicos */}
-        <LetyIaAndWhyUs />
+        <Suspense fallback={null}>
+          <LetyIaAndWhyUs />
+        </Suspense>
 
         {/* 9. Formulario de Contacto/Cotización y Ubicación */}
         <ContactSection />

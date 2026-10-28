@@ -1,5 +1,6 @@
 import { CONTACT, RAZON_SOCIAL } from "@/lib/telcobras-data";
 import type { LegalDocumentCopy } from "@/lib/legal-types";
+import { LEGAL_META } from "@/lib/legal-meta";
 
 /**
  * VALORES DEL SLA — PROPUESTA PENDIENTE DE APROBACIÓN POR GERENCIA.
@@ -96,10 +97,9 @@ const channels = `${CONTACT.phoneDisplay} (llamada o WhatsApp) y ${CONTACT.email
 const channelsEn = `${CONTACT.phoneDisplay} (call or WhatsApp) and ${CONTACT.emailDisplay}`;
 
 const es: LegalDocumentCopy = {
-  metaTitle: `SLA, niveles de servicio y garantías | ${RAZON_SOCIAL}`,
+  metaTitle: LEGAL_META.sla.es.metaTitle,
   title: "SLA y garantías",
-  description:
-    "Acuerdo de niveles de servicio (SLA) de TELCOBRAS S.A.S.: disponibilidad, tiempos de atención, mantenimientos, créditos por indisponibilidad y garantías.",
+  description: LEGAL_META.sla.es.description,
   updated: "Fecha de actualización: 26 de octubre de 2026",
   intro: `Este acuerdo de niveles de servicio (SLA, por sus siglas en inglés) describe lo que ${RAZON_SOCIAL} se compromete a cumplir cuando presta sus servicios: cuánto tiempo debe estar disponible el servicio, en cuánto tiempo atendemos una falla y qué recibe el cliente si no cumplimos. Hace parte de los Términos de servicio. Si la propuesta comercial o el contrato de un cliente fija valores distintos, prevalecen esos valores.`,
   backToHome: "Volver al inicio",
@@ -228,10 +228,9 @@ const es: LegalDocumentCopy = {
 };
 
 const en: LegalDocumentCopy = {
-  metaTitle: `SLA, Service Levels and Warranties | ${RAZON_SOCIAL}`,
+  metaTitle: LEGAL_META.sla.en.metaTitle,
   title: "SLA and warranties",
-  description:
-    "TELCOBRAS S.A.S. service level agreement (SLA): availability, response times, maintenance windows, service credits for downtime and warranties for clients.",
+  description: LEGAL_META.sla.en.description,
   updated: "Last updated: October 26, 2026",
   intro: `This service level agreement (SLA) describes what ${RAZON_SOCIAL} commits to when it provides its services: how long the service must be available, how quickly we respond to a failure, and what the client receives if we fall short. It is part of the Terms of Service. If a client's commercial proposal or contract sets different values, those values prevail. The Spanish version prevails in case of discrepancy.`,
   backToHome: "Back to home",
