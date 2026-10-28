@@ -13,6 +13,7 @@ import { useRotatingHighlight } from "@/hooks/use-rotating-highlight";
 import { BrandGlowBorder } from "./BrandGlowBorder";
 import { BackgroundVideo } from "./BackgroundVideo";
 import { ResponsivePicture } from "./ResponsivePicture";
+import { whenLcpImagePainted } from "@/lib/when-lcp-painted";
 import { useTranslations } from "@/lib/accessibility-preferences-context";
 
 const HERO_SLIDES = [HERO_IMAGE, TECHNICIAN_IMAGE, CALI_IMAGE];
@@ -61,16 +62,37 @@ function useMetricHighlight() {
 
 export function HeroAndMetrics() {
   const [activeSlide, setActiveSlide] = useState(0);
+  // Las fotos 2 y 3 del carrusel se montan (y descargan) cuando la primera ya se pintó
+  // y el navegador queda libre; hasta entonces no compiten con el LCP.
+  const [extraSlidesReady, setExtraSlidesReady] = useState(false);
   const { metricsRef, metricCardProps } = useMetricHighlight();
   const t = useTranslations().hero;
 
   useEffect(() => {
+    let cancelled = false;
+    void whenLcpImagePainted().then(() => {
+      const ready = () => {
+        if (!cancelled) setExtraSlidesReady(true);
+      };
+      if (typeof window.requestIdleCallback === "function") {
+        window.requestIdleCallback(ready, { timeout: 2000 });
+      } else {
+        window.setTimeout(ready, 500);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!extraSlidesReady) return;
     const intervalId = window.setInterval(() => {
       setActiveSlide((currentSlide) => (currentSlide + 1) % HERO_SLIDES.length);
     }, 4000);
 
     return () => window.clearInterval(intervalId);
-  }, []);
+  }, [extraSlidesReady]);
 
   return (
     <>
@@ -83,6 +105,7 @@ export function HeroAndMetrics() {
           src="/video_inicio.mp4"
           poster="/video_inicio.webp"
           startAfterLcp
+          desktopOnly
           className="absolute inset-0 z-0 h-full w-full object-cover"
         />
         <div aria-hidden="true" className="absolute inset-0 z-[1] bg-slate-950/55" />
@@ -91,7 +114,7 @@ export function HeroAndMetrics() {
           <div className="grid min-w-0 items-center gap-12 lg:grid-cols-12">
             <div className="min-w-0 space-y-6 text-center lg:col-span-7 lg:text-left">
               <div className="inline-flex max-w-full flex-wrap items-center justify-center gap-2 rounded-full border border-white/15 bg-white/10 px-3.5 py-1.5 text-xs font-bold tracking-wide text-sky-200 backdrop-blur-md">
-                <span className="w-2 h-2 rounded-full bg-[#88BD4C] animate-pulse" />
+                <span className="w-2 h-2 rounded-full bg-[#88BD4C] md:animate-pulse" />
                 {t.eyebrow}
               </div>
 
@@ -138,26 +161,28 @@ export function HeroAndMetrics() {
             {/* Hero Image Card */}
             <div className="relative min-w-0 lg:col-span-5">
               <div className="relative mx-auto max-w-md lg:max-w-none">
-                <div className="absolute -inset-1.5 bg-gradient-to-r from-[#88BD4C] via-[#0087C3] to-[#F3CB35] rounded-3xl blur-md opacity-40 transition duration-1000" />
+                <div className="absolute -inset-1.5 hidden bg-gradient-to-r from-[#88BD4C] via-[#0087C3] to-[#F3CB35] rounded-3xl blur-md opacity-40 md:block transition duration-1000" />
 
                 <div className="relative rounded-2xl overflow-hidden bg-slate-800 shadow-2xl border border-white/10 group">
                   <div className="relative h-96 sm:h-[32rem]">
-                    {HERO_SLIDES.map((slide, index) => (
-                      <ResponsivePicture
-                        key={slide.base}
-                        image={slide}
-                        sizes={HERO_IMAGE_SIZES}
-                        alt=""
-                        aria-hidden="true"
-                        width={640}
-                        height={512}
-                        loading={index === 0 ? "eager" : "lazy"}
-                        fetchPriority={index === 0 ? "high" : "auto"}
-                        className={`absolute inset-0 h-full w-full object-cover contrast-110 saturate-110 transition-opacity duration-1000 ${
-                          index === activeSlide ? "opacity-100" : "opacity-0"
-                        }`}
-                      />
-                    ))}
+                    {HERO_SLIDES.map((slide, index) =>
+                      index > 0 && !extraSlidesReady ? null : (
+                        <ResponsivePicture
+                          key={slide.base}
+                          image={slide}
+                          sizes={HERO_IMAGE_SIZES}
+                          alt=""
+                          aria-hidden="true"
+                          width={640}
+                          height={512}
+                          loading={index === 0 ? "eager" : "lazy"}
+                          fetchPriority={index === 0 ? "high" : "auto"}
+                          className={`absolute inset-0 h-full w-full object-cover contrast-110 saturate-110 transition-opacity duration-1000 ${
+                            index === activeSlide ? "opacity-100" : "opacity-0"
+                          }`}
+                        />
+                      ),
+                    )}
                     <div className="absolute inset-0 bg-slate-950/10" />
                     <div className="absolute inset-0 bg-gradient-to-t from-[#0A192F]/75 via-[#0A192F]/5 to-transparent" />
                   </div>

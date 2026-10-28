@@ -829,7 +829,9 @@ Los textos de los diferenciales de «¿Por qué TELCOBRAS?» no están aquí: vi
   al salir; `playing` añade una condición externa (la usa `WhyUsSection`). El del hero
   usa `startAfterLcp`: no arranca hasta que la imagen principal
   (`img[fetchpriority="high"]`) se ha cargado y pintado (`whenLcpImagePainted`,
-  `src/lib/when-lcp-painted.ts`).
+  `src/lib/when-lcp-painted.ts`). El del hero lleva además `desktopOnly`: por debajo de
+  768 px no se reproduce ni se descarga y queda el poster fijo, igual que con
+  movimiento reducido (28-10-2026).
 - La preferencia se lee con `useReducedMotion()` / `prefersReducedMotion()` de
   `src/hooks/use-reduced-motion.ts`.
 - Compresión (27-10-2026, `ffmpeg` 9.0.2): H.264 `-preset veryfast -crf 28`, sin audio,
@@ -1525,6 +1527,67 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
     Además, el video del hero (727 KiB) sigue entrando en la medición porque arranca
     tras el LCP. Buenas prácticas pasó de 79 a 100 (ya no hay cookie de terceros
     `__cf_bm` ni recursos de Google).
+
+    **Optimización 5, móvil (28-10-2026):**
+    - `content-visibility: auto` con `contain-intrinsic-size: auto <alto>` en
+      `#nosotros`, `#servicios`, `#inteligencia-artificial`, `#proyectos`, `#por-que`,
+      `#contacto` y `#ubicacion` (alturas medidas a 360, 768 y 1280 px, al final de
+      `styles.css`). Ninguna contiene elementos fixed/sticky. Comprobado: los enlaces del
+      menú y los saltos por `#hash` llevan a la sección y no saltan al pintarse (solo
+      `#ubicacion` se movió 12 px a 360 px); la altura total de la página cambia 0 px
+      (360) y 18 px (1280) al recorrerla.
+    - Hero en móvil (< 768 px): sin video de fondo (`desktopOnly`), sin el resplandor
+      difuminado detrás de la tarjeta de fotos y sin el pulso del punto de la etiqueta
+      superior. Escritorio sin cambios (capturas comparadas a 360 y 1280 px).
+    - Carrusel del hero: las fotos 2 y 3 solo se montan (y descargan) cuando la primera
+      ya se pintó y el navegador queda libre; la rotación empieza entonces.
+    - JavaScript sin usar (48 KiB del chunk principal): no se quitó. El chunk es ya casi
+      solo el marco (`react-dom` 202 KiB, router y Start ~90 KiB, `seroval` 24 KiB) y el
+      catálogo de traducciones (37 KiB, con el inglés sin usar cuando el idioma es
+      español). Reducirlo exigiría tocar el framework/router o cargar las traducciones
+      de forma asíncrona en todo el sitio (SSR y cambio de idioma incluidos).
+    - Pendiente conocido (ya existía): el header es `sticky` y las secciones no tienen
+      `scroll-margin-top`, así que al saltar a una sección su parte superior queda bajo
+      el header (en escritorio, unos 40 px del título).
+
+    **Medición tras la optimización 5** (misma configuración; reportes en
+    `documentacion/lighthouse/2026-10-28-optim5/`):
+
+    | Móvil (mediana de 3) | Línea base | Tras optim. 4 | Tras optim. 5 |
+    |---|---|---|---|
+    | Rendimiento | 53 | 75 | **81** |
+    | FCP | 4,9 s | 2,6 s | **2,5 s** |
+    | LCP | 10,5 s | 4,2 s | **3,7 s** |
+    | TBT | 260 ms | 140 ms | **100 ms** |
+    | CLS | 0 | 0 | **0** |
+    | Speed Index | 7,7 s | 6,4 s | **5,3 s** |
+    | Peso total | 3.073 KiB | 1.221 KiB | **494 KiB** |
+    | Accesibilidad / Buenas prácticas / SEO | 96 / 79 / 100 | 96 / 100 / 100 | **96 / 100 / 100** |
+
+    | Escritorio (1 corrida) | Línea base | Tras optim. 4 | Tras optim. 5 |
+    |---|---|---|---|
+    | Rendimiento | 80 | 96 | **96** |
+    | FCP | 1,2 s | 0,6 s | **0,7 s** |
+    | LCP | 2,2 s | 0,9 s | **0,9 s** |
+    | TBT | 5 ms | 0 ms | **0 ms** |
+    | CLS | 0,029 | 0 | **0** |
+    | Speed Index | 2,4 s | 1,8 s | **1,8 s** |
+    | Peso total | 3.067 KiB | 1.215 KiB | **1.216 KiB** |
+    | Accesibilidad / Buenas prácticas / SEO | 96 / 78 / 100 | 96 / 100 / 100 | **96 / 100 / 100** |
+
+    Móvil por corrida: rendimiento 79 / 82 / 81; LCP 3,9 / 3,4 / 3,7 s; CLS 0 / 0,145 /
+    0. El LCP sigue siendo el poster del video del hero (retraso de renderizado 3,3 s;
+    trabajo del hilo principal 3,7 s, de ellos 1,9 s de estilo y layout).
+
+    **CLS de 0,145 en una corrida (la que Lighthouse marcó con CPU más lenta):**
+    reproducido retrasando la fuente 3 s a 412 px. La etiqueta «Sede Principal en
+    Cali • Cobertura Nacional en Colombia» (`text-xs font-bold`) mide 338 px con Nunito
+    y 332 px con la reserva, con 336 px disponibles: con la reserva cabe en una línea y
+    al llegar Nunito pasa a dos, y todo el hero baja 18 px. Solo ocurre si la fuente
+    llega después del primer pintado y en anchos de ~410 px. Opciones: `font-display:
+    optional` para Nunito (sin cambio de fuente tras el primer pintado; en una primera
+    visita lenta se vería la reserva) o reservar dos líneas para esa etiqueta por debajo
+    de 640 px.
 
 ## 12. Operación y privacidad del formulario
 

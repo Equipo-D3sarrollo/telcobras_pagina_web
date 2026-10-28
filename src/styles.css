@@ -1621,3 +1621,86 @@
     backdrop-filter: blur(4px);
   }
 }
+
+/*
+ * Secciones por debajo del primer pantallazo: el navegador no calcula estilos, layout ni
+ * pintado de lo que no está cerca de la pantalla. contain-intrinsic-size reserva su
+ * altura aproximada (medida en Chrome a 360, 768 y 1280 px) para que el scroll y los
+ * enlaces del menú (#servicios, #contacto…) no salten; "auto" hace que, una vez pintada,
+ * se recuerde la altura real. Ninguna contiene elementos fixed/sticky (la contención de
+ * pintado los recortaría); diálogos, chat y avisos se montan fuera de ellas.
+ */
+#nosotros,
+#servicios,
+#inteligencia-artificial,
+#proyectos,
+#por-que,
+#contacto,
+#ubicacion {
+  content-visibility: auto;
+  contain-intrinsic-size: auto var(--section-estimated-height);
+}
+
+#nosotros {
+  --section-estimated-height: 2260px;
+}
+#servicios {
+  --section-estimated-height: 2470px;
+}
+#inteligencia-artificial {
+  --section-estimated-height: 640px;
+}
+#proyectos {
+  --section-estimated-height: 2900px;
+}
+#por-que {
+  --section-estimated-height: 2100px;
+}
+#contacto {
+  --section-estimated-height: 2050px;
+}
+#ubicacion {
+  --section-estimated-height: 720px;
+}
+
+@media (min-width: 768px) {
+  #nosotros {
+    --section-estimated-height: 1750px;
+  }
+  #servicios {
+    --section-estimated-height: 2060px;
+  }
+  #inteligencia-artificial {
+    --section-estimated-height: 620px;
+  }
+  #proyectos {
+    --section-estimated-height: 1870px;
+  }
+  #por-que {
+    --section-estimated-height: 1540px;
+  }
+  #contacto {
+    --section-estimated-height: 1670px;
+  }
+  #ubicacion {
+    --section-estimated-height: 890px;
+  }
+}
+
+@media (min-width: 1280px) {
+  #nosotros {
+    --section-estimated-height: 1540px;
+  }
+  #servicios {
+    --section-estimated-height: 1520px;
+  }
+  #proyectos {
+    --section-estimated-height: 1550px;
+  }
+  #por-que {
+    --section-estimated-height: 1110px;
+  }
+  #contacto {
+    --section-estimated-height: 1050px;
+  }
+}

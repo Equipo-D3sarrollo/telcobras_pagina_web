@@ -1,13 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { prefersReducedMotion, useReducedMotion } from "@/hooks/use-reduced-motion";
 import { whenLcpImagePainted } from "@/lib/when-lcp-painted";
+import { useIsMobile } from "@/hooks/use-mobile";
+
+const SMALL_SCREEN_QUERY = "(max-width: 767px)";
 
 /**
  * Video decorativo de fondo: silenciado, en bucle y con poster. No usa `autoPlay`:
  * se reproduce desde el cliente solo si el usuario no pidió movimiento reducido
  * (en ese caso se queda en el poster), solo mientras está a la vista (se pausa al salir)
  * y mientras `playing` sea `true`. Con `startAfterLcp` (video del hero) no arranca hasta
- * que la imagen principal ya se pintó, para no competir con el LCP.
+ * que la imagen principal ya se pintó, para no competir con el LCP. Con `desktopOnly`
+ * (también el hero), por debajo de 768 px no se reproduce ni se descarga: queda el poster.
  */
 export function BackgroundVideo({
   src,
@@ -15,15 +19,18 @@ export function BackgroundVideo({
   className,
   playing = true,
   startAfterLcp = false,
+  desktopOnly = false,
 }: {
   src: string;
   poster: string;
   className?: string;
   playing?: boolean;
   startAfterLcp?: boolean;
+  desktopOnly?: boolean;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const reducedMotion = useReducedMotion();
+  const isMobile = useIsMobile();
   const [inView, setInView] = useState(false);
   const [lcpDone, setLcpDone] = useState(!startAfterLcp);
 
@@ -56,12 +63,13 @@ export function BackgroundVideo({
     if (!video) return;
     // Al hidratar, el hook aún devuelve el valor del servidor (false): se consulta
     // también la preferencia real para no empezar a descargar el video.
-    if (playing && inView && lcpDone && !reducedMotion && !prefersReducedMotion()) {
+    const smallScreen = desktopOnly && (isMobile || window.matchMedia(SMALL_SCREEN_QUERY).matches);
+    if (playing && inView && lcpDone && !smallScreen && !reducedMotion && !prefersReducedMotion()) {
       video.play().catch(() => {});
     } else {
       video.pause();
     }
-  }, [playing, inView, lcpDone, reducedMotion, src]);
+  }, [playing, inView, lcpDone, desktopOnly, isMobile, reducedMotion, src]);
 
   return (
     <video
