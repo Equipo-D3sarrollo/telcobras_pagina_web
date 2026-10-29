@@ -1203,6 +1203,39 @@ Criterios:
   esas `<img>` (sí los rótulos).
 - **Hover:** `motion-safe:group-hover:scale-[1.04]` con transición de 0,5 s (Tailwind v4
   usa la propiedad `scale`); con `prefers-reduced-motion` no se aplica.
+- **Borde de marca con destello (29-10-2026):** las cinco fotos reutilizan
+  `BrandGlowBorder` y las clases `.brand-glow-*` (no hay efecto nuevo). Estructura de
+  cada celda: contenedor exterior `.about-photo.brand-glow-always` (`relative isolate
+  rounded-3xl`, con la sombra y `data-active`), el `<figure>` interior con
+  `overflow-hidden` (imagen, zoom y rótulo) y `<BrandGlowBorder />` después, para que el
+  anillo quede sobre el borde de la foto y el halo no se recorte (reemplaza al
+  `border-white/70`). Los padres (cuadrícula, contenedor `max-w-7xl`) no recortan; solo la
+  sección `overflow-hidden`, cuyo margen (24 px en móvil, 48 px en tablet, mucho más en
+  escritorio) es el límite del halo (~40 px), de modo que solo se corta en el borde de
+  la pantalla a 360 px.
+  - Anillo de marca siempre visible y sutil (`.brand-glow-always`, opacidad 0,7). La foto
+    activa (`data-active="true"`) suma anillo completo, halo y luz giratoria.
+  - Ciclo con `useRotatingHighlight(5, 3000, { resumeDelayMs: 1500 })`, el mismo hook que
+    `WhyUsSection`: equipo → torre → técnico → tablero → río, una foto a la vez. Hover
+    salta el destello a esa foto y pausa el ciclo; al salir se reanuda tras 1,5 s. Táctil:
+    ciclo automático y un toque activa esa foto y pausa 6 s (`TOUCH_PAUSE_MS`). Las fotos
+    no son interactivas, así que no se les añadió foco de teclado.
+  - Fuera de pantalla: `data-animations-paused` en la cuadrícula (con `isInView` del mismo
+    hook; el ref se comparte con `useNearViewport` mediante un ref combinado) y el ciclo
+    también se pausa. Solo una luz giratoria activa a la vez; todo es `transform` y
+    `opacity`.
+  - Por debajo de 768 px y con movimiento reducido el CSS global ya oculta la luz giratoria
+    (`.brand-glow-ring-light`, igual que en «¿Por qué?»): en celular el destello es anillo
+    completo + halo. Con `prefers-reduced-motion` además no hay ciclo (`data-active` nunca
+    se activa): borde estático y solo hover con fundido (`brand-glow-hover`).
+  - Modo daltónico: la foto activa lleva contorno doble de 3 px
+    (`[data-colorblind-mode="true"] .about-photo[data-active="true"]`), como las tarjetas de
+    «¿Por qué?».
+  - Medición (Lighthouse 12.8.2, build de producción, corridas intercaladas del commit
+    anterior y del nuevo): móvil, mediana de 5, 75 antes (67-82) y 71 ahora (66-78); LCP
+    3,8 s y FCP 2,5 s en ambos; peso 497 y 498 KiB. Escritorio (3 corridas): 90 y 91.
+    La máquina es muy ruidosa (una primera tanda quedó invalidada por trabajo en paralelo),
+    así que la diferencia de pocos puntos no es concluyente.
 - **`content-visibility`:** `--section-estimated-height` de `#nosotros` medido con el
   mosaico: 2.800 px por debajo de 768 px (2.691 a 2.856), 2.250 px entre 768 y 1023
   (antes 1.750) y 1.750 px de 1024 a 1279 (sin cambio: manda la columna de texto);

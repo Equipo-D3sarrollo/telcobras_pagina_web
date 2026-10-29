@@ -374,6 +374,11 @@
   outline-offset: -6px;
 }
 
+[data-colorblind-mode="true"] .about-photo[data-active="true"] {
+  outline: 3px double #fff;
+  outline-offset: -6px;
+}
+
 [data-colorblind-mode="true"] [aria-invalid="true"] {
   outline: 3px dashed currentColor;
   outline-offset: 3px;
