@@ -490,6 +490,42 @@ o Remix: la guía local está en `src/routes/README.md`.
 - Hero de inicio: badge «Sede Principal en Cali • Cobertura Nacional», titular con
   degradado de marca, dos CTA (`#contacto` y `#servicios`) y eslogan «Una nueva forma
   de entender las redes».
+- **Isotipo en el eslogan (29-10-2026):** en lugar de los tres puntos de colores, el
+  «Slogan Pill» lleva `<BrandIsotipo />` (`src/components/BrandIsotipo.tsx`), el isotipo de
+  las tres velas dibujado **en línea** (SVG con tres `<path>`; no es una `<img>`, para
+  animar cada vela). Es decorativo: `aria-hidden="true"`, `focusable="false"`, sin título.
+  Mide 24 px de alto en móvil (`h-6 w-[0.91rem]`) y 28 px desde `sm` (`sm:h-7
+  sm:w-[1.06rem]`), con ancho fijo (viewBox `1 1 77 127`), centrado verticalmente con el
+  texto; el resto del Slogan Pill (texto, colores, centrado en móvil / izquierda en `lg`)
+  no cambió. Sin requests nuevos, sin CLS y sin tocar el LCP, el preload ni las fuentes.
+  - **Origen de los paths:** no existía `src/assets/isotipo-telcobras.svg` (ni la carpeta),
+    así que se vectorizó desde `public/images/logo.png` (recorte de las velas, x < 80 px):
+    pertenencia continua por color a verde `#1dab66`, amarillo `#f3cf28` y azul `#0087c3`,
+    suavizado, trazado de bézier (potracer) y un contorno por vela; las velas verde y azul se
+    extienden 2 px bajo el amarillo para que no haya costuras. Orden de dibujo: verde, azul,
+    amarillo (el amarillo va delante, como en el logo). A 28 px las diferencias con el logo
+    son de fracciones de píxel; si gerencia entrega el SVG vectorial original, basta
+    sustituir las tres cadenas `d` del componente (`VELAS`).
+  - **Iluminación secuencial** (solo CSS, `.brand-isotipo-glow*` al final de `styles.css`):
+    detrás de cada vela hay una copia con su color, borde ensanchado y un único filtro SVG
+    `feGaussianBlur` estático (id único con `useId`). Una keyframe compartida de 3 s
+    (`brand-isotipo-glow`) anima **solo la opacidad** del halo, con `animation-delay` de 0 s
+    (verde), 1 s (amarillo) y 2 s (azul): cada vela enciende en 0,3 s, se mantiene y se
+    apaga mientras la siguiente se enciende. Las velas siempre se ven con su color normal;
+    no se anima `filter`, `box-shadow` ni el desenfoque.
+  - **Movimiento reducido:** `@media (prefers-reduced-motion: reduce)` quita la animación y
+    deja el halo en opacidad 0 (isotipo estático). El panel de accesibilidad del sitio no
+    tiene una preferencia de movimiento propia, así que no hay otra condición. En celular la
+    animación sigue activa (la regla global que detiene animaciones decorativas por debajo
+    de 768 px no incluye estas clases).
+  - Verificado a 360, 768, 1280 y 1440 px (ES y EN, tema claro y oscuro): una sola línea,
+    centro del isotipo y del texto a la misma altura, sin desborde, secuencia verde →
+    amarillo → azul con fundido cruzado y estático con movimiento reducido.
+  - **Lighthouse** (12.8.2, build de producción, corridas intercaladas del commit anterior
+    y del nuevo): móvil, mediana de 5, 66 antes (60-75) y 74 ahora (72-77); LCP 3,8 s y
+    FCP 2,5 s en ambos; peso 498 y 501 KiB. Escritorio (3 corridas): 80 y 84. La máquina es
+    muy ruidosa, así que las diferencias de puntos no son concluyentes; no hay cambio en
+    LCP/FCP y el peso sube 3 KiB.
 - Fondo de video `/video_inicio.mp4`.
 - Tarjeta lateral con rotación automática de tres imágenes (`HERO_SLIDES`:
   `HERO_IMAGE`, `TECHNICIAN_IMAGE`, `CALI_IMAGE`) cada 4 segundos y una tarjeta

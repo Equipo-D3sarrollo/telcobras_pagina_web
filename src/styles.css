@@ -1868,3 +1868,45 @@
     scroll-margin-top: 7.5rem;
   }
 }
+
+/* Isotipo del eslogan del hero (BrandIsotipo): iluminación secuencial verde → amarillo →
+   azul. Una sola keyframe de 3 s compartida, con retraso de 0 s / 1 s / 2 s por vela; el
+   halo de cada vela (copia desenfocada con un filtro SVG estático) enciende y apaga solo
+   su opacidad, de modo que mientras una se apaga la siguiente se enciende. Las velas
+   siempre se ven con su color normal. */
+.brand-isotipo-glow {
+  opacity: 0;
+  animation: brand-isotipo-glow 3s linear infinite;
+}
+
+.brand-isotipo-glow--amarillo {
+  animation-delay: 1s;
+}
+
+.brand-isotipo-glow--azul {
+  animation-delay: 2s;
+}
+
+@keyframes brand-isotipo-glow {
+  0% {
+    opacity: 0;
+  }
+
+  10%,
+  28% {
+    opacity: 0.9;
+  }
+
+  40%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Movimiento reducido: isotipo estático, sin halo intermitente. */
+@media (prefers-reduced-motion: reduce) {
+  .brand-isotipo-glow {
+    animation: none;
+    opacity: 0;
+  }
+}

@@ -12,6 +12,7 @@ import { CALI_IMAGE, HERO_IMAGE, HERO_IMAGE_SIZES, TECHNICIAN_IMAGE } from "@/li
 import { useRotatingHighlight } from "@/hooks/use-rotating-highlight";
 import { BrandGlowBorder } from "./BrandGlowBorder";
 import { BackgroundVideo } from "./BackgroundVideo";
+import { BrandIsotipo } from "./BrandIsotipo";
 import { ResponsivePicture } from "./ResponsivePicture";
 import { whenLcpImagePainted } from "@/lib/when-lcp-painted";
 import { useTranslations } from "@/lib/accessibility-preferences-context";
@@ -149,11 +150,7 @@ export function HeroAndMetrics() {
 
               {/* Slogan Pill */}
               <div className="flex items-center justify-center gap-3 pt-4 text-xs font-bold text-slate-300 sm:text-sm lg:justify-start">
-                <div className="flex -space-x-1">
-                  <span className="w-3 h-3 rounded-full bg-[#88BD4C] border-2 border-[#0A192F]" />
-                  <span className="w-3 h-3 rounded-full bg-[#F3CB35] border-2 border-[#0A192F]" />
-                  <span className="w-3 h-3 rounded-full bg-[#0087C3] border-2 border-[#0A192F]" />
-                </div>
+                <BrandIsotipo className="h-6 w-[0.91rem] sm:h-7 sm:w-[1.06rem]" />
                 <span className="min-w-0 break-words text-sky-200 italic tracking-wide">
                   {t.slogan}
                 </span>
