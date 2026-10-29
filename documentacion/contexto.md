@@ -607,6 +607,42 @@ Compone cuatro bloques, en este orden:
   colorea el icono y muestra una barra de señal a la izquierda.
 - Colores por tarjeta: Instalación `#0087C3`, Soporte `#F3CB35`, Compromiso
   `#88BD4C`, Soluciones `#1a6f9c`, Acompañamiento `#6A9D32`.
+- **Color y contraste de las tarjetas (29-10-2026):** antes, con tema oscuro o «Sistema»
+  con el SO en oscuro, las reglas globales del tema convertían `text-slate-900/600` en
+  texto claro (`--foreground`, `--text-secondary`) pero el fondo seguía siendo el
+  tinte mezclado con **blanco** fijo: texto casi blanco sobre fondo casi blanco
+  (ilegible, p. ej. «Soporte técnico 24/7»). Ahora (`src/styles.css`, antes de
+  `.diff-card`):
+  - `--diff-card-surface`: `#ffffff` en claro y `#10284a` (marino de la tarjeta
+    destacada) en oscuro. Se define con los mismos selectores de la paleta
+    (`.dark, :root[data-theme="dark"]` y `@media (prefers-color-scheme: dark)` con
+    `:root[data-theme="system"]`). `.diff-card-tint-base` y `.diff-card-tint` mezclan
+    `--node-color` con esa variable (`color-mix`), no con `white`.
+  - Porcentajes de `--node-color` (de la esquina superior izquierda a la inferior
+    derecha, `--diff-tint-*`): claro, reposo 22 % → 16 % (antes 10 % → 4 %) y activa
+    34 % → 24 % (antes 24 % → 11 %); oscuro, reposo 24 % → 17 % y activa 34 % → 24 %.
+  - Texto con clases propias `.diff-card-title` y `.diff-card-text` (ya no
+    `text-slate-900/600`, así que no hace falta `!important`): claro `#0A192F` y
+    `#334155` (slate-700); oscuro `#ffffff` y `#e2e8f0` (slate-200).
+  - Acento fijo: `.diff-card::after`, franja de 3 px en el borde superior (de
+    `--node-color` a 25 % transparente, con 1,75 rem de margen a cada lado), siempre
+    visible y encima del tinte activo; no toca la señal izquierda.
+  - Sin cambios: ciclo, `scale` 0,94/1,03 y su transición, `.diff-card-glow`,
+    `.diff-card-signal`, iconos, `BrandGlowBorder`, tarjeta destacada, ilustración,
+    reveal, modo daltónico (contorno doble de 3 px en la activa) y movimiento reducido.
+    Las transiciones de tinte, glow y señal siguen siendo solo de opacidad.
+  - Contraste WCAG (peor caso entre los dos extremos del degradado; AA ≥ 4,5):
+    | Tarjeta | Claro reposo (título / desc.) | Claro activa | Oscuro reposo | Oscuro activa |
+    |---|---|---|---|---|
+    | Instalación | 13,30 / 7,82 | 11,32 / 6,66 | 10,95 / 8,88 | 9,56 / 7,76 |
+    | Soporte (amarilla) | 15,91 / 9,36 | 15,06 / 8,86 | 8,50 / 6,89 | 6,56 / 5,32 |
+    | Acompañamiento | 14,04 / 8,26 | 12,32 / 7,25 | 10,53 / 8,54 | 8,98 / 7,29 |
+    | Soluciones | 12,87 / 7,57 | 10,69 / 6,29 | 11,84 / 9,61 | 10,73 / 8,71 |
+    | Compromiso | 14,95 / 8,79 | 13,63 / 8,02 | 9,38 / 7,61 | 7,61 / 6,18 |
+
+    El mínimo es 5,32 (Soporte activa en oscuro; con 40 % → 28 % bajaba a 4,57, por eso
+    la activa en oscuro usa 34 % → 24 %). Calculado con las fórmulas de WCAG sobre la
+    mezcla sRGB de `color-mix`; los colores computados en el navegador coinciden.
 - Cierre «¿Quieres conocer nuestra red?» con botón verde «Hablemos» → `#contacto`.
 - Los textos de los diferenciales se acortaron (≤ ~110 caracteres) y los IDs son
   estables: `instalacion-15-dias`, `soporte-24-7`, `acompanamiento-cercano`,

@@ -807,9 +807,73 @@
 /* Diferenciales sincronizados con la ilustración de red (WhyUsSection).
    Cada tarjeta define --node-color; la activa (data-node-active) recibe tinte,
    borde, glow, icono y señal en ese color. Todo cambia solo con opacidad. */
+/* Superficie y texto de las tarjetas: el tinte se mezcla con --diff-card-surface (no con
+   blanco fijo) para que el texto, que cambia con el tema, siempre contraste con el
+   fondo. Claro: blanco y texto marino. Oscuro (y "Sistema" con el SO en oscuro; mismos
+   selectores que el resto de la paleta): marino de marca como la tarjeta destacada y
+   texto claro. --diff-tint-* son los % de --node-color en reposo (base) y activa. */
+:root {
+  --diff-card-surface: #ffffff;
+  --diff-card-title: #0a192f;
+  --diff-card-text: #334155;
+  --diff-tint-base-from: 22%;
+  --diff-tint-base-to: 16%;
+  --diff-tint-from: 34%;
+  --diff-tint-to: 24%;
+}
+
+.dark,
+:root[data-theme="dark"] {
+  --diff-card-surface: #10284a;
+  --diff-card-title: #ffffff;
+  --diff-card-text: #e2e8f0;
+  --diff-tint-base-from: 24%;
+  --diff-tint-base-to: 17%;
+  --diff-tint-from: 34%;
+  --diff-tint-to: 24%;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-theme="system"] {
+    --diff-card-surface: #10284a;
+    --diff-card-title: #ffffff;
+    --diff-card-text: #e2e8f0;
+    --diff-tint-base-from: 24%;
+    --diff-tint-base-to: 17%;
+    --diff-tint-from: 34%;
+    --diff-tint-to: 24%;
+  }
+}
+
 .diff-card {
   scale: 0.94;
   transition: scale 500ms ease-in-out;
+}
+
+.diff-card-title {
+  color: var(--diff-card-title);
+}
+
+.diff-card-text {
+  color: var(--diff-card-text);
+}
+
+/* Acento fijo del color de cada tarjeta (siempre visible, encima del tinte activo):
+   franja de 3 px en el borde superior, lejos de la señal izquierda. */
+.diff-card::after {
+  content: "";
+  position: absolute;
+  top: -1px;
+  right: 1.75rem;
+  left: 1.75rem;
+  height: 3px;
+  border-radius: 0 0 4px 4px;
+  background: linear-gradient(
+    90deg,
+    var(--node-color),
+    color-mix(in srgb, var(--node-color) 25%, transparent)
+  );
+  pointer-events: none;
 }
 
 .diff-card[data-node-active="true"] {
@@ -846,16 +910,16 @@
   pointer-events: none;
   background: linear-gradient(
     135deg,
-    color-mix(in srgb, var(--node-color) 10%, white) 0%,
-    color-mix(in srgb, var(--node-color) 4%, white) 100%
+    color-mix(in srgb, var(--node-color) var(--diff-tint-base-from), var(--diff-card-surface)) 0%,
+    color-mix(in srgb, var(--node-color) var(--diff-tint-base-to), var(--diff-card-surface)) 100%
   );
 }
 
 .diff-card-tint {
   background: linear-gradient(
     135deg,
-    color-mix(in srgb, var(--node-color) 24%, white) 0%,
-    color-mix(in srgb, var(--node-color) 11%, white) 100%
+    color-mix(in srgb, var(--node-color) var(--diff-tint-from), var(--diff-card-surface)) 0%,
+    color-mix(in srgb, var(--node-color) var(--diff-tint-to), var(--diff-card-surface)) 100%
   );
 }
 
