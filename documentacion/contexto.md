@@ -760,13 +760,50 @@ política legal aprobada.
   lee una existente; si no hay, se crea con `crypto.randomUUID()` al enviar el primer
   mensaje (`ensureSessionId`), así quien no usa el chat no guarda nada. Si el acceso a
   `localStorage` falla, usa el UUID en memoria y registra el error.
-- Al abrir el panel y al terminar la petición enfoca el input; desplaza el log al
-  mensaje más reciente.
+- En escritorio (puntero fino), al abrir el panel y al terminar la petición enfoca el
+  input; desplaza el log al mensaje más reciente. En táctil (`(pointer: coarse)`) el
+  input **no** se enfoca al abrir (abriría el teclado y taparía el saludo): el foco va
+  al diálogo (`tabIndex={-1}`, para lectores de pantalla) y el teclado aparece cuando
+  la persona toca el input; tras enviar un mensaje el foco sí vuelve al input
+  (`hasSentRef`).
+- **Chat en celular, < 640 px (29-10-2026):** antes el panel era `fixed inset-x-3 top-12
+  bottom-16`, no se adaptaba al teclado (encabezado y saludo quedaban fuera de vista) y
+  el botón X flotante se montaba sobre el botón Enviar. Ahora, solo por debajo de `sm`:
+  - Pantalla completa (`.chatbot-panel` en `styles.css`): `top/right/left` 0, sin
+    bordes redondeados (`sm:rounded-2xl`), alto `100vh` con `100dvh` bajo `@supports`,
+    y zonas seguras con `env(safe-area-inset-*)` (relleno lateral, `padding-top` del
+    encabezado y `padding-bottom` del formulario). El encabezado azul siempre queda
+    arriba y el log tiene su propio scroll (`overscroll-contain`).
+  - Adaptación al teclado: un efecto fija las variables `--chatbot-vv-height` y
+    `--chatbot-vv-top` del panel desde `window.visualViewport` (eventos `resize` y
+    `scroll`; fuente de verdad, también cubre el desplazamiento de iOS) y, al cambiar el
+    tamaño, baja al último mensaje. No se añadió `interactive-widget=resizes-content` al
+    `<meta viewport>`: afectaría a todas las páginas y formularios del sitio y con
+    `visualViewport` no hace falta.
+  - Mientras está abierto: se oculta el botón flotante del robot/X (`max-sm:hidden`; se
+    cierra con la X del encabezado, de 44×44 px), se oculta el botón de ampliar y el
+    scroll de `html`/`body` queda bloqueado (`overflow: hidden`, restaurado al cerrar).
+    El panel sube a `z-[65]` solo en celular: el widget de accesibilidad es `z-[60]` y
+    tapaba el borde izquierdo del formulario; el banner de cookies (`z-[70]`) sigue por
+    encima.
+  - Botón Enviar de 44×44 px (ya lo era) y input a 16 px (`max-sm:text-base`) para que
+    iOS no haga zoom al enfocarlo.
+  - Escape cierra el chat y, al cerrar (Escape o X), el foco vuelve al botón del robot.
+    Antes no había manejador de Escape (solo el menú de accesibilidad lo tenía); se añadió
+    para todos los tamaños.
+  - Sin cambios: lógica de mensajes, webhook, textos ES/EN, burbuja de invitación,
+    animación del robot, modo expandido de escritorio (inset 16/16/72 px), tema oscuro,
+    modo daltónico y movimiento reducido. En escritorio el panel sigue en 380 px ×
+    `min(720px, 100vh − 10rem)`, a 20 px del borde derecho y 144 px del inferior.
+  - Hook nuevo `src/hooks/use-media-query.ts`. Verificado a 360×740 y 390×844 con
+    emulación táctil (CDP, `pointer: coarse`) y el teclado simulado reduciendo
+    `visualViewport` (panel de 429 px con el encabezado, el saludo y el formulario a la
+    vista): sin teclado al abrir, la rueda no mueve la página, nada tapa el panel.
 - Enviar mensaje hace `POST /api/chat` con JSON `{ session_id, mensaje }`; espera
   `{ respuesta_bot: string }`. El texto del bot se normaliza con `formatBotText`
   (unifica saltos de línea y quita los de los extremos).
 - El input se deshabilita durante la petición o mientras se inicializa la sesión.
-- El panel se amplió verticalmente: casi toda la altura disponible en móvil y hasta
+- El panel se amplió verticalmente: pantalla completa en móvil (ver arriba) y hasta
   720 px en escritorio, limitado por altura de viewport.
 - Los mensajes de error del backend se traducen al idioma seleccionado mediante el
   catálogo de chatbot, incluido `agent_response_unavailable`. Cada mensaje del historial

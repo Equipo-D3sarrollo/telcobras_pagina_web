@@ -551,6 +551,35 @@
   animation: chatbot-robot-vibrate 1.8s ease-in-out infinite;
 }
 
+/* Chat en celular (< 640 px): pantalla completa. La altura y el desplazamiento salen de
+   window.visualViewport (variables que fija FloatingChatbot; con el teclado abierto el
+   área visible es menor); sin ellas, 100dvh con respaldo en 100vh. El encabezado y el
+   formulario respetan las zonas seguras. Desde sm el panel conserva sus clases. */
+@media (max-width: 639px) {
+  .chatbot-panel {
+    top: var(--chatbot-vv-top, 0px);
+    right: 0;
+    left: 0;
+    height: var(--chatbot-vv-height, 100vh);
+    padding-right: env(safe-area-inset-right);
+    padding-left: env(safe-area-inset-left);
+  }
+
+  @supports (height: 100dvh) {
+    .chatbot-panel {
+      height: var(--chatbot-vv-height, 100dvh);
+    }
+  }
+
+  .chatbot-header {
+    padding-top: calc(1rem + env(safe-area-inset-top));
+  }
+
+  .chatbot-form {
+    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+  }
+}
+
 .ally-logo-rotation {
   animation: ally-logo-rotation 5s ease-in-out infinite;
   transform-origin: center;
