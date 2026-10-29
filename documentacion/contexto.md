@@ -513,6 +513,11 @@ o Remix: la guía local está en `src/routes/README.md`.
   (movido desde la raíz el 27-10-2026, antes daba 404).
 - Las animaciones de borde de Misión/Visión usan clases `motion-safe:`; considerar
   accesibilidad al modificarlas.
+- **Mosaico de fotos (28-10-2026):** en la columna derecha del primer grid (desde
+  1024 px; debajo del texto en móvil y tablet), encima del video y su capa blanca.
+  Cinco `<figure>` con `ResponsivePicture` (datos en `ABOUT_PHOTOS` de
+  `telcobras-data.ts`, rótulos y `alt` en `translations.ts`, `about.photos`). Ver
+  «Imágenes de Quiénes Somos» en la sección 10.
 
 ### `src/components/ServicesSection.tsx`
 
@@ -722,7 +727,8 @@ antes de crear un control nuevo, revisar si ya existe una primitiva apropiada.
 Fuente de verdad para:
 
 - Imágenes propias (`ResponsiveImage` = base en `public/images/` + anchos):
-  `LOGO_IMAGE`, `HERO_IMAGE`, `TECHNICIAN_IMAGE`, `CALI_IMAGE`, `PROJECT_IMAGE_WIDTHS`
+  `LOGO_IMAGE`, `HERO_IMAGE`, `TECHNICIAN_IMAGE`, `CALI_IMAGE`, `ABOUT_PHOTOS` (mosaico de
+  Quiénes Somos, con `AboutPhotoId`), `PROJECT_IMAGE_WIDTHS`
   (el campo `imagen` de cada proyecto es su base) y `HERO_IMAGE_SIZES`. URLs absolutas
   del dominio para usos externos: `SITE_URL`, `LOGO_URL` (`/images/logo.png`, JSON-LD)
   y `OG_IMAGE_URL` (`/images/og.jpg`, `og:image` y `twitter:image` de las 4 rutas).
@@ -1057,6 +1063,61 @@ estaban versionados en Git. `video_tel.mp4`, que antes estaba solo en la raíz y
 Los archivos de la carpeta `public/` se sirven desde raíz (por ejemplo,
 `public/video_inicio.mp4` se solicita como `/video_inicio.mp4`). Ya no hay copias de
 medios en la raíz del repositorio (se eliminaron el 27-10-2026, ver pendiente 23).
+
+### Imágenes de Quiénes Somos
+
+Mosaico (28-10-2026) con cinco fotos de la empresa en `public/images/quienes-somos/`
+(20 archivos: AVIF y WebP en dos anchos; se entregaron ya comprimidos y no se
+recomprimen):
+
+| Foto | Anchos | Proporción | Rótulo ES / EN |
+|---|---|---|---|
+| `equipo-centro-gestion` | 640, 960 | 4:3 | Centro de Gestión 24/7 / 24/7 Network Operations Center |
+| `torre-telecomunicaciones` | 360, 600 | 3:4 | Infraestructura propia / Our own infrastructure |
+| `tecnico-campo` | 360, 600 | 3:4 | Personal certificado en campo / Certified field technicians |
+| `tablero-automatizacion` | 360, 600 | 3:4 | Automatización y control / Automation and control |
+| `radioenlace-rio` | 480, 800 | 4:3 | Radioenlaces y fibra óptica / Microwave links and fiber optics |
+
+Criterios:
+
+- **Composición:** cuadrícula CSS de 6 × 5 desde `md` (equipo 4 × 3 y torre 2 × 3
+  arriba; técnico, tablero y río 2 × 2 abajo; celdas de altura pareja, `object-cover`).
+  En móvil, 2 columnas: equipo a todo el ancho (4:3) y las otras cuatro cuadradas.
+  En tablet el mosaico se limita a `max-w-2xl` y centra; sin huecos. Estilo de las
+  tarjetas del sitio: `rounded-3xl`, borde `white/70` y sombra suave; rótulo sobre
+  degradado oscuro (`slate-950/85` a transparente).
+- **Rendimiento:** `width`/`height` del archivo grande y proporción fija en la celda
+  (CLS 0); `loading="lazy"`, `decoding="async"`, sin `fetchpriority` ni preload; `sizes`
+  por celda (equipo 390 px a 1280, 444 en tablet; pequeñas 190 px; `calc(100vw - 3rem)`
+  y `calc((100vw - 3.75rem) / 2)` en móvil). Se descargan las versiones pequeñas en AVIF
+  (equipo 640, torre/técnico/tablero 360, río 480): **100,8 KiB** a 1x (WebP 168,9;
+  a 2x: AVIF 216,1 KiB).
+- **No se piden durante la carga:** `#nosotros` queda justo bajo el hero y Chrome trata
+  como «cercano» (hasta ~2.500 px en conexión lenta) lo que lleva `loading="lazy"`; con
+  solo ese atributo las 5 fotos bajaban con la carga (+104 KiB, 494 a 598 KiB, y
+  Lighthouse móvil 76 frente a 81). `useNearViewport` (`src/hooks/use-near-viewport.ts`,
+  `IntersectionObserver` con 100 px) monta las `<img>` solo al acercarse al mosaico; las
+  celdas reservan el espacio. Consecuencia: el HTML renderizado en servidor no incluye
+  esas `<img>` (sí los rótulos).
+- **Hover:** `motion-safe:group-hover:scale-[1.04]` con transición de 0,5 s (Tailwind v4
+  usa la propiedad `scale`); con `prefers-reduced-motion` no se aplica.
+- **`content-visibility`:** `--section-estimated-height` de `#nosotros` medido con el
+  mosaico: 2.800 px por debajo de 768 px (2.691 a 2.856), 2.250 px entre 768 y 1023
+  (antes 1.750) y 1.750 px de 1024 a 1279 (sin cambio: manda la columna de texto);
+  1.540 px desde 1280 como antes.
+- La CSP no cambia (imágenes del mismo dominio).
+
+Medición (28-10-2026, build de producción con Wrangler, Lighthouse 12.8.2, corridas
+intercaladas del commit anterior y del nuevo; reportes del nuevo en
+`documentacion/lighthouse/2026-10-28-quienes-somos/`). Móvil, 5 corridas: antes
+82/42/46/82/82 (mediana **82**), ahora 79/49/81/81/83 (mediana **81**); LCP 3,5 y 3,4 s;
+TBT 216 y 224 ms; CLS 0 (aparece 0,029 en 1 de 5 corridas antes y en 2 de 5 ahora);
+peso 495 y 496 KiB. Escritorio, 3 corridas: antes 92/93/76 (mediana 92), ahora
+88/87/69 (mediana 87); peso 1.217 y 1.218 KiB. La máquina de medición es muy ruidosa
+(valores sueltos de 42 a 49 con TBT de más de 1 s, también en el commit anterior), así
+que las diferencias de pocos puntos no son concluyentes. En Lighthouse no se descarga
+ninguna foto del mosaico (0 peticiones), por lo que el peso que agrega la sección solo
+se paga al llegar a ella.
 
 ### Imágenes
 

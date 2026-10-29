@@ -258,3 +258,40 @@ export const PROYECTOS_DATA: ProyectoItem[] = [
     destacado: false,
   },
 ];
+
+/**
+ * Mosaico de fotos de «Quiénes Somos» (`public/images/quienes-somos/`). `width`/`height`
+ * son el tamaño del archivo más grande y reservan la proporción; `widths` lista los dos
+ * anchos disponibles de cada foto en AVIF y WebP.
+ */
+export type AboutPhotoId = "equipo" | "torre" | "tecnico" | "tablero" | "rio";
+export const ABOUT_PHOTOS: Record<
+  AboutPhotoId,
+  { image: ResponsiveImage; width: number; height: number }
+> = {
+  equipo: {
+    image: { base: "/images/quienes-somos/equipo-centro-gestion", widths: [640, 960] },
+    width: 960,
+    height: 720,
+  },
+  torre: {
+    image: { base: "/images/quienes-somos/torre-telecomunicaciones", widths: [360, 600] },
+    width: 600,
+    height: 800,
+  },
+  tecnico: {
+    image: { base: "/images/quienes-somos/tecnico-campo", widths: [360, 600] },
+    width: 600,
+    height: 800,
+  },
+  tablero: {
+    image: { base: "/images/quienes-somos/tablero-automatizacion", widths: [360, 600] },
+    width: 600,
+    height: 800,
+  },
+  rio: {
+    image: { base: "/images/quienes-somos/radioenlace-rio", widths: [480, 800] },
+    width: 800,
+    height: 600,
+  },
+};

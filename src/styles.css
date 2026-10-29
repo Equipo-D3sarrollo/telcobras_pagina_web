@@ -1642,7 +1642,7 @@
 }
 
 #nosotros {
-  --section-estimated-height: 2260px;
+  --section-estimated-height: 2800px;
 }
 #servicios {
   --section-estimated-height: 2470px;
@@ -1665,7 +1665,7 @@
 
 @media (min-width: 768px) {
   #nosotros {
-    --section-estimated-height: 1750px;
+    --section-estimated-height: 2250px;
   }
   #servicios {
     --section-estimated-height: 2060px;
@@ -1684,6 +1684,12 @@
   }
   #ubicacion {
     --section-estimated-height: 890px;
+  }
+}
+
+@media (min-width: 1024px) {
+  #nosotros {
+    --section-estimated-height: 1750px;
   }
 }
 
