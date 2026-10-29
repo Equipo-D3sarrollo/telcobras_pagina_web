@@ -68,8 +68,8 @@ export function ServicesSection() {
         </div>
 
         {/* Tab Buttons */}
-        <div className="services-tabs mx-auto mb-10 max-w-4xl snap-x snap-mandatory overflow-x-auto rounded-2xl border border-slate-200/80 bg-white/60 p-1.5 shadow-[0_10px_30px_-18px_rgba(10,25,47,0.35)] backdrop-blur-md">
-          <div className="relative grid min-w-[36rem] grid-cols-5 md:min-w-0">
+        <div className="services-tabs mx-auto mb-10 max-w-4xl rounded-2xl md:snap-x md:snap-mandatory md:overflow-x-auto border border-slate-200/80 bg-white/60 p-1.5 shadow-[0_10px_30px_-18px_rgba(10,25,47,0.35)] backdrop-blur-md">
+          <div className="relative grid grid-cols-6 gap-1.5 md:min-w-0 md:grid-cols-5 md:gap-0">
             <span
               aria-hidden="true"
               className="services-tab-indicator"
@@ -87,7 +87,9 @@ export function ServicesSection() {
                   aria-pressed={isActive}
                   aria-controls="servicios-panel"
                   style={serviceColorStyle(s.id)}
-                  className={`services-tab relative z-[1] flex snap-start items-center justify-center gap-2 rounded-xl px-3 py-3 text-xs font-extrabold transition-colors duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0A192F] sm:text-sm ${
+                  className={`services-tab relative z-[1] flex snap-start flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-center text-xs font-extrabold transition-colors duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0A192F] max-[380px]:text-[0.6875rem] max-md:min-h-11 max-md:leading-tight md:min-h-0 md:flex-row md:gap-2 md:px-3 md:py-3 sm:text-sm ${
+                    idx < 3 ? "col-span-2" : "col-span-3"
+                  } md:col-span-1 ${
                     isActive
                       ? "text-white"
                       : "text-slate-700 hover:bg-white/70 hover:text-[#0A192F]"
@@ -95,7 +97,7 @@ export function ServicesSection() {
                 >
                   <span
                     aria-hidden="true"
-                    className={`text-[0.625rem] font-bold tabular-nums transition-colors duration-300 ${
+                    className={`text-[0.625rem] font-bold tabular-nums transition-colors duration-300 max-md:hidden ${
                       isActive ? "text-slate-300" : "text-slate-500"
                     }`}
                   >
@@ -107,7 +109,10 @@ export function ServicesSection() {
                   />
                   {translated.title.split(" ")[0]}
                   {isActive && (
-                    <CheckCircle2 aria-hidden="true" className="services-tab-selected h-4 w-4" />
+                    <CheckCircle2
+                      aria-hidden="true"
+                      className="services-tab-selected h-4 w-4 max-md:hidden"
+                    />
                   )}
                 </button>
               );

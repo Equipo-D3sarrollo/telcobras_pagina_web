@@ -534,6 +534,28 @@ o Remix: la guía local está en `src/routes/README.md`.
 - Interfaz con dos formas de selección sincronizadas: una barra de pestañas
   (`services-tabs` / `services-tab` / `services-tab-indicator`) y una cuadrícula de
   5 tarjetas (`services-card`) que también cambia el servicio y marca el activo.
+- **Pestañas en celular (29-10-2026):** antes, por debajo de 768 px el grid interno tenía
+  `min-w-[36rem]` y `grid-cols-5`: a 360 px las pestañas quedaban amontonadas y la barra
+  hacía scroll horizontal (262 px de desplazamiento). Ahora, solo por debajo de `md`:
+  - Grid de 6 columnas con `gap-1.5` (6 px): las tres primeras pestañas ocupan 2
+    columnas y las dos últimas 3, es decir, dos filas (3 + 2) a todo el ancho. Ya no hay
+    `min-w` ni `overflow-x-auto` (el scroll y el `snap` quedan solo desde `md`).
+  - Cada pestaña apila ícono y nombre (`flex-col`, centrado, `leading-tight`), con
+    `min-h-11` (44 px). Se ocultan el número (01…05) y el `CheckCircle2` de la activa
+    (`max-md:hidden`). El nombre puede saltar de línea (en inglés «High-Availability»
+    se parte tras el guion) y por debajo de 380 px baja a 11 px; nunca se corta con «…».
+    Medido a 320, 360, 390, 414 y 767 px en ES y EN: sin scroll horizontal ni recortes;
+    alturas 44-51 px en español y 51-64 px en inglés.
+  - `.services-tab-indicator` se oculta (su `translateX` de 20 % solo sirve en una
+    fila) y la activa usa el fondo propio `.services-tab::before` (#0a192f con borde
+    degradado de marca) con fundido de opacidad, el mismo mecanismo que con movimiento
+    reducido (bloque `@media (max-width: 767px)` al final de la sección de estilos).
+  - Sin cambios: desde `md` la barra mide y se comporta exactamente igual (comparadas las
+    dimensiones y posiciones de las 5 pestañas a 768, 1280 y 1440 px en ES y EN y en modo
+    daltónico, con el indicador deslizante); `aria-pressed`, `aria-controls`, foco
+    visible, modo daltónico (contorno doble + subrayado), movimiento reducido, tema
+    oscuro, lógica de `activeTab`, colores por servicio y panel del video. Preexistente:
+    a 768 px en inglés «Comprehensive» no cabe del todo en su pestaña (141 px).
 - Cambia automáticamente al siguiente servicio cada 30 segundos. La selección manual
   por pestañas/tarjetas también se conserva; el intervalo sigue rotando desde la
   selección actual.

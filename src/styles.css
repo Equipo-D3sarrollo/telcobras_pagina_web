@@ -1654,6 +1654,23 @@
   }
 
 }
+
+/* Celular: las 5 pestañas van en dos filas (3 + 2) y no hay indicador deslizante (su
+   translateX de 20 % solo sirve en una fila); la activa usa su fondo propio con fundido
+   de opacidad, como con movimiento reducido. Desde md no cambia nada. */
+@media (max-width: 767px) {
+  .services-tab-indicator {
+    display: none;
+  }
+
+  .services-tab::before {
+    display: block;
+  }
+
+  .services-tab[aria-pressed="true"]::before {
+    opacity: 1;
+  }
+}
 /* === Fin ServicesSection === */
 
 /*
