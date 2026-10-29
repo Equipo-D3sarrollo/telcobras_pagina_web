@@ -573,6 +573,13 @@ Compone cuatro bloques, en este orden:
 
 1. `#inteligencia-artificial`: presentación de inteligencia artificial y video de fondo
    `/video_inicio.mp4` (definido en este archivo).
+   Desde el 29-10-2026 ese video se ve **girado 180°** (`rotate-180` en el `className`
+   de esa instancia de `BackgroundVideo`; no cambia el componente ni las demás secciones).
+   El póster (`/video_inicio.webp`) es el atributo `poster` del mismo `<video>`, así que
+   gira con él (también en móvil y con movimiento reducido, donde se queda en el póster)
+   y no hay salto al cargar. El overlay, los textos y los círculos decorativos no giran;
+   el video sigue cubriendo toda la sección (`object-cover`, sin bordes vacíos). El archivo
+   no se re-codificó.
 2. `#proyectos`: `<ProjectsSection />`.
 3. `#por-que`: `<WhyUsSection />`.
 4. «Alianzas y Ecosistema Tecnológico» (definido en este archivo): heading destacado,
@@ -1099,7 +1106,7 @@ En `public/` se encontraron:
 
 | Recurso | Uso |
 |---|---|
-| `video_inicio.mp4` | Fondos de Inicio, Inteligencia Artificial y «¿Por qué TELCOBRAS?» (girado 90°) |
+| `video_inicio.mp4` | Fondos de Inicio, Inteligencia Artificial (girado 180°) y «¿Por qué TELCOBRAS?» (girado 90°) |
 | `video_conectividad.mp4` | Servicio de Conectividad |
 | `video_seguridad.mp4` | Servicio de Seguridad |
 | `video_colaboracion.mp4` | Servicio Colaboración |
