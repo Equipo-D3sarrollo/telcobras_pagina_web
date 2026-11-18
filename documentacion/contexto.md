@@ -320,7 +320,8 @@ con excepciones para `*.example`, aunque hoy no existe un `.env.example` version
   aparecer en el bundle cliente y en el SSR. No hay `index.html` ni `src/main.tsx`.
 - Monta globalmente `AccessibilityMenu` (solo el botón; el panel se carga al abrirlo)
   y `WhatsAppFloatingButton` (enlace flotante a `wa.me` con el número comercial de
-  `CONTACT`, definido en este archivo). `FloatingChatbot` y `CookieBanner` se cargan
+  `CONTACT`, definido en este archivo). `CookieBanner` (y `FloatingChatbot` solo si
+  `CHATBOT_ENABLED` es `true`; hoy es `false`, ver sección 8) se cargan
   con `React.lazy` y se montan cuando el navegador queda libre tras la carga o con la
   primera interacción (`useIdleReady`, `src/hooks/use-idle-ready.ts`:
   `requestIdleCallback` con tope de 2 s, `setTimeout` donde no exista). En la primera
@@ -425,6 +426,11 @@ con excepciones para `*.example`, aunque hoy no existe un `.env.example` version
 
 ### `src/routes/api.chat.ts`
 
+- **Apagado (18-11-2026):** con `CHATBOT_ENABLED = false` (`src/lib/telcobras-data.ts`) la ruta
+  responde `404` (sin cuerpo, `cache-control: no-store`) a **cualquier método**, sin leer
+  el cuerpo ni llamar al webhook de Make. Verificado en desarrollo y en la build de
+  producción con Wrangler (POST, GET, PUT, DELETE, OPTIONS y HEAD). Lo que sigue describe el
+  comportamiento con el chat encendido.
 - Endpoint del servidor `POST /api/chat`; también responde `405` a otros métodos.
 - Valida JSON y los campos `session_id`/`mensaje`.
 - Límites actuales: cuerpo de solicitud 16 KiB, ID de sesión 128 caracteres,
@@ -786,6 +792,16 @@ política legal aprobada.
 
 ### `src/components/FloatingChatbot.tsx`
 
+- **Desactivado (18-11-2026):** Make no está en uso, así que `CHATBOT_ENABLED = false`
+  (`src/lib/telcobras-data.ts`). `__root.tsx` solo crea el `lazy(() => import(...))` y monta
+  `<FloatingChatbot />` cuando el interruptor es `true`: el componente, la burbuja de
+  invitación y el botón del robot no aparecen en ningún tamaño de pantalla y no se pide
+  su chunk. El código no se borró. El botón de WhatsApp y la tarjeta «Chatbot para la
+  ESPY» de `ProjectsSection` (que enlaza a WhatsApp, no a este chat) siguen igual. No
+  quedaba ningún otro enlace, botón o texto que abriera el chat (la invitación vive dentro
+  del propio componente). Sin sesión de chat: ya no se crea `telcobras_session_id` en
+  `localStorage`.
+
 - Chat flotante con bienvenida cerrable (se cierra sola a los 8 s, `WELCOME_BUBBLE_MS`,
   para no tapar contenido como el correo y el horario del footer en móvil), botón de robot, historial en memoria mientras
   está montado, mensajes de usuario/asistente, loading indicator (tres puntos) y
@@ -1024,6 +1040,19 @@ Los textos de los diferenciales de «¿Por qué TELCOBRAS?» no están aquí: vi
   `animation: none` en `styles.css`).
 
 ## 8. Integración del chatbot con Make
+
+> **Estado (18-11-2026): chat apagado.** Make no está en uso. `CHATBOT_ENABLED = false` en
+> `src/lib/telcobras-data.ts`: no se monta `FloatingChatbot`, no se descarga su chunk
+> (el archivo `FloatingChatbot-*.js` aún se genera en el build, pero nada lo referencia) y
+> `/api/chat` responde 404 a todo. **`MAKE_CHAT_WEBHOOK_URL` ya no es obligatoria** mientras
+> el chat esté apagado (puede faltar en `.env.local` y en Cloudflare). **Para reactivarlo:**
+> 1) poner `CHATBOT_ENABLED = true`; 2) configurar `MAKE_CHAT_WEBHOOK_URL` como se explica
+> abajo (HTTPS; secreto en Cloudflare); 3) `npm run build` y comprobar que aparece el robot
+> y que `POST /api/chat` responde. Nada en la CSP ni en `public/_headers` es exclusivo del
+> chat (`connect-src 'self'` lo usan todas las peticiones), así que no hay que tocarlos. La
+> política de privacidad menciona el identificador de sesión «solo si usas el chat»: sigue
+> siendo cierto, pero conviene revisar ese texto si el chat queda apagado de forma
+> definitiva (texto legal; no se cambió sin aprobación).
 
 ### Flujo
 
@@ -1866,6 +1895,7 @@ Solo en servidor (nunca con prefijo `VITE_` ni en el cliente):
 - `SUPABASE_SERVICE_ROLE_KEY`: clave service-role de Supabase; privilegios elevados.
   Solo se usa en el servidor para insertar en `solicitudes_contacto`.
 - `MAKE_CHAT_WEBHOOK_URL`: webhook HTTPS de Make para `/api/chat` (ver sección 8).
+  **No es obligatoria mientras el chat esté apagado** (`CHATBOT_ENABLED = false`).
 - `TURNSTILE_SECRET_KEY`: clave secreta de Cloudflare Turnstile. Si falta,
   `api.contacto.ts` responde `503` con `contacto_unavailable` antes de `siteverify` y
   Supabase, sin usar claves de prueba; debe configurarse antes de desplegar.

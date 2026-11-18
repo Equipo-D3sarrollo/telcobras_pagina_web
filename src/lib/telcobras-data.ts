@@ -80,6 +80,14 @@ export const SUPPORT = {
 /** Horario del soporte técnico; el footer lo muestra con el texto de translations.ts. */
 export const HORARIO = "24/7";
 
+/**
+ * Interruptor del chat flotante (FloatingChatbot + /api/chat con el webhook de Make). En
+ * `false` no se importa ni se monta el chat (su chunk no se descarga) y /api/chat responde
+ * 404. El código se conserva: para reactivarlo, ponerlo en `true` y configurar
+ * MAKE_CHAT_WEBHOOK_URL (ver documentacion/contexto.md, sección 8).
+ */
+export const CHATBOT_ENABLED = false;
+
 export const CHATBOT_PHONE = {
   display: "+57 310 677 7412",
   href: "tel:+573106777412",

@@ -16,6 +16,7 @@ import appCss from "../styles.css?url";
 import { reportVibeError } from "../lib/vibe-error-reporting";
 import { AccessibilityMenu } from "../components/AccessibilityMenu";
 import { useIdleReady } from "@/hooks/use-idle-ready";
+import { CHATBOT_ENABLED } from "@/lib/telcobras-data";
 import { useTranslations } from "@/lib/accessibility-preferences-context";
 import { AccessibilityPreferencesProvider } from "@/lib/accessibility-preferences-provider";
 import { getTranslations } from "@/lib/translations";
@@ -87,9 +88,11 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
 
 // UI secundaria que no se ve al inicio: se descarga y monta cuando el navegador queda
 // libre tras la carga (o con la primera interacción), sin competir con el LCP.
-const FloatingChatbot = lazy(() =>
-  import("../components/FloatingChatbot").then((m) => ({ default: m.FloatingChatbot })),
-);
+const FloatingChatbot = CHATBOT_ENABLED
+  ? lazy(() =>
+      import("../components/FloatingChatbot").then((m) => ({ default: m.FloatingChatbot })),
+    )
+  : null;
 const CookieBanner = lazy(() =>
   import("../components/CookieBanner").then((m) => ({ default: m.CookieBanner })),
 );
@@ -193,7 +196,7 @@ function RootComponent() {
       <WhatsAppFloatingButton />
       {idleReady && (
         <Suspense fallback={null}>
-          <FloatingChatbot />
+          {FloatingChatbot && <FloatingChatbot />}
           <CookieBanner />
         </Suspense>
       )}
