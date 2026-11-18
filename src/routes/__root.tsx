@@ -186,19 +186,27 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { accessibilityPreferences } = Route.useLoaderData();
   const idleReady = useIdleReady();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  // El panel (/admin) no carga nada del sitio público: ni menú de accesibilidad, ni botón de
+  // WhatsApp, ni banner de cookies, ni chat.
+  const isAdmin = pathname === "/admin" || pathname.startsWith("/admin/");
 
   return (
     <AccessibilityPreferencesProvider initialPreferences={accessibilityPreferences}>
       <LocalizedMetadata />
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
-      <AccessibilityMenu />
-      <WhatsAppFloatingButton />
-      {idleReady && (
-        <Suspense fallback={null}>
-          {FloatingChatbot && <FloatingChatbot />}
-          <CookieBanner />
-        </Suspense>
+      {!isAdmin && (
+        <>
+          <AccessibilityMenu />
+          <WhatsAppFloatingButton />
+          {idleReady && (
+            <Suspense fallback={null}>
+              {FloatingChatbot && <FloatingChatbot />}
+              <CookieBanner />
+            </Suspense>
+          )}
+        </>
       )}
     </AccessibilityPreferencesProvider>
   );

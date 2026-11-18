@@ -41,9 +41,23 @@ const SECURITY_HEADERS: Array<[string, string]> = [
   ["x-frame-options", "DENY"],
 ];
 
+// El panel (/admin y /api/admin): nunca se indexa ni se guarda en caché.
+function isAdminPath(pathname: string): boolean {
+  return (
+    pathname === "/admin" ||
+    pathname.startsWith("/admin/") ||
+    pathname === "/api/admin" ||
+    pathname.startsWith("/api/admin/")
+  );
+}
+
 function withSecurityHeaders(response: Response, requestUrl: URL): Response {
   const headers = new Headers(response.headers);
   for (const [name, value] of SECURITY_HEADERS) headers.set(name, value);
+  if (isAdminPath(requestUrl.pathname)) {
+    headers.set("x-robots-tag", "noindex, nofollow");
+    headers.set("cache-control", "no-store");
+  }
   if (requestUrl.protocol === "https:") {
     headers.set("strict-transport-security", "max-age=31536000");
   }

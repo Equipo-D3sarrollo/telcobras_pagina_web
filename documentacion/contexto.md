@@ -202,7 +202,8 @@ npm run dev
 npm run build                   # cliente + servidor -> .output/
 npm run build:dev               # build con modo development
 npm run preview                 # node .output/server/index.mjs (carga .env.local si existe; puerto: PORT, por defecto 3000)
-npm test                        # vitest: pruebas de src/lib/*.server.test.ts
+npm test                        # vitest: pruebas de src/lib/*.server.test.ts y rate-limit.test.ts
+npm run usuario:crear           # crea una cuenta del panel /admin (interactivo; ver sección 12)
 npm run lint                    # eslint .
 npm run format                  # prettier --write .
 npm run secrets:scan            # gitleaks sobre todo el historial
@@ -473,6 +474,13 @@ con excepciones para `*.example`, aunque hoy no existe un `.env.example` version
 - Cada ruta legal declara sus propios metadatos SEO/Open Graph y `canonical`
   (`https://telcobras.com/<ruta>`), por lo que el SEO técnico es homogéneo en las cuatro
   URLs públicas del sitemap.
+
+### Panel `/admin` (fase 4, 18-11-2026)
+
+Rutas: `/admin/login` (`src/routes/admin.login.tsx`), `/admin` (`admin.index.tsx`, por ahora
+solo «Hola, {nombre}», el rol y «Cerrar sesión»; la lista de cotizaciones es la fase 5),
+`POST /api/admin/login` y `POST /api/admin/logout` (`api.admin.login.ts`, `api.admin.logout.ts`).
+Detalle de seguridad en «Login del panel» (sección 12).
 
 ### Rutas generadas
 
@@ -1981,6 +1989,75 @@ comprobado que `mysql2`, `createPool` y `DB_*` no aparecen en ningún JS de `.ou
   (documentadas en `.env.example` como en desuso) y la tabla `solicitudes_contacto` con las
   solicitudes anteriores; el valor `migracion_supabase` de `cotizaciones.origen` está previsto
   para importarlas. No se borró nada.
+
+### Login del panel `/admin` (fase 4, 18-11-2026)
+
+Usa las tablas `usuarios`, `sesiones` y `auditoria` del esquema (sin modificarlo) y
+`src/lib/db.server.ts`. Archivos: `password.server.ts` (hash), `auth.server.ts` (login, sesiones,
+cookie, CSRF), `admin-session.server.ts` (función de servidor que verifica la sesión),
+`api.admin.login.ts`, `api.admin.logout.ts`, `admin.login.tsx`, `admin.index.tsx` y
+`scripts/crear-usuario.mjs`. Ninguno llega al JS del cliente (comprobado en `.output/public`).
+
+- **Contraseñas:** `crypto.scrypt` de Node (sin dependencias nativas), sal aleatoria de 16 bytes,
+  N=32768, r=8, p=3 (≈ 32 MiB, ≈ 0,15 s; combinación equivalente de OWASP), clave de 64 bytes.
+  Se guarda en `usuarios.password_hash` como `scrypt$N=32768,r=8,p=3$<sal base64>$<hash base64>`:
+  cada hash se verifica con los parámetros con que se creó (se pueden subir luego sin invalidar
+  cuentas; al verificar se rechazan N fuera de 2^10..2^16, r y p fuera de 1..16). Normalización
+  Unicode NFKC y comparación con `timingSafeEqual`.
+- **Sesiones:** token aleatorio de 32 bytes (`randomBytes`, base64url). En `sesiones` solo se
+  guarda su **SHA-256** (columna `id`), con `expira_en` = 8 horas, `ip` y `user_agent` (255
+  caracteres como máximo). Cookie `__Host-telcobras_admin`: `HttpOnly; Secure; SameSite=Strict;
+  Path=/; Max-Age=28800` (el prefijo `__Host-` exige Secure, Path=/ y sin Domain; Chromium la
+  acepta también en `http://localhost`). Cada inicio de sesión genera un token nuevo (descarta
+  el anterior); cerrar sesión borra la fila y la cookie. Al iniciar sesión se borran las sesiones
+  vencidas. Una sesión deja de valer si vence o si la cuenta pasa a `activo = 0`.
+- **Bloqueo:** 5 intentos fallidos seguidos → `bloqueado_hasta` = ahora + 15 min y el contador
+  vuelve a 0; un acceso correcto reinicia `intentos_fallidos` y actualiza `ultimo_acceso`. Una
+  cuenta bloqueada o con `activo = 0` no entra ni con la contraseña correcta (y no suma
+  intentos). Además, límite por IP en el endpoint: 10 peticiones cada 15 minutos (429 con
+  `retry-after`), con `getClientIp` (`TRUST_PROXY=1` en cPanel: sin eso todos comparten un
+  único contador).
+- **Mensajes:** siempre «Correo o contraseña incorrectos» (401, mismo cuerpo) para contraseña
+  incorrecta, correo inexistente, cuenta inactiva o bloqueada. Si el correo no existe se
+  ejecuta igualmente un hash (contra uno ficticio) para que el tiempo sea parecido.
+- **CSRF:** todo POST de `/admin` exige que el encabezado `Origin` tenga el mismo host que el
+  sitio (`Host`, la URL de la petición o, con `TRUST_PROXY`, `X-Forwarded-Host`); sin Origin,
+  con `null` o con otro host/puerto → 403. Se suma a `SameSite=Strict`. Cerrar sesión es POST
+  (un GET responde 405).
+- **Auditoría:** `login`, `login_fallido` (con `usuario_id` si el correo existe; si no, NULL) y
+  `logout`, con la IP y un texto genérico. Nunca contraseñas, tokens ni el correo escrito.
+- **Verificación en el servidor:** `beforeLoad` de `/admin` y `/admin/login` llama a
+  `getAdminSession` (función de servidor): en la carga directa corre en el SSR y en la
+  navegación del cliente es una llamada RPC. Sin sesión válida (o con la base caída: falla
+  cerrado) `/admin` redirige (307) a `/admin/login`; con sesión, `/admin/login` redirige a
+  `/admin`. Las futuras rutas de datos (fase 5) deben verificar la sesión también en el servidor.
+- **Aislamiento del sitio público:** todo `/admin` y `/api/admin` sale con
+  `X-Robots-Tag: noindex, nofollow` y `Cache-Control: no-store` (`src/server.ts`) y con
+  `<meta name="robots" content="noindex, nofollow">`. `public/robots.txt` lleva
+  `Disallow: /admin` **en cada grupo** (un rastreador usa solo el grupo más específico).
+  `/admin` no está en el sitemap ni en ningún enlace del sitio. `__root.tsx` no monta en
+  `/admin` el menú de accesibilidad, el botón de WhatsApp, el banner de cookies ni el chat
+  (Turnstile solo existe en el formulario de contacto).
+- **Formulario de login:** correo + contraseña con botón mostrar/ocultar (`aria-pressed`),
+  etiquetas, error con `role="alert"` (el foco vuelve al campo de contraseña, vacío), marca
+  TELCOBRAS y el estilo del sitio, en español. `method="post"` evita que, si se envía antes de
+  que cargue el JavaScript, la contraseña viaje en la URL.
+- **Crear cuentas:** `npm run usuario:crear` (= `node --env-file=.env.local
+  scripts/crear-usuario.mjs`). Pide nombre, correo, rol (`administrador`/`comercial`) y
+  contraseña (oculta, dos veces, mínimo 12 caracteres), usa la misma función de hash y la misma
+  conexión y no deja ver ni guardar la contraseña en claro. Ejecuta los `.ts` de `src/lib`
+  directamente: **requiere Node 22.18 o superior** y una terminal interactiva. Si el correo ya
+  existe, no crea nada. No hay registro público: las cuentas las crea quien tenga acceso al
+  servidor y a `.env.local`.
+- **Pruebas:** `npm test` (`password.server.test.ts`, `auth.server.test.ts` con una base
+  simulada en memoria): hash y verificación, sesión vencida, bloqueo a los 5 intentos y
+  desbloqueo a los 15 minutos, cuenta inactiva, token manipulado, logout, cookie y Origin
+  inválido. Además se probó en localhost contra la MySQL real con una cuenta temporal (ya
+  eliminada): login correcto e incorrecto, bloqueo, sesión vencida, logout, `/admin` sin sesión,
+  Origin ajeno, límite por IP y la interfaz en Chromium a 360 y 1280 px.
+- **Pendiente / a decidir:** la vida de la sesión es fija (8 h, sin renovación); no hay recuperación
+  de contraseña ni cambio de contraseña desde el panel (fase posterior); la auditoría y las
+  sesiones no tienen política de retención todavía.
 
 ### Variables de entorno
 
