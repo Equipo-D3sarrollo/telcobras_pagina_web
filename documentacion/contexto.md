@@ -92,9 +92,9 @@ se montan globalmente; el botón para volver al inicio se monta en la página pr
   inicio»), con metadatos SEO/Open Graph y `canonical` propios. El contenido vive en
   `src/lib/terms-content.ts` (15 secciones) y `src/lib/sla-content.ts` (10 secciones);
   los tipos compartidos están en `src/lib/legal-types.ts`. Los valores numéricos del
-  SLA se centralizan en `SLA_VALUES` (`src/lib/sla-content.ts`) y son una **propuesta
-  pendiente de aprobación de gerencia y revisión jurídica**: no cambiarlos ni la
-  redacción sin esa aprobación.
+  SLA se centralizan en `SLA_VALUES` (`src/lib/sla-content.ts`). **Gerencia aprobó
+  «Términos de servicio» y «SLA y garantías» el 18-11-2026**: no cambiar los valores ni la
+  redacción sin una nueva aprobación.
 - Todos los enlaces legales del footer y del banner de cookies usan `<Link>` de
   `@tanstack/react-router` (navegación SPA sin recarga completa). Las rutas internas se
   resuelven con las constantes `PRIVACY_POLICY_URL`, `TERMS_OF_SERVICE_URL` y
@@ -287,7 +287,7 @@ con excepciones para `*.example`, aunque hoy no existe un `.env.example` version
 - `src/routes/terminos-de-servicio.tsx` y `src/routes/sla.tsx`: páginas legales
   bilingües que renderizan `LegalDocument` con el contenido de
   `src/lib/terms-content.ts` y `src/lib/sla-content.ts` (valores del SLA en
-  `SLA_VALUES`, pendientes de aprobación).
+  `SLA_VALUES`, aprobados por gerencia el 18-11-2026).
 - `src/components/LegalDocument.tsx` y `src/lib/legal-types.ts`: componente y tipos
   compartidos de las páginas legales; el contenido se renderiza como texto, sin HTML.
 - `src/routes/__root.tsx`: shell, metadatos, providers y montajes globales del sitio.
@@ -454,8 +454,9 @@ con excepciones para `*.example`, aunque hoy no existe un `.env.example` version
 - El contenido bilingüe está en `src/lib/terms-content.ts` (15 secciones) y
   `src/lib/sla-content.ts` (10 secciones, con tablas de prioridades y de créditos que se
   desplazan dentro de su caja en móvil). El idioma sigue la preferencia del menú de
-  accesibilidad. Los compromisos del SLA salen de `SLA_VALUES`; son una propuesta
-  pendiente de aprobación de gerencia y revisión jurídica.
+  accesibilidad. Los compromisos del SLA salen de `SLA_VALUES`; gerencia aprobó ambos
+  documentos el 18-11-2026 (`LEGAL_DOCUMENTS_ARE_DRAFT = false`: sin aviso de borrador y
+  sin `noindex`; fecha «updated» de los textos: 18 de noviembre de 2026).
 - El footer enlaza a estas páginas con `<Link>` de `@tanstack/react-router` usando
   `TERMS_OF_SERVICE_URL` y `SLA_URL` de `telcobras-data.ts` (igual que
   `PRIVACY_POLICY_URL`). El banner de cookies usa el mismo patrón para la política.
@@ -1340,7 +1341,7 @@ ese dominio (hoy `telcobras.com` sirve otro sitio, ver pendiente 17).
 - Rutas legales `/terminos-de-servicio` y `/sla` con su contenido completo en ES/EN
   mediante el componente compartido `LegalDocument`; el footer navega a ellas con
   `<Link>`, igual que al resto de enlaces legales y al banner de cookies. Los valores
-  del SLA (`SLA_VALUES`) siguen pendientes de aprobación.
+  del SLA (`SLA_VALUES`) fueron aprobados por gerencia el 18-11-2026.
 - SEO técnico: metadatos por ruta (`title`, `description`, `canonical`), etiquetas
   Open Graph y Twitter Card en las cuatro rutas públicas, datos estructurados JSON-LD
   de `Organization` en la landing y `public/sitemap.xml` referenciado desde
@@ -1375,7 +1376,7 @@ punto están en la lista «Pendiente/por confirmar» (número entre paréntesis)
 | Prioridad | Hallazgo | Pendiente |
 |---|---|---|
 | Crítica (corregida) | XSS reflejado en TanStack Start (CVE-2026-102989): corregido con `react-start@1.168.60`; el plugin de AI Studio queda en `0.3.3-beta.0` hasta que salga la estable | 20 |
-| Alta (mitigada) | Las páginas `/terminos-de-servicio` y `/sla` ya están en el remoto con textos y valores de SLA pendientes de aprobación; ahora muestran un aviso de borrador y son `noindex` | 7, 24 |
+| Alta (resuelta 18-11-2026) | Las páginas `/terminos-de-servicio` y `/sla` estaban en el remoto con textos y valores de SLA sin aprobar (aviso de borrador y `noindex`); gerencia los aprobó y `LEGAL_DOCUMENTS_ARE_DRAFT` es `false` | 7, 24 |
 | Alta (corregida, `066ef0f`) | `TurnstileWidget` se destruía y se volvía a crear en cada render del formulario | 21 |
 | Alta | No hay pruebas: todos los archivos de test y configuración están vacíos | 2 |
 | Alta (corregida) | `/video_tel.mp4` daba 404: se movió a `public/` | 4 |
@@ -1478,8 +1479,9 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
      empieza con un fundido desde negro.
 7. **Privacidad y textos legales:** `/politica-de-privacidad` está implementada y el
    formulario exige consentimiento. `/terminos-de-servicio` y `/sla` ya muestran sus
-   textos completos, pero están pendientes de aprobación de gerencia y revisión
-   jurídica, incluidos los valores de `SLA_VALUES` en `src/lib/sla-content.ts`. Revisar también bases
+   textos completos y **gerencia los aprobó el 18-11-2026** (incluidos los valores de
+   `SLA_VALUES` en `src/lib/sla-content.ts`). Queda la revisión jurídica de la política de
+   privacidad y del texto del banner de cookies. Revisar también bases
    jurídicas, proveedores/transferencias, retención, acceso y borrado de la política.
    El 27-10-2026 se reescribió la sección 6 («Cookies y almacenamiento local») de la
    política, ES/EN, para que describa el funcionamiento real (esencial frente a
@@ -1508,7 +1510,7 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
     el otro mediante una decisión coordinada para evitar instalaciones divergentes.
 11. **Formulario:** los enlaces «Términos de Servicio» y «SLA y garantías» del footer ya
     apuntan con `<Link>` a `/terminos-de-servicio` y `/sla`, que ya muestran el
-    contenido completo (pendiente de aprobación, ver pendiente 7).
+    contenido completo (aprobado por gerencia el 18-11-2026, ver pendiente 7).
 12. **Integración real de proyectos/fotos/redes:** comprobar enlaces sociales e imágenes
     externas antes de publicar en producción.
 13. **Tarjetas invisibles antes de hidratar:** las tarjetas de `#por-que` se renderizan
@@ -1599,7 +1601,11 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
     comprimir): `git show f5b2d90:video_agentes.mp4 > video_agentes.mp4` (mismo patrón
     para los otros tres), o la versión de `public/` previa a la compresión:
     `git show ab17f5a~1:public/video_tel.mp4 > video_tel_original.mp4`.
-24. **Páginas legales publicadas sin aprobar:** `0cef096` ya está en el `main` del
+24. **Páginas legales — aprobadas (18-11-2026):** gerencia aprobó «Términos de servicio» y
+    «SLA y garantías». `LEGAL_DOCUMENTS_ARE_DRAFT` quedó en `false`: desaparecen el aviso de
+    borrador y el `noindex` (SSR incluido) y las dos rutas siguen en `sitemap.xml`. Lo que
+    sigue es el historial de cuando estaban sin aprobar. **Publicadas sin aprobar
+    (histórico):** `0cef096` ya está en el `main` del
     repo personal (PR #2) y en la rama que se sube al repo oficial. Si se despliega, `/terminos-de-servicio` y `/sla` quedarán públicas con compromisos
     (disponibilidad, tiempos y créditos de `SLA_VALUES`) que gerencia y jurídica aún no
     aprobaron. **Mitigado:** mientras `LEGAL_DOCUMENTS_ARE_DRAFT` sea `true`
@@ -1630,9 +1636,8 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
     el build de producción en Wrangler local (503 y 403) y en `vite dev` (pasa). No se
     comprueba `action` porque el widget no la define. **Antes de desplegar:** configurar
     `TURNSTILE_ALLOWED_HOSTNAMES` en Cloudflare con el dominio real.
-29. **`sitemap.xml`:** `<lastmod>` de las cuatro URLs se actualizó a 2026-10-27.
-    Volver a actualizar el de `/terminos-de-servicio` y `/sla` cuando se publiquen los
-    textos aprobados.
+29. **`sitemap.xml`:** `<lastmod>` de las cuatro URLs se actualizó a 2026-10-27. El de
+    `/terminos-de-servicio` y `/sla` se renovó a 2026-11-18 al aprobarse los textos.
 30. **Horario de atención — resuelto (28-10-2026):** gerencia confirmó soporte técnico
     24/7. `HORARIO = "24/7"` y el footer muestra «Soporte técnico 24 horas, 7 días a la
     semana» / «Technical support 24/7» junto con los datos de `SUPPORT`. Ya no queda
