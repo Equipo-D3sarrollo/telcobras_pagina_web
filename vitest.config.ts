@@ -8,6 +8,6 @@ export default defineConfig({
     // Con Node 26 y vitest 5.0.5 los pools «forks» y «threads» no encuentran el runner
     // («Vitest failed to find the runner»); «vmThreads» funciona.
     pool: "vmThreads",
-    include: ["src/lib/**/*.server.test.ts"],
+    include: ["src/lib/**/*.server.test.ts", "src/lib/rate-limit.test.ts"],
   },
 });

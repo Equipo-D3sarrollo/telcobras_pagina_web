@@ -1133,11 +1133,18 @@ exitosa y repetible con el módulo Webhook response configurado correctamente.
 >   no se generan para este preset. Los párrafos siguientes que hablan de Cloudflare/Wrangler
 >   describen el destino anterior (y el que AI Studio sigue forzando con `VIBE_SANDBOX=1`:
 >   allí el formulario responderá 503 porque no alcanza la MySQL local).
-> - **Límite de tasa en cPanel:** `getClientIp` (`src/lib/rate-limit.ts`) solo lee
->   `cf-connecting-ip`, que existe detrás de Cloudflare. Fuera de Cloudflare no hay IP y
->   todos los envíos comparten una sola clave: el límite de 5 envíos / 10 minutos sería
->   **global para todo el sitio**. Pendiente: leer `x-forwarded-for` del proxy de cPanel
->   (sin confiar en cabeceras falsificables si no hay proxy).
+> - **IP del cliente y límite de tasa en cPanel (resuelto el 18-11-2026):** `getClientIp`
+>   (`src/lib/rate-limit.ts`) solo leía `cf-connecting-ip` (Cloudflare); en cPanel no existe
+>   y el límite de 5 envíos / 10 minutos habría sido global para todo el sitio. Ahora, con
+>   **`TRUST_PROXY=1`** (en cPanel: «Setup Node.js App» > variables de entorno), toma la IP
+>   de `X-Forwarded-For` usando la entrada de más a la **derecha** (la que añade el proxy de
+>   confianza; las de la izquierda las envía el cliente y pueden ser falsas). Un valor que
+>   no parece una IP (solo hex, `.` y `:`, máx. 45) se ignora. Sin `TRUST_PROXY` (por
+>   defecto), sin encabezado o con un valor inválido, conserva el comportamiento anterior
+>   (`cf-connecting-ip`, o `null` → clave compartida `no-client-ip`). **No activar
+>   `TRUST_PROXY` si no hay proxy delante:** el encabezado lo podría falsificar cualquiera
+>   y se evadiría el límite. Con dos proxies encadenados la entrada de la derecha sería la
+>   del proxy interno. Pruebas: `src/lib/rate-limit.test.ts`.
 > - **Variables de entorno:** en cPanel se definen en «Setup Node.js App» (no hay
 >   `.env.local`). `VITE_TURNSTILE_SITE_KEY` se incrusta **al compilar**: debe existir
 >   cuando se ejecuta `npm run build`.
@@ -1558,7 +1565,8 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
    dispositivo) al verificar el formulario: **también va a revisión de jurídica**.
 8. **Protección de endpoints HTTP:** `/api/contacto` tiene Turnstile y rate limit por IP
    (5 envíos cada 10 min) y `/api/chat` tiene rate limit (20 mensajes cada 5 min), ambos
-   con el limitador compartido `src/lib/rate-limit.ts` basado en `cf-connecting-ip`. El
+   con el limitador compartido `src/lib/rate-limit.ts` basado en `cf-connecting-ip` o, con
+   `TRUST_PROXY=1`, en `X-Forwarded-For` (ver sección 9). El
    límite vive en memoria de cada isolate del Worker: no es global, así que el límite
    efectivo se multiplica entre isolates y centros de datos. `/api/chat` no tiene
    Turnstile y cada mensaje consume operaciones de Make. Considerar el binding de
@@ -1983,6 +1991,8 @@ Solo en servidor (nunca con prefijo `VITE_` ni en el cliente):
   formulario responde 503.
 - `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY`: **en desuso** (pendiente migración, fase 7);
   la ruta ya no las usa.
+- `TRUST_PROXY`: `1` o `true` cuando hay un proxy de confianza delante (**en cPanel debe ir
+  `TRUST_PROXY=1`**); vacío por defecto. Ver «IP del cliente» en la sección 9.
 - `MAKE_CHAT_WEBHOOK_URL`: webhook HTTPS de Make para `/api/chat` (ver sección 8).
   **No es obligatoria mientras el chat esté apagado** (`CHATBOT_ENABLED = false`).
 - `TURNSTILE_SECRET_KEY`: clave secreta de Cloudflare Turnstile. Si falta,
