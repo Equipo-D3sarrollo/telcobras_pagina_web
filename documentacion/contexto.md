@@ -31,7 +31,8 @@ conocidos. Debe actualizarse cuando cambien la arquitectura o las capacidades de
 - No ejecutar `npm run build` con el servidor de desarrollo activo: en Windows Vite
   vigila `.output/` y se cae con `EBUSY`. Detener el servidor, compilar y volver a
   levantarlo.
-- El artefacto desplegable canónico es **`.output/`** (Nitro/Cloudflare). `dist/` es un
+- El artefacto desplegable canónico es **`.output/`** (desde el 18-11-2026 Nitro `node-server`
+  para cPanel con Node.js; antes Cloudflare — ver sección 9). `dist/` es un
   build antiguo (7-10-2026) y no debe desplegarse; si producción sirve `dist/` o HTML
   cacheado, el diseño puede quedar desfasado aunque el código fuente sea correcto.
 - Reconstruir siempre antes de desplegar si se tocó `src/styles.css`,
@@ -76,13 +77,13 @@ se montan globalmente; el botón para volver al inicio se monta en la página pr
 - Cloudflare Turnstile está implementado en el formulario de contacto. El widget vive
   en `src/components/TurnstileWidget.tsx` y se monta desde `ContactAndFooter.tsx`; el
   token se envía como `turnstile_token` y el servidor lo valida contra
-  `siteverify` antes de persistir en Supabase.
+  `siteverify` antes de persistir en MySQL.
 - El endpoint `/api/contacto` aplica limitación de tasa por IP (5 envíos por ventana
   de 10 minutos) y responde `429` con cabecera `retry-after`. El contador es en
   memoria del proceso, por lo que no es un límite distribuido entre instancias.
-- La higiene de errores evita exponer mensajes crudos de Supabase: el endpoint
-  devuelve códigos genéricos (`insert_failed`, `internal_error`, etc.) y solo registra
-  el código interno en logs. `src/server.ts` también normaliza errores SSR
+- La higiene de errores evita exponer mensajes crudos de la base: el endpoint devuelve
+  códigos genéricos (`contacto_unavailable`, `internal_error`, etc.) y solo registra el
+  código interno (`code`, `errno`, `sqlState` de MySQL) en logs, sin datos del formulario. `src/server.ts` también normaliza errores SSR
   catastróficos de rutas `/api/*` a `{ "error": "internal_error" }`.
 - Las rutas legales `/terminos-de-servicio` y `/sla` ya están creadas y registran sus
   propias rutas en el árbol de TanStack (`src/routes/terminos-de-servicio.tsx` y
@@ -184,8 +185,9 @@ se montan globalmente; el botón para volver al inicio se monta en la página pr
 - Tailwind CSS 4 (`package.json` declara `^4.2.1`; el lock/build resuelve 4.3.3),
   `tw-animate-css`, Radix UI y `lucide-react`.
 - TanStack Query está configurado en el contexto del router.
-- Nitro 3 (beta) genera el despliegue para Cloudflare con preset `cloudflare-module`;
-  `nodeCompat` está habilitado.
+- Nitro 3 (beta) genera el despliegue con el preset **`node-server`** (desde el 18-11-2026,
+  destino cPanel con Node.js: `node .output/server/index.mjs`). Antes usaba
+  `cloudflare-module`; ese preset sigue siendo el que fuerza AI Studio (sección 9).
 - Tipografía principal: Nunito autoalojada en `public/fonts/` (ver «Tipografía» en la
   sección 7); no se usa Google Fonts.
 - `vitest`, `jsdom`, Testing Library, `axe-core` y Playwright están instalados, pero
@@ -199,7 +201,8 @@ npm install                     # ejecuta prepare -> scripts/install-hooks.mjs
 npm run dev
 npm run build                   # cliente + servidor -> .output/
 npm run build:dev               # build con modo development
-npm run preview
+npm run preview                 # node .output/server/index.mjs (carga .env.local si existe; puerto: PORT, por defecto 3000)
+npm test                        # vitest: pruebas de src/lib/*.server.test.ts
 npm run lint                    # eslint .
 npm run format                  # prettier --write .
 npm run secrets:scan            # gitleaks sobre todo el historial
@@ -216,9 +219,10 @@ el artefacto de despliegue.
 `prepare`. `npm run secrets:scan` requiere `gitleaks` instalado en el `PATH`. La CI
 repite el escaneo en `.github/workflows/gitleaks.yml`.
 
-No hay script `test` en `package.json` ni se encontró una suite de pruebas del producto.
-Usar lint, build, `tsc --noEmit` y comprobaciones manuales/navegador hasta que se
-agreguen pruebas.
+`npm test` (vitest, `vitest.config.ts`, pool `vmThreads` por un fallo de los pools por defecto
+con Node 26) corre solo `src/lib/**/*.server.test.ts` (capa de MySQL del formulario: 8
+pruebas). Los demás archivos `*.test.ts(x)` del proyecto siguen vacíos. Para el resto usar
+lint, build, `tsc --noEmit` y comprobaciones manuales/navegador.
 
 ## 4. Estructura del repositorio
 
@@ -277,7 +281,7 @@ con excepciones para `*.example`, aunque hoy no existe un `.env.example` version
   (`IntersectionObserver` con `rootMargin: "600px 0px"`).
 - `src/routes/api.contacto.ts`: endpoint de contacto usado por el formulario. Valida
   honeypot, longitudes de campos, estructura de payload, Turnstile y limitación de tasa
-  por IP antes de persistir en Supabase.
+  por IP antes de persistir en MySQL (`src/lib/cotizaciones.server.ts`).
 - `src/routes/api.chat.ts`: integración con Make/WhatsApp y respuesta del chatbot.
 - `src/lib/translations.ts`: catálogos ES/EN para UI, SEO, formulario y chatbot.
 - `src/lib/accessibility-preferences.ts`: configuración de idioma/tema/tamaño y
@@ -760,9 +764,9 @@ Exporta dos componentes: `ContactSection` (`#contacto` y `#ubicacion`, dentro de
 
 El formulario hace `POST /api/contacto` y muestra éxito solo si el endpoint responde
 con estado HTTP exitoso. El servidor valida el JSON y longitudes, exige
-`consentimiento: true` y persiste el registro en Supabase, tabla
-`solicitudes_contacto`, usando `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` del entorno
-de servidor.
+`consentimiento: true` y persiste el registro en **MySQL** (desde el 18-11-2026; antes
+Supabase): tabla `cotizaciones` y, en la misma transacción, una fila de `auditoria`, con
+las variables `DB_*` del entorno de servidor (ver «Base de datos MySQL» en la sección 12).
 
 **Seguridad del formulario implementada:** el endpoint aplica limitación de tasa por IP
 (5 envíos por ventana de 10 minutos, con `429` y `retry-after`), descarta el honeypot
@@ -771,11 +775,13 @@ widget está en `src/components/TurnstileWidget.tsx` y se monta en el formulario
 token se resetea tras cada intento. La verificación usa `TURNSTILE_SECRET_KEY` en el
 servidor (y `VITE_TURNSTILE_SITE_KEY` en el cliente); si la clave secreta falta, el
 endpoint responde `503` con `contacto_unavailable` antes de llamar a `siteverify` o a
-Supabase, sin usar claves de prueba. Si falta la site key, el cliente no carga el widget y
+MySQL, sin usar claves de prueba. Si falta la site key, el cliente no carga el widget y
 deshabilita el envío con un aviso. El rate limit es
 un `Map` en memoria: protege por instancia, pero no es un límite distribuido/global.
-La respuesta 500 ya no incluye `error.message` de Supabase: solo se registra el código
-interno en el servidor y el cliente recibe `insert_failed` o `internal_error`.
+Si MySQL falla (conexión, consulta o variables `DB_*` ausentes) el endpoint responde
+`503` con `contacto_unavailable` (el formulario muestra el aviso de «formulario no
+disponible» con el correo de contacto) y solo se registra el tipo de fallo, sin datos
+personales ni mensajes crudos.
 Las etiquetas visibles de nombre, empresa, cargo, correo, teléfono, servicio y mensaje
 están asociadas mediante `htmlFor`/`id`; los límites HTML y los del endpoint están
 alineados para esos campos. Los campos tienen `autoComplete` (`name`, `organization`,
@@ -1107,6 +1113,35 @@ exitosa y repetible con el módulo Webhook response configurado correctamente.
 
 ## 9. Despliegue y configuración
 
+> **Cambio del 18-11-2026: destino cPanel con Node.js (preset `node-server`).** El formulario
+> guarda en MySQL con `mysql2` (TCP), que no puede usarse desde Workers, y el sitio se
+> publicará en cPanel (Latinoamérica Hosting). `vite.config.ts` fija
+> `nitro.preset: "node-server"`; el build deja `.output/server/index.mjs` (arranca con
+> `node .output/server/index.mjs`; puerto en la variable `PORT`, 3000 por defecto) y
+> `.output/public/`. `npm run preview` lo sirve (carga `.env.local` si existe; requiere
+> Node ≥ 22.9 por `--env-file-if-exists`). Qué cambió y qué no:
+> - **Sin cambios:** las cabeceras de seguridad y la CSP (`src/server.ts`, medidas en
+>   `/` con el servidor de Node), `/assets/*` con `cache-control: public, max-age=31536000,
+>   immutable`, y el SSR.
+> - **Caché de estáticos:** `public/_headers` solo lo lee Cloudflare; con Node no se aplica.
+>   Se reprodujo en `vite.config.ts` con `nitro.routeRules` (`/images/**`, `/fonts/**`,
+>   `/video_*`, `/logo_*`, `/favicon.ico`, `/apple-touch-icon.png`, calculados con
+>   `readdirSync("public")`): mismo `public, max-age=2592000, stale-while-revalidate=604800`.
+>   `robots.txt` y `sitemap.xml` siguen sin caché. `public/_headers` se conserva (inofensivo,
+>   y por si se vuelve a Cloudflare).
+> - **Wrangler:** `.output/server/wrangler.json`, `.wrangler/` y el script de `wrangler dev` ya
+>   no se generan para este preset. Los párrafos siguientes que hablan de Cloudflare/Wrangler
+>   describen el destino anterior (y el que AI Studio sigue forzando con `VIBE_SANDBOX=1`:
+>   allí el formulario responderá 503 porque no alcanza la MySQL local).
+> - **Límite de tasa en cPanel:** `getClientIp` (`src/lib/rate-limit.ts`) solo lee
+>   `cf-connecting-ip`, que existe detrás de Cloudflare. Fuera de Cloudflare no hay IP y
+>   todos los envíos comparten una sola clave: el límite de 5 envíos / 10 minutos sería
+>   **global para todo el sitio**. Pendiente: leer `x-forwarded-for` del proxy de cPanel
+>   (sin confiar en cabeceras falsificables si no hay proxy).
+> - **Variables de entorno:** en cPanel se definen en «Setup Node.js App» (no hay
+>   `.env.local`). `VITE_TURNSTILE_SITE_KEY` se incrusta **al compilar**: debe existir
+>   cuando se ejecuta `npm run build`.
+
 - `vite.config.ts` importa el wrapper `@leadconnector/vite-tanstack-config`; este
   wrapper ya instala plugins TanStack Start, React, Tailwind, alias, Nitro y otros.
   No duplicar plugins manualmente. El wrapper añade `@tailwindcss/vite` siempre; el
@@ -1358,11 +1393,11 @@ ese dominio (hoy `telcobras.com` sirve otro sitio, ver pendiente 17).
 - Preferencias de accesibilidad persistidas/validadas y aplicadas en SSR; catálogos
   tipados ES/EN para el contenido principal, el formulario, el chatbot y los errores raíz.
 - Formulario conectado al endpoint `/api/contacto`, con persistencia de solicitudes en
-  Supabase mediante credenciales de servidor.
+  MySQL (`cotizaciones` + `auditoria`) mediante credenciales de servidor (antes Supabase).
 - Protección anti-abuso del formulario: Cloudflare Turnstile, honeypot, validación de
   longitudes y limitación de tasa por IP (5 envíos / 10 minutos).
-- Higiene de errores: respuestas públicas genéricas (`insert_failed`, `internal_error`)
-  sin exponer mensajes crudos de Supabase, tanto en `api.contacto.ts` como en la
+- Higiene de errores: respuestas públicas genéricas (`contacto_unavailable`, `internal_error`)
+  sin exponer mensajes crudos de la base, tanto en `api.contacto.ts` como en la
   normalización de errores SSR de `src/server.ts` para rutas `/api/*`.
 - Cabeceras de seguridad y CSP **activa (bloqueante)** aplicadas desde `src/server.ts`
   a SSR, API y respuestas de error (ver sección 9). La cabecera emitida es
@@ -1875,30 +1910,84 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
 
 ## 12. Operación y privacidad del formulario
 
-La captura de leads está implementada en `src/routes/api.contacto.ts` y usa Supabase
-desde el servidor; no cambiar el camino de persistencia sin una decisión explícita. Mantener
-la URL y la service-role key exclusivamente en variables de entorno de servidor. La
-clave service-role tiene privilegios elevados y no debe aparecer en código cliente,
-logs, documentación ni variables `VITE_*`.
+La captura de leads está implementada en `src/routes/api.contacto.ts` y, desde el
+18-11-2026 (fase 2 del panel de cotizaciones), guarda en **MySQL/MariaDB** desde el servidor
+(ver «Base de datos MySQL» más abajo). Las credenciales viven solo en variables de entorno
+de servidor y no deben aparecer en código cliente, logs, documentación ni variables `VITE_*`.
 
-Pendiente: verificar esquema/RLS/políticas de acceso de la tabla
-`solicitudes_contacto`, validar con el responsable de datos el contenido de la política,
-definir retención/borrado y probar la inserción en staging de extremo a extremo. El
+Pendiente: validar con el responsable de datos el contenido de la política, definir
+retención/borrado de `cotizaciones` y `auditoria`, y probar la inserción en el hosting real
+(cPanel) de extremo a extremo. El
 anti-spam (Turnstile + honeypot) y la higiene de errores ya están implementados; el rate
 limit por IP es en memoria y conviene complementarlo con un mecanismo distribuido.
+
+### Base de datos MySQL (fase 2, 18-11-2026)
+
+Arquitectura: `api.contacto.ts` → `insertCotizacion()` (`src/lib/cotizaciones.server.ts`) →
+pool de `mysql2/promise` (`src/lib/db.server.ts`) → MySQL/MariaDB. Los dos archivos `.server.ts`
+solo se importan desde código de servidor (TanStack Start impide importarlos en el cliente;
+comprobado que `mysql2`, `createPool` y `DB_*` no aparecen en ningún JS de `.output/public/`).
+
+- **Pool** (`getPool()`): una sola instancia por proceso (en desarrollo, en `globalThis`
+  para sobrevivir al HMR), `charset utf8mb4`, `timezone '-05:00'`, `connectionLimit 5`,
+  `queueLimit 20`, `connectTimeout 10 s`, keep-alive e `idleTimeout 60 s`. Si faltan
+  `DB_HOST`, `DB_NAME`, `DB_USER` o `DB_PASSWORD` (o `DB_PORT` no es un puerto válido) lanza
+  `DbConfigError` con el **nombre** de las variables, nunca sus valores.
+- **`insertCotizacion(datos)`**: solo consultas preparadas (`connection.execute` con
+  marcadores `?`; ningún dato del usuario entra al texto SQL). En **una transacción**
+  inserta en `cotizaciones` (nombre, empresa, cargo, correo, telefono, servicio, mensaje
+  —vacío se guarda como NULL—, `consentimiento = 1`, `consentimiento_fecha` = ahora,
+  `origen = 'formulario_web'`, `idioma`, `estado = 'nueva'`) y en `auditoria`
+  (`usuario_id` NULL, `accion = 'crear'`, `cotizacion_id`, `detalle = 'Solicitud recibida
+  desde el formulario web'`, sin datos personales). Si falla una de las dos, `rollback`: no
+  queda ninguna. Devuelve el id.
+- **Idioma:** el formulario envía `idioma` (`es`/`en`, el de la página); `api.contacto.ts`
+  guarda `es` ante cualquier otro valor.
+- **Errores:** cualquier fallo de MySQL (conexión caída, consulta, variables ausentes)
+  responde `503 { "error": "contacto_unavailable" }` y registra solo `code`/`errno`/`sqlState`
+  (o el nombre de las variables que faltan). Antes un fallo de inserción daba 500
+  `insert_failed`.
+- **Esquema:** `documentacion/db/telcobras_cotizaciones.sql` (tablas `usuarios`,
+  `cotizaciones`, `sesiones`, `auditoria`; MySQL 5.7+ / MariaDB 10.3+; `utf8mb4`). El usuario
+  de la aplicación solo necesita SELECT, INSERT, UPDATE y DELETE sobre esa base (no crea ni
+  altera tablas). Las cuentas del panel no se crean en el SQL (las contraseñas deben ir
+  cifradas): las creará un script del proyecto en una fase posterior.
+- **Crear la base local con XAMPP:** 1) iniciar MySQL en el panel de XAMPP; 2) en phpMyAdmin
+  (`http://localhost/phpmyadmin`) crear la base (cotejamiento `utf8mb4_unicode_ci`) y un
+  usuario con contraseña fuerte y solo esos cuatro privilegios sobre ella; 3) seleccionar la
+  base > pestaña «Importar» > `documentacion/db/telcobras_cotizaciones.sql`; 4) poner
+  `DB_HOST` (`localhost`), `DB_PORT` (`3306`), `DB_NAME`, `DB_USER` y `DB_PASSWORD` en
+  `.env.local`; 5) reiniciar `npm run dev` y enviar el formulario. En cPanel: «Bases de datos
+  MySQL» crea la base y el usuario con prefijo de cuenta y los privilegios; se importa el
+  mismo archivo con phpMyAdmin.
+- **Verificado el 18-11-2026** en localhost contra MySQL real (con la clave pública de pruebas
+  de Cloudflare solo para esa ejecución): envío válido → 200 y 1 fila en `cotizaciones`
+  (estado `nueva`, tildes y ñ correctas) y 1 en `auditoria`; sin nombre, correo inválido o sin
+  consentimiento → 400 sin insertar; GET → 405. Con MySQL detenido (XAMPP): envío válido →
+  `503 { "error": "contacto_unavailable" }` y el log solo muestra `code: 'ECONNREFUSED'` y el
+  errno, sin datos del formulario. Las filas de prueba se eliminaron (el contador
+  `AUTO_INCREMENT` de `cotizaciones` y `auditoria` ya avanzó: la primera solicitud real tendrá id 2).
+- **Supabase — en desuso, pendiente de migración (fase 7):** la ruta ya no importa
+  `@supabase/supabase-js` ni lee `SUPABASE_*`. Se conservan, sin tocar, la dependencia
+  `@supabase/supabase-js`, las variables `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY`
+  (documentadas en `.env.example` como en desuso) y la tabla `solicitudes_contacto` con las
+  solicitudes anteriores; el valor `migracion_supabase` de `cotizaciones.origen` está previsto
+  para importarlas. No se borró nada.
 
 ### Variables de entorno
 
 Solo en servidor (nunca con prefijo `VITE_` ni en el cliente):
 
-- `SUPABASE_URL`: URL del proyecto Supabase usada por `api.contacto.ts`.
-- `SUPABASE_SERVICE_ROLE_KEY`: clave service-role de Supabase; privilegios elevados.
-  Solo se usa en el servidor para insertar en `solicitudes_contacto`.
+- `DB_HOST`, `DB_PORT` (opcional, 3306), `DB_NAME`, `DB_USER`, `DB_PASSWORD`: conexión a
+  MySQL (ver arriba). `.env.example` trae valores de ejemplo. Obligatorias: sin ellas el
+  formulario responde 503.
+- `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY`: **en desuso** (pendiente migración, fase 7);
+  la ruta ya no las usa.
 - `MAKE_CHAT_WEBHOOK_URL`: webhook HTTPS de Make para `/api/chat` (ver sección 8).
   **No es obligatoria mientras el chat esté apagado** (`CHATBOT_ENABLED = false`).
 - `TURNSTILE_SECRET_KEY`: clave secreta de Cloudflare Turnstile. Si falta,
   `api.contacto.ts` responde `503` con `contacto_unavailable` antes de `siteverify` y
-  Supabase, sin usar claves de prueba; debe configurarse antes de desplegar.
+  MySQL, sin usar claves de prueba; debe configurarse antes de desplegar.
 - `TURNSTILE_ALLOWED_HOSTNAMES`: hostnames permitidos para el token de Turnstile,
   separados por comas (p. ej. `telcobras.com,www.telcobras.com`). Si falta en
   producción, `api.contacto.ts` responde `503` (fail-closed); en desarrollo se añaden
@@ -1910,8 +1999,9 @@ Pública de compilación:
   pública por diseño; si falta, el widget no se carga y el formulario queda deshabilitado
   con un aviso. No se usa ninguna site key de prueba. No confundirla con la secreta.
 
-Local: definir estas variables en `.env.local` (ignorado por Git). En Cloudflare,
-guardar las secretas con `wrangler secret put <NOMBRE>`. `.env.example` lista todas las
+Local: definir estas variables en `.env.local` (ignorado por Git). En cPanel: «Setup Node.js
+App» > Environment variables (en Cloudflare, el destino anterior, se guardaban con
+`wrangler secret put <NOMBRE>`). `.env.example` lista todas las
 variables con un comentario (sin valores).
 
 No crear un endpoint público para listar todas las solicitudes sin autenticación y
