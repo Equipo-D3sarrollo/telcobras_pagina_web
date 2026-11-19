@@ -86,7 +86,11 @@ async function handlePost(request: Request): Promise<Response> {
     const previousToken = readSessionToken(request.headers.get("cookie"));
     if (previousToken) await destroySession(previousToken).catch(() => {});
 
-    return json({ status: "ok" }, 200, [["set-cookie", serializeSessionCookie(result.token)]]);
+    return json(
+      { status: "ok", debeCambiarPassword: result.user.debe_cambiar_password === 1 },
+      200,
+      [["set-cookie", serializeSessionCookie(result.token)]],
+    );
   } catch (error) {
     // Solo el tipo de fallo: nunca el correo, la contraseña ni mensajes crudos de la base.
     if (error instanceof DbConfigError) {

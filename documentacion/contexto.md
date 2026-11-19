@@ -1969,6 +1969,27 @@ comprobado que `mysql2`, `createPool` y `DB_*` no aparecen en ningún JS de `.ou
   de la aplicación solo necesita SELECT, INSERT, UPDATE y DELETE sobre esa base (no crea ni
   altera tablas). Las cuentas del panel no se crean en el SQL (las contraseñas deben ir
   cifradas): las creará un script del proyecto en una fase posterior.
+- **Migraciones (`documentacion/db/migraciones/`):** cambios del esquema para bases YA
+  instaladas, numerados y para aplicar en orden. El usuario de la aplicación no puede alterar
+  tablas, así que cada migración la ejecuta una persona con permiso ALTER (en XAMPP,
+  `root` en phpMyAdmin: seleccionar la base > «Importar» > el archivo). No son idempotentes
+  (si la columna ya existe, el `ADD COLUMN` da «Duplicate column» y se puede ignorar; el
+  `MODIFY` del ENUM se puede repetir sin tocar datos), pero son compatibles con MariaDB 10.4+
+  y MySQL 8; cada una termina con consultas de verificación sobre las tablas propias.
+  `telcobras_cotizaciones.sql` ya incluye todas las migraciones, así que una instalación nueva
+  no las necesita. **No usar `PREPARE`/`EXECUTE`, SQL dinámico, `information_schema`,
+  `DATABASE()` ni `USE`: en phpMyAdmin de XAMPP (MariaDB 10.4) la consulta de control a
+  `information_schema` devolvió `#1044 Access denied ... information_schema`, el import se
+  abortó en el bloque `PREPARE` y no se aplicó ningún DDL; además `DATABASE()` puede dejar de
+  apuntar a la base elegida y en cPanel el nombre de la base lleva prefijo. Las migraciones
+  van con sentencias simples (`ALTER TABLE ...`) sobre la base ya seleccionada, sin escribir
+  su nombre.** Hoy: `001_usuarios_y_auditoria.sql` (fase 5B, 19-11-2026): agrega
+  `usuarios.debe_cambiar_password` (0 por defecto; 1 = debe cambiar la contraseña) y amplía el
+  ENUM `auditoria.accion` conservando los 11 valores actuales y agregando `crear_usuario`,
+  `editar_usuario`, `activar_usuario`, `desactivar_usuario`, `desbloquear_usuario`,
+  `reiniciar_password` y `cambiar_password`. **El código de la fase 5B necesita esta migración
+  aplicada.** Estado verificado en solo lectura el 19-11-2026: la columna existe y el ENUM tiene
+  18 valores; la fase 5B ya usa el aviso de contraseña temporal.
 - **Crear la base local con XAMPP:** 1) iniciar MySQL en el panel de XAMPP; 2) en phpMyAdmin
   (`http://localhost/phpmyadmin`) crear la base (cotejamiento `utf8mb4_unicode_ci`) y un
   usuario con contraseña fuerte y solo esos cuatro privilegios sobre ella; 3) seleccionar la
@@ -2129,6 +2150,34 @@ de la sección 5. No se modificó el esquema SQL. Ninguno de los `.server` llega
   borrado ni papelera (fase 6); `ver` se registra en cada apertura del detalle (mucho ruido en el
   historial); no hay filtro por responsable ni exportar; el control de concurrencia protege
   estado, responsable y notas, no la creación.
+
+### Gestión de usuarios y «Mi cuenta» (fase 5B, 19-11-2026)
+
+Archivos: `usuarios-admin-shared.ts` (tipos, validación y reglas de rol; sin código de servidor),
+`usuarios-admin.server.ts` (consultas preparadas, transacciones, hash scrypt y auditoría),
+`admin-data.server.ts` (lectura `listarUsuariosFn`), `api.admin.usuarios.ts`,
+`api.admin.usuarios.$id.ts` y `api.admin.mi-cuenta.ts` (escrituras con `requireAdminApi`), las rutas
+`admin.usuarios.tsx` y `admin.mi-cuenta.tsx`, `admin-guard.ts`, `auth.server.ts` y `PanelShell.tsx`.
+Requiere la migración 001 aplicada. Ningún `.server` llega al JS del cliente.
+
+- **Gestión (`/admin/usuarios`, solo administradores):** lista de cuentas con rol, estado, aviso de
+  contraseña temporal, bloqueo y último acceso; crear cuenta con contraseña temporal (mínimo 12),
+  editar nombre/correo/rol, activar, desactivar, desbloquear y reiniciar contraseña (valor temporal
+  generado en el servidor, se muestra una sola vez). Desactivar o reiniciar borra las sesiones de
+  esa cuenta. Auditoría: `crear_usuario`, `editar_usuario`, `activar_usuario`,
+  `desactivar_usuario`, `desbloquear_usuario` y `reiniciar_password`, con IP y detalle genérico.
+- **«Mi cuenta» (`/admin/mi-cuenta`):** cambio de contraseña propia con verificación de la actual,
+  `debe_cambiar_password = 0` y auditoría `cambiar_password`. Si la cuenta tiene contraseña
+  temporal, `requirePanelSession` redirige toda el panel a esta ruta; el login también envía ahí a
+  quien corresponda. Nadie puede quitarse el rol de administrador ni desactivarse a sí mismo.
+- **Seguridad:** el rol se comprueba en el servidor en cada acción; las rutas API exigen Origin del
+  mismo sitio, sesión vigente y límite por IP (120 escrituras/5 min, heredado de la fase 5A).
+  Solo consultas preparadas, longitudes acotadas y correos normalizados; nunca se registran ni se
+  guardan contraseñas en claro. `scripts/crear-usuario.mjs` también marca las cuentas nuevas con
+  `debe_cambiar_password = 1`.
+- **Pruebas:** `npm test` pasa 88 pruebas en 8 archivos: las 82 previas más 6 nuevas de
+  `usuarios-admin-shared.server.test.ts` (validaciones y reglas de rol); las firmas de `AdminUser`
+  se actualizaron en los mocks.
 
 ### Variables de entorno
 

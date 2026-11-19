@@ -134,11 +134,12 @@ try {
 
   const passwordHash = await hashPassword(password);
   const [result] = await pool.execute(
-    "INSERT INTO usuarios (nombre, correo, password_hash, rol) VALUES (?, ?, ?, ?)",
+    `INSERT INTO usuarios (nombre, correo, password_hash, rol, debe_cambiar_password)
+     VALUES (?, ?, ?, ?, 1)`,
     [nombre, correo, passwordHash, rol],
   );
   console.log(`\n✓ Cuenta creada: ${nombre} <${correo}> (${rol}), id ${result.insertId}.`);
-  console.log("  Ya puede iniciar sesión en /admin/login.");
+  console.log("  Al entrar al panel deberá cambiar la contraseña desde «Mi cuenta».");
   await pool.end();
 } catch (error) {
   // Solo el tipo de fallo (nunca la contraseña ni las credenciales de la base).

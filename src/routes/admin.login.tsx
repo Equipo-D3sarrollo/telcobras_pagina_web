@@ -10,7 +10,10 @@ const GENERIC_ERROR = "Correo o contraseña incorrectos";
 export const Route = createFileRoute("/admin/login")({
   // Con sesión vigente (verificada en el servidor) no se muestra el formulario.
   beforeLoad: async () => {
-    if (await getAdminSession()) throw redirect({ to: "/admin" });
+    const user = await getAdminSession();
+    if (user) {
+      throw redirect({ to: user.debe_cambiar_password === 1 ? "/admin/mi-cuenta" : "/admin" });
+    }
   },
   head: () => ({
     meta: [
@@ -42,7 +45,8 @@ function AdminLoginPage() {
       });
       if (response.ok) {
         // Carga completa: la página siguiente se renderiza en el servidor con la cookie nueva.
-        window.location.assign("/admin");
+        const result = (await response.json()) as { debeCambiarPassword?: boolean };
+        window.location.assign(result.debeCambiarPassword ? "/admin/mi-cuenta" : "/admin");
         return;
       }
       setError(

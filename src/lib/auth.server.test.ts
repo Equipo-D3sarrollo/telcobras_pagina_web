@@ -7,6 +7,7 @@ type FakeUser = {
   password_hash: string;
   rol: "administrador" | "comercial";
   activo: number;
+  debe_cambiar_password: number;
   intentos_fallidos: number;
   bloqueado_hasta: Date | null;
   ultimo_acceso: Date | null;
@@ -86,7 +87,17 @@ vi.mock("./db.server", () => ({
         const user =
           session && db.usuarios.find((u) => u.id === session.usuario_id && u.activo === 1);
         return [
-          user ? [{ id: user.id, nombre: user.nombre, correo: user.correo, rol: user.rol }] : [],
+          user
+            ? [
+                {
+                  id: user.id,
+                  nombre: user.nombre,
+                  correo: user.correo,
+                  rol: user.rol,
+                  debe_cambiar_password: user.debe_cambiar_password ?? 0,
+                },
+              ]
+            : [],
         ];
       }
       throw new Error("Consulta no prevista en la prueba: " + q);
@@ -130,6 +141,7 @@ function addUser(overrides: Partial<FakeUser> = {}): FakeUser {
     password_hash: hash,
     rol: "comercial",
     activo: 1,
+    debe_cambiar_password: 0,
     intentos_fallidos: 0,
     bloqueado_hasta: null,
     ultimo_acceso: null,
@@ -168,6 +180,7 @@ describe("login correcto", () => {
       nombre: "Ana Prueba",
       correo: "ana@example.invalid",
       rol: "comercial",
+      debe_cambiar_password: 0,
     });
     expect(result.token).toMatch(/^[A-Za-z0-9_-]{43}$/); // 32 bytes en base64url
     expect(db.sesiones).toHaveLength(1);

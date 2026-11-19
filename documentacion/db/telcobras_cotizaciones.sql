@@ -13,6 +13,11 @@
 -- 3. NO se crean usuarios del panel aquí: las contraseñas deben guardarse
 --    cifradas, así que las cuentas se crean con el script del proyecto.
 --
+-- CAMBIOS POSTERIORES: si la base ya estaba instalada, las modificaciones del esquema
+-- se aplican con los archivos de la carpeta migraciones/ (en orden). Este archivo ya
+-- incluye todas las migraciones hasta la 001 (gestión de usuarios): en una instalación
+-- nueva NO hace falta ejecutarlas.
+--
 -- Datos personales (Ley 1581 de 2012): acceso solo para el personal
 -- autorizado; todo cambio queda en la tabla `auditoria`.
 -- =====================================================================
@@ -30,6 +35,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
   password_hash     VARCHAR(255) NOT NULL COMMENT 'Hash argon2id/bcrypt. Nunca texto plano.',
   rol               ENUM('administrador','comercial') NOT NULL DEFAULT 'comercial',
   activo            TINYINT(1) NOT NULL DEFAULT 1,
+  debe_cambiar_password TINYINT(1) NOT NULL DEFAULT 0 COMMENT '1 = debe cambiar la contraseña antes de usar el panel (contraseña temporal)',
   intentos_fallidos SMALLINT UNSIGNED NOT NULL DEFAULT 0,
   bloqueado_hasta   DATETIME NULL COMMENT 'Bloqueo temporal tras varios intentos fallidos',
   ultimo_acceso     DATETIME NULL,
@@ -105,7 +111,9 @@ CREATE TABLE IF NOT EXISTS auditoria (
   id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   usuario_id      INT UNSIGNED NULL COMMENT 'NULL = acción del sistema (ej. formulario web)',
   accion          ENUM('login','login_fallido','logout','crear','ver','editar','cambiar_estado',
-                       'asignar','eliminar','restaurar','exportar') NOT NULL,
+                       'asignar','eliminar','restaurar','exportar',
+                       'crear_usuario','editar_usuario','activar_usuario','desactivar_usuario',
+                       'desbloquear_usuario','reiniciar_password','cambiar_password') NOT NULL,
   cotizacion_id   INT UNSIGNED NULL,
   detalle         VARCHAR(500) NULL COMMENT 'Ej. "estado: nueva -> cotizada". Sin datos personales completos.',
   ip              VARCHAR(45)  NULL,

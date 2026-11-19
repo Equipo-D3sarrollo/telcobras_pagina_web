@@ -21,6 +21,8 @@ export type AdminUser = {
   nombre: string;
   correo: string;
   rol: "administrador" | "comercial";
+  /** 1 = la cuenta viene de una contraseña temporal y debe cambiarla antes de usar el panel. */
+  debe_cambiar_password: number;
 };
 
 // ---------------------------------------------------------------------------
@@ -101,6 +103,7 @@ type UserRow = RowDataPacket & {
   password_hash: string;
   rol: "administrador" | "comercial";
   activo: number;
+  debe_cambiar_password: number;
   intentos_fallidos: number;
   bloqueado_hasta: Date | null;
 };
@@ -135,7 +138,8 @@ export async function login(input: {
   const correo = input.correo.trim().toLowerCase();
 
   const [rows] = await pool.execute<UserRow[]>(
-    `SELECT id, nombre, correo, password_hash, rol, activo, intentos_fallidos, bloqueado_hasta
+    `SELECT id, nombre, correo, password_hash, rol, activo, debe_cambiar_password,
+            intentos_fallidos, bloqueado_hasta
        FROM usuarios WHERE correo = ? LIMIT 1`,
     [correo],
   );
@@ -201,7 +205,13 @@ export async function login(input: {
   return {
     ok: true,
     token,
-    user: { id: user.id, nombre: user.nombre, correo: user.correo, rol: user.rol },
+    user: {
+      id: user.id,
+      nombre: user.nombre,
+      correo: user.correo,
+      rol: user.rol,
+      debe_cambiar_password: user.debe_cambiar_password ?? 0,
+    },
   };
 }
 
@@ -212,13 +222,21 @@ export async function getSessionUser(
 ): Promise<AdminUser | null> {
   if (!token) return null;
   const [rows] = await getPool().execute<(RowDataPacket & AdminUser)[]>(
-    `SELECT u.id, u.nombre, u.correo, u.rol
+    `SELECT u.id, u.nombre, u.correo, u.rol, u.debe_cambiar_password
        FROM sesiones s JOIN usuarios u ON u.id = s.usuario_id
       WHERE s.id = ? AND s.expira_en > ? AND u.activo = 1 LIMIT 1`,
     [hashSessionToken(token), now],
   );
   const row = rows[0];
-  return row ? { id: row.id, nombre: row.nombre, correo: row.correo, rol: row.rol } : null;
+  return row
+    ? {
+        id: row.id,
+        nombre: row.nombre,
+        correo: row.correo,
+        rol: row.rol,
+        debe_cambiar_password: row.debe_cambiar_password ?? 0,
+      }
+    : null;
 }
 
 /** Borra la fila de una sesión (sin auditoría): al iniciar sesión se descarta la anterior. */

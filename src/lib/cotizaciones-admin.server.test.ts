@@ -99,18 +99,21 @@ const admin = {
   nombre: "Ada Admin",
   correo: "ada@example.invalid",
   rol: "administrador" as const,
+  debe_cambiar_password: 0,
 };
 const comercial = {
   id: 2,
   nombre: "Carlos Comercial",
   correo: "carlos@example.invalid",
   rol: "comercial" as const,
+  debe_cambiar_password: 0,
 };
 const otro = {
   id: 3,
   nombre: "Olga Otra",
   correo: "olga@example.invalid",
   rol: "comercial" as const,
+  debe_cambiar_password: 0,
 };
 const CARGADO = new Date("2026-11-18T10:00:00-05:00");
 

@@ -6,6 +6,7 @@ const session = vi.hoisted(() => ({
     nombre: string;
     correo: string;
     rol: "administrador" | "comercial";
+    debe_cambiar_password: number;
   },
   fail: false,
 }));
@@ -37,7 +38,13 @@ const get = () =>
 const status = (r: unknown) => (r instanceof Response ? r.status : "ok");
 
 beforeEach(() => {
-  session.user = { id: 1, nombre: "Ada", correo: "ada@example.invalid", rol: "administrador" };
+  session.user = {
+    id: 1,
+    nombre: "Ada",
+    correo: "ada@example.invalid",
+    rol: "administrador",
+    debe_cambiar_password: 0,
+  };
   session.fail = false;
   delete process.env["TRUST_PROXY"];
 });

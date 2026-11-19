@@ -83,16 +83,21 @@ export function PanelShell({
               Cotizaciones
             </Link>
             {user.rol === "administrador" && (
-              <span
-                aria-disabled="true"
-                className="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-bold text-slate-400"
+              <Link
+                to="/admin/usuarios"
+                className={`inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-extrabold text-slate-200 hover:bg-white/10 [&.active]:bg-white/15 [&.active]:text-white ${focusRing}`}
+                activeProps={{ "aria-current": "page" }}
               >
                 Usuarios
-                <span className="rounded-full border border-white/20 px-2 py-0.5 text-[0.6875rem]">
-                  Próximamente
-                </span>
-              </span>
+              </Link>
             )}
+            <Link
+              to="/admin/mi-cuenta"
+              className={`inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-extrabold text-slate-200 hover:bg-white/10 [&.active]:bg-white/15 [&.active]:text-white ${focusRing}`}
+              activeProps={{ "aria-current": "page" }}
+            >
+              Mi cuenta
+            </Link>
           </nav>
 
           <div className="ml-auto flex items-center gap-3">

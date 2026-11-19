@@ -40,6 +40,27 @@ export const listarCotizacionesFn = createServerFn({ method: "POST" })
     }
   });
 
+/** Lista de cuentas del panel (solo lectura; la página además exige rol de administrador). */
+export const listarUsuariosFn = createServerFn({ method: "POST" }).handler(async () => {
+  try {
+    const user = await sessionUser();
+    if (!user) {
+      setResponseStatus(401);
+      return { ok: false, error: "unauthorized" } as const;
+    }
+    if (user.rol !== "administrador") {
+      setResponseStatus(403);
+      return { ok: false, error: "forbidden" } as const;
+    }
+    const { listarUsuarios } = await import("./usuarios-admin.server");
+    return { ok: true, usuarios: await listarUsuarios() } as const;
+  } catch (error) {
+    logError(error);
+    setResponseStatus(503);
+    return { ok: false, error: "unavailable" } as const;
+  }
+});
+
 export const obtenerCotizacionFn = createServerFn({ method: "POST" })
   .validator((data: unknown) => ({ id: parseId(data) }))
   .handler(async ({ data }) => {
