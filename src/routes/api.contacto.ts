@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createRateLimiter, getClientIp, NO_CLIENT_IP_KEY } from "@/lib/rate-limit";
 import { insertCotizacion } from "@/lib/cotizaciones.server";
+import { isBoundedString, isRecord, parseContacto } from "@/lib/contacto-validation";
 import { DbConfigError } from "@/lib/db.server";
 
 const MAX_REQUEST_BYTES = 16 * 1024;
@@ -85,77 +86,12 @@ function getAllowedTurnstileHostnames(): string[] | null {
   return configured.length > 0 ? configured : null;
 }
 
-const LIMITS = {
-  nombre: 100,
-  empresa: 100,
-  cargo: 100,
-  correo: 200,
-  telefono: 20,
-  servicio: 120,
-  mensaje: 2000,
-} as const;
-
-type ContactoRequest = {
-  nombre: string;
-  empresa: string;
-  cargo: string;
-  correo: string;
-  telefono: string;
-  servicio: string;
-  mensaje: string;
-  idioma: "es" | "en";
-  consentimiento: boolean;
-};
-
 function jsonResponse(body: Record<string, unknown>, status = 200, headers?: HeadersInit) {
   const responseHeaders = new Headers(headers);
   responseHeaders.set("content-type", "application/json; charset=utf-8");
   responseHeaders.set("cache-control", "no-store");
 
   return new Response(JSON.stringify(body), { status, headers: responseHeaders });
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function isBoundedString(value: unknown, maxLength: number): value is string {
-  return typeof value === "string" && value.length <= maxLength;
-}
-
-const CORREO_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function parseContacto(value: unknown): ContactoRequest | null {
-  if (!isRecord(value)) return null;
-
-  const { nombre, empresa, cargo, correo, telefono, servicio, mensaje, consentimiento } = value;
-
-  if (!isBoundedString(nombre, LIMITS.nombre) || nombre.trim().length === 0) return null;
-  if (!isBoundedString(correo, LIMITS.correo) || !CORREO_REGEX.test(correo.trim())) return null;
-  if (!isBoundedString(telefono, LIMITS.telefono) || telefono.trim().length === 0) return null;
-  if (consentimiento !== true) return null;
-
-  if (
-    !isBoundedString(empresa, LIMITS.empresa) ||
-    !isBoundedString(cargo, LIMITS.cargo) ||
-    !isBoundedString(servicio, LIMITS.servicio) ||
-    !isBoundedString(mensaje, LIMITS.mensaje)
-  ) {
-    return null;
-  }
-
-  return {
-    nombre: nombre.trim(),
-    empresa: empresa.trim(),
-    cargo: cargo.trim(),
-    correo: correo.trim(),
-    telefono: telefono.trim(),
-    servicio: servicio.trim(),
-    mensaje: mensaje.trim(),
-    // Idioma en que se usó el formulario; cualquier otro valor se guarda como «es».
-    idioma: value["idioma"] === "en" ? "en" : "es",
-    consentimiento: true,
-  };
 }
 
 async function readLimitedBody(request: Request, maxBytes: number): Promise<Uint8Array | null> {

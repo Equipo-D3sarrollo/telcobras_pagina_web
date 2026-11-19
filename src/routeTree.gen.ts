@@ -17,8 +17,12 @@ import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as ApiChatRouteImport } from './routes/api.chat'
 import { Route as ApiContactoRouteImport } from './routes/api.contacto'
+import { Route as AdminCotizacionesIdRouteImport } from './routes/admin.cotizaciones.$id'
+import { Route as AdminCotizacionesNuevaRouteImport } from './routes/admin.cotizaciones.nueva'
 import { Route as ApiAdminLoginRouteImport } from './routes/api.admin.login'
 import { Route as ApiAdminLogoutRouteImport } from './routes/api.admin.logout'
+import { Route as ApiAdminCotizacionesIdRouteImport } from './routes/api.admin.cotizaciones.$id'
+import { Route as ApiAdminCotizacionesNuevaRouteImport } from './routes/api.admin.cotizaciones.nueva'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -60,6 +64,16 @@ const ApiContactoRoute = ApiContactoRouteImport.update({
   path: '/api/contacto',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminCotizacionesIdRoute = AdminCotizacionesIdRouteImport.update({
+  id: '/admin/cotizaciones/$id',
+  path: '/admin/cotizaciones/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminCotizacionesNuevaRoute = AdminCotizacionesNuevaRouteImport.update({
+  id: '/admin/cotizaciones/nueva',
+  path: '/admin/cotizaciones/nueva',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminLoginRoute = ApiAdminLoginRouteImport.update({
   id: '/api/admin/login',
   path: '/api/admin/login',
@@ -70,6 +84,17 @@ const ApiAdminLogoutRoute = ApiAdminLogoutRouteImport.update({
   path: '/api/admin/logout',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminCotizacionesIdRoute = ApiAdminCotizacionesIdRouteImport.update({
+  id: '/api/admin/cotizaciones/$id',
+  path: '/api/admin/cotizaciones/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminCotizacionesNuevaRoute =
+  ApiAdminCotizacionesNuevaRouteImport.update({
+    id: '/api/admin/cotizaciones/nueva',
+    path: '/api/admin/cotizaciones/nueva',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -80,8 +105,12 @@ export interface FileRoutesByFullPath {
   '/api/chat': typeof ApiChatRoute
   '/api/contacto': typeof ApiContactoRoute
   '/admin/': typeof AdminIndexRoute
+  '/admin/cotizaciones/$id': typeof AdminCotizacionesIdRoute
+  '/admin/cotizaciones/nueva': typeof AdminCotizacionesNuevaRoute
   '/api/admin/login': typeof ApiAdminLoginRoute
   '/api/admin/logout': typeof ApiAdminLogoutRoute
+  '/api/admin/cotizaciones/$id': typeof ApiAdminCotizacionesIdRoute
+  '/api/admin/cotizaciones/nueva': typeof ApiAdminCotizacionesNuevaRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -92,8 +121,12 @@ export interface FileRoutesByTo {
   '/api/chat': typeof ApiChatRoute
   '/api/contacto': typeof ApiContactoRoute
   '/admin': typeof AdminIndexRoute
+  '/admin/cotizaciones/$id': typeof AdminCotizacionesIdRoute
+  '/admin/cotizaciones/nueva': typeof AdminCotizacionesNuevaRoute
   '/api/admin/login': typeof ApiAdminLoginRoute
   '/api/admin/logout': typeof ApiAdminLogoutRoute
+  '/api/admin/cotizaciones/$id': typeof ApiAdminCotizacionesIdRoute
+  '/api/admin/cotizaciones/nueva': typeof ApiAdminCotizacionesNuevaRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -105,8 +138,12 @@ export interface FileRoutesById {
   '/api/chat': typeof ApiChatRoute
   '/api/contacto': typeof ApiContactoRoute
   '/admin/': typeof AdminIndexRoute
+  '/admin/cotizaciones/$id': typeof AdminCotizacionesIdRoute
+  '/admin/cotizaciones/nueva': typeof AdminCotizacionesNuevaRoute
   '/api/admin/login': typeof ApiAdminLoginRoute
   '/api/admin/logout': typeof ApiAdminLogoutRoute
+  '/api/admin/cotizaciones/$id': typeof ApiAdminCotizacionesIdRoute
+  '/api/admin/cotizaciones/nueva': typeof ApiAdminCotizacionesNuevaRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -119,8 +156,12 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/api/contacto'
     | '/admin/'
+    | '/admin/cotizaciones/$id'
+    | '/admin/cotizaciones/nueva'
     | '/api/admin/login'
     | '/api/admin/logout'
+    | '/api/admin/cotizaciones/$id'
+    | '/api/admin/cotizaciones/nueva'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -131,8 +172,12 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/api/contacto'
     | '/admin'
+    | '/admin/cotizaciones/$id'
+    | '/admin/cotizaciones/nueva'
     | '/api/admin/login'
     | '/api/admin/logout'
+    | '/api/admin/cotizaciones/$id'
+    | '/api/admin/cotizaciones/nueva'
   id:
     | '__root__'
     | '/'
@@ -143,8 +188,12 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/api/contacto'
     | '/admin/'
+    | '/admin/cotizaciones/$id'
+    | '/admin/cotizaciones/nueva'
     | '/api/admin/login'
     | '/api/admin/logout'
+    | '/api/admin/cotizaciones/$id'
+    | '/api/admin/cotizaciones/nueva'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -156,8 +205,12 @@ export interface RootRouteChildren {
   ApiChatRoute: typeof ApiChatRoute
   ApiContactoRoute: typeof ApiContactoRoute
   AdminIndexRoute: typeof AdminIndexRoute
+  AdminCotizacionesIdRoute: typeof AdminCotizacionesIdRoute
+  AdminCotizacionesNuevaRoute: typeof AdminCotizacionesNuevaRoute
   ApiAdminLoginRoute: typeof ApiAdminLoginRoute
   ApiAdminLogoutRoute: typeof ApiAdminLogoutRoute
+  ApiAdminCotizacionesIdRoute: typeof ApiAdminCotizacionesIdRoute
+  ApiAdminCotizacionesNuevaRoute: typeof ApiAdminCotizacionesNuevaRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -218,6 +271,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiContactoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/cotizaciones/$id': {
+      id: '/admin/cotizaciones/$id'
+      path: '/admin/cotizaciones/$id'
+      fullPath: '/admin/cotizaciones/$id'
+      preLoaderRoute: typeof AdminCotizacionesIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/cotizaciones/nueva': {
+      id: '/admin/cotizaciones/nueva'
+      path: '/admin/cotizaciones/nueva'
+      fullPath: '/admin/cotizaciones/nueva'
+      preLoaderRoute: typeof AdminCotizacionesNuevaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/login': {
       id: '/api/admin/login'
       path: '/api/admin/login'
@@ -232,6 +299,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminLogoutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/cotizaciones/$id': {
+      id: '/api/admin/cotizaciones/$id'
+      path: '/api/admin/cotizaciones/$id'
+      fullPath: '/api/admin/cotizaciones/$id'
+      preLoaderRoute: typeof ApiAdminCotizacionesIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/cotizaciones/nueva': {
+      id: '/api/admin/cotizaciones/nueva'
+      path: '/api/admin/cotizaciones/nueva'
+      fullPath: '/api/admin/cotizaciones/nueva'
+      preLoaderRoute: typeof ApiAdminCotizacionesNuevaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -244,8 +325,12 @@ const rootRouteChildren: RootRouteChildren = {
   ApiChatRoute: ApiChatRoute,
   ApiContactoRoute: ApiContactoRoute,
   AdminIndexRoute: AdminIndexRoute,
+  AdminCotizacionesIdRoute: AdminCotizacionesIdRoute,
+  AdminCotizacionesNuevaRoute: AdminCotizacionesNuevaRoute,
   ApiAdminLoginRoute: ApiAdminLoginRoute,
   ApiAdminLogoutRoute: ApiAdminLogoutRoute,
+  ApiAdminCotizacionesIdRoute: ApiAdminCotizacionesIdRoute,
+  ApiAdminCotizacionesNuevaRoute: ApiAdminCotizacionesNuevaRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

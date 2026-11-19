@@ -477,10 +477,11 @@ con excepciones para `*.example`, aunque hoy no existe un `.env.example` version
 
 ### Panel `/admin` (fase 4, 18-11-2026)
 
-Rutas: `/admin/login` (`src/routes/admin.login.tsx`), `/admin` (`admin.index.tsx`, por ahora
-solo «Hola, {nombre}», el rol y «Cerrar sesión»; la lista de cotizaciones es la fase 5),
-`POST /api/admin/login` y `POST /api/admin/logout` (`api.admin.login.ts`, `api.admin.logout.ts`).
-Detalle de seguridad en «Login del panel» (sección 12).
+Rutas: `/admin/login` (`admin.login.tsx`), `/admin` (lista de cotizaciones, `admin.index.tsx`),
+`/admin/cotizaciones/$id` (detalle) y `/admin/cotizaciones/nueva` (`admin.cotizaciones.*.tsx`),
+`POST /api/admin/login`, `POST /api/admin/logout`, `POST /api/admin/cotizaciones/$id` y
+`POST /api/admin/cotizaciones/nueva` (`api.admin.*.ts`). Detalle de seguridad en «Login del
+panel» y de la gestión en «Gestión de cotizaciones» (sección 12).
 
 ### Rutas generadas
 
@@ -2055,9 +2056,79 @@ cookie, CSRF), `admin-session.server.ts` (función de servidor que verifica la s
   inválido. Además se probó en localhost contra la MySQL real con una cuenta temporal (ya
   eliminada): login correcto e incorrecto, bloqueo, sesión vencida, logout, `/admin` sin sesión,
   Origin ajeno, límite por IP y la interfaz en Chromium a 360 y 1280 px.
-- **Pendiente / a decidir:** la vida de la sesión es fija (8 h, sin renovación); no hay recuperación
+- **Pendiente / a decidir (login):** la vida de la sesión es fija (8 h, sin renovación); no hay recuperación
   de contraseña ni cambio de contraseña desde el panel (fase posterior); la auditoría y las
   sesiones no tienen política de retención todavía.
+
+### Gestión de cotizaciones en `/admin` (fase 5A, 18-11-2026)
+
+Archivos: `cotizaciones-admin-shared.ts` (tipos, listas permitidas y validación; **sin código de
+servidor**, lo usan páginas y servidor), `cotizaciones-admin.server.ts` (consultas, permisos y
+transacciones), `admin-api.server.ts` (guardián común de las rutas API), `admin-data.server.ts`
+(lecturas como funciones de servidor), `contacto-validation.ts` (validación del formulario,
+compartida con `/api/contacto`), `admin-guard.ts`, `components/admin/PanelShell.tsx` y las rutas
+de la sección 5. No se modificó el esquema SQL. Ninguno de los `.server` llega al JS del cliente.
+
+- **Reglas generales:** toda lectura y escritura pasa por el servidor con sesión válida,
+  comprobada contra la base en cada llamada; **el rol se verifica en el servidor en cada
+  acción** (ocultar botones es solo comodidad). Solo consultas preparadas: filtros, orden y
+  paginación se validan contra listas permitidas (`parseListQuery`: estados del esquema; orden
+  `fecha|id|nombre|estado` → columna fija; `asc|desc`; página = entero con dígitos, máx. 100.000;
+  búsqueda ≤ 100; fechas `YYYY-MM-DD` reales). Lo inválido se descarta y la URL se limpia
+  (307 a la versión canónica). `LIMIT/OFFSET` van como parámetros de texto (MySQL 8.0.22+
+  rechaza números JS en sentencias preparadas). El texto del cliente se muestra siempre como
+  texto plano (React; sin `dangerouslySetInnerHTML`). Se ignoran las filas con `eliminado_en`
+  (la papelera es la fase 6). Sin datos personales en la lista, la auditoría ni los logs
+  (solo `code`/`errno`).
+- **Lecturas** (`listarCotizacionesFn`, `obtenerCotizacionFn`): funciones de servidor; sin sesión
+  responden 401 y las páginas redirigen a `/admin/login`. **Escrituras:** rutas API
+  `POST`; `requireAdminApi` exige Origin del mismo sitio (403), límite de 120 escrituras cada
+  5 minutos por IP (429), sesión válida (401; 503 si la base falla) y el cuerpo se valida
+  (400). Otros métodos → 405. Códigos de `POST /api/admin/cotizaciones/$id`: 400 inválido, 403
+  sin permiso, 404 no existe o eliminada, 409 conflicto.
+- **Lista (`/admin`):** contadores por estado (clic = filtra; respetan los demás filtros),
+  búsqueda por nombre, empresa o correo (`LIKE … ESCAPE '!'` con `%`, `_` y `!` escapados),
+  filtros de estado, servicio (valores existentes) y fechas (día completo en hora de Colombia),
+  orden por #, fecha, nombre o estado (fecha descendente por defecto), 20 por página. Todo vive
+  en la URL (se puede compartir y recargar). Tabla desde 768 px y tarjetas en celular; fechas en
+  es-CO (hora de Bogotá); estado vacío amable. Columnas: #, fecha, nombre, empresa, servicio,
+  estado (insignia) y responsable. Los campos del filtro tienen `name`, así que el envío
+  nativo funciona incluso antes de que cargue el JavaScript.
+- **Detalle (`/admin/cotizaciones/$id`):** datos del cliente con enlaces `tel:`/`mailto:`
+  (el correo se codifica contra inyección de cabeceras), mensaje con saltos de línea
+  (`whitespace-pre-wrap`), fecha de autorización (Ley 1581), origen, idioma, gestión (estado,
+  responsable, notas de hasta 5000) e historial (auditoría; «Formulario web» cuando la acción
+  `crear` no tiene usuario). Id inexistente, eliminado o inválido → 404 con el marco del panel.
+  Abrir el detalle registra `ver`.
+- **Permisos:** el administrador asigna a cualquier usuario **activo** (o deja sin asignar); el
+  comercial solo «Tomar» (asignársela a sí mismo) y solo si no tiene responsable o ya es suya
+  (`puedeAsignar`); ambos roles pueden cambiar estado y notas.
+- **Guardado y concurrencia:** una transacción con `SELECT … FOR UPDATE`, comprobación de
+  permisos, un solo `UPDATE` con columnas fijas y las filas de auditoría: `cambiar_estado`
+  («estado: X -> Y»), `asignar` («Responsable: nombre» / «sin asignar») y `editar` («Notas
+  internas actualizadas», sin copiar el texto). El cliente envía el `actualizado_en` que cargó; si
+  en la base cambió responde 409 («Otra persona modificó esta solicitud; recarga para ver los
+  cambios») y no escribe nada. **Cada escritura avanza `actualizado_en` al menos 1 s** sobre el
+  valor anterior (explícito, no `ON UPDATE`): la columna no guarda fracciones y, sin esto, dos
+  guardados dentro del mismo segundo dejaban el mismo valor y uno con datos viejos pasaba el
+  control (lo encontró la prueba real; hay prueba unitaria). Sin cambios no se escribe nada.
+- **Crear a mano (`/admin/cotizaciones/nueva`):** mismos campos y validaciones que el formulario
+  público (`parseContacto`), sin Turnstile, `origen = 'manual'`, `estado = 'nueva'`, `idioma = 'es'`,
+  casilla **obligatoria** de autorización (Ley 1581) y auditoría `crear` con el usuario
+  (`insertCotizacion` ahora acepta `origen` y `usuarioId`; el formulario público no cambia).
+- **Pruebas:** `npm test` (82): `cotizaciones-admin.server.test.ts` (validación de filtros/orden/
+  página, SQL solo con marcadores, permisos por rol, concurrencia incluido el mismo segundo,
+  auditoría sin datos personales, creación manual) y `admin-api.server.test.ts` (sin sesión 401,
+  Origin 403, límite 429). Además, prueba real en localhost con 3 cuentas temporales (admin y 2
+  comerciales) y la interfaz en Chromium a 360, 768 y 1280 px; todo se borró y la cotización 2
+  no se tocó (el contador `AUTO_INCREMENT` avanzó).
+- **Desarrollo:** si en `npm run dev` las páginas del panel no responden a los clics y la
+  consola dice «does not provide an export named useSyncExternalStoreWithSelector», es la caché
+  de dependencias de Vite; reiniciar con `npm run dev -- --force`. No afecta al build.
+- **Pendiente / a decidir (fase 5A):** «Usuarios» es solo un marcador («Próximamente»); no hay
+  borrado ni papelera (fase 6); `ver` se registra en cada apertura del detalle (mucho ruido en el
+  historial); no hay filtro por responsable ni exportar; el control de concurrencia protege
+  estado, responsable y notas, no la creación.
 
 ### Variables de entorno
 
