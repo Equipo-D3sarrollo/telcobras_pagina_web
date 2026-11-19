@@ -10,6 +10,32 @@ const mutationLimiter = createRateLimiter({
   maxEntries: 10000,
 });
 
+/** Operaciones sensibles con límite propio, además del genérico de escrituras. */
+export type AdminAccionLimitada = "crear_usuario" | "reiniciar_password" | "cambiar_password";
+
+const LIMITE_ACCION_MS = 15 * 60 * 1000;
+const MENSAJE_LIMITE = "Demasiadas solicitudes. Intenta de nuevo en unos minutos.";
+
+const accionLimiters: Record<AdminAccionLimitada, ReturnType<typeof createRateLimiter>> = {
+  // Crear cuentas y reiniciar contraseñas: 10 cada 15 min, por IP y por usuario de la sesión.
+  crear_usuario: createRateLimiter({
+    windowMs: LIMITE_ACCION_MS,
+    maxRequests: 10,
+    maxEntries: 10000,
+  }),
+  reiniciar_password: createRateLimiter({
+    windowMs: LIMITE_ACCION_MS,
+    maxRequests: 10,
+    maxEntries: 10000,
+  }),
+  // Cambiar la propia contraseña: 5 cada 15 min (incluye el cambio obligatorio).
+  cambiar_password: createRateLimiter({
+    windowMs: LIMITE_ACCION_MS,
+    maxRequests: 5,
+    maxEntries: 10000,
+  }),
+};
+
 export function adminJson(body: Record<string, unknown>, status = 200, extra?: [string, string][]) {
   const headers = new Headers({
     "content-type": "application/json; charset=utf-8",
@@ -30,12 +56,12 @@ export function logAdminError(where: string, error: unknown) {
 
 /**
  * Exige sesión válida y, en las escrituras (POST), un Origin del mismo sitio y respeto del
- * límite por IP. Devuelve el usuario o la respuesta de error lista para enviar:
- * 403 (Origin), 429 (límite), 401 (sin sesión) o 503 (la base no responde).
+ * límite por IP. Con `adminOnly` exige además rol de administrador. Devuelve el usuario o la
+ * respuesta de error: 403 (Origin o rol), 429 (límite), 401 (sin sesión) o 503 (base caída).
  */
 export async function requireAdminApi(
   request: Request,
-  options: { mutation: boolean },
+  options: { mutation: boolean; adminOnly?: boolean },
 ): Promise<{ user: AdminUser; ip: string | null } | Response> {
   const ip = getClientIp(request);
   if (options.mutation) {
@@ -50,11 +76,37 @@ export async function requireAdminApi(
   try {
     const user = await getSessionUser(readSessionToken(request.headers.get("cookie")));
     if (!user) return adminJson({ error: "unauthorized" }, 401);
+    if (options.adminOnly && user.rol !== "administrador")
+      return adminJson({ error: "forbidden" }, 403);
     return { user, ip };
   } catch (error) {
     logAdminError("admin/api", error);
     return adminJson({ error: "unavailable" }, 503);
   }
+}
+
+/**
+ * Límite dedicado de una operación sensible: se comprueban la IP y el usuario de la sesión.
+ * Devuelve un 429 con mensaje genérico, o `null` si puede continuar. Se usa además del
+ * limitador genérico de escrituras, nunca en su lugar.
+ */
+export function checkAdminActionLimit(
+  request: Request,
+  user: AdminUser,
+  accion: AdminAccionLimitada,
+): Response | null {
+  const ip = getClientIp(request);
+  const limiter = accionLimiters[accion];
+  const claves = [`${accion}:ip:${ip ?? NO_CLIENT_IP_KEY}`, `${accion}:usuario:${user.id}`];
+  for (const clave of claves) {
+    const limite = limiter.check(clave);
+    if (!limite.allowed) {
+      return adminJson({ error: "rate_limit_exceeded", mensaje: MENSAJE_LIMITE }, 429, [
+        ["retry-after", String(limite.retryAfterSeconds)],
+      ]);
+    }
+  }
+  return null;
 }
 
 /** Cuerpo JSON de tamaño acotado; `null` si es demasiado grande o no es JSON. */

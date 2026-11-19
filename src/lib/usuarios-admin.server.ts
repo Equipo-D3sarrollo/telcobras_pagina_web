@@ -133,7 +133,25 @@ export async function crearUsuario(
 
 export type ResultadoAccion =
   | { ok: true; passwordTemporal?: string }
-  | { ok: false; error: "forbidden" | "not_found" | "conflict" };
+  | { ok: false; error: "forbidden" | "not_found" | "conflict"; mensaje?: string };
+
+const ULTIMO_ADMIN_MENSAJE = "Debe quedar al menos un administrador activo";
+
+/**
+ * Dentro de la transacción bloquea los administradores activos (FOR UPDATE) y comprueba que la
+ * acción no deje cero. El bloqueo evita que dos administradores se desactiven cruzadamente.
+ */
+async function quedariaSinAdministradores(
+  connection: PoolConnection,
+  targetId: number,
+  quitaRolAdmin: boolean,
+): Promise<boolean> {
+  const [rows] = await connection.execute<RowDataPacket[]>(
+    "SELECT id FROM usuarios WHERE rol = 'administrador' AND activo = 1 FOR UPDATE",
+  );
+  const admins = rows.map((row) => row["id"] as number);
+  return quitaRolAdmin && admins.length === 1 && admins[0] === targetId;
+}
 
 export async function editarUsuario(
   admin: AdminUser,
@@ -147,6 +165,10 @@ export async function editarUsuario(
   const connection = await getPool().getConnection();
   try {
     await connection.beginTransaction();
+    if (await quedariaSinAdministradores(connection, id, input.rol === "comercial")) {
+      await connection.rollback();
+      return { ok: false, error: "conflict", mensaje: ULTIMO_ADMIN_MENSAJE };
+    }
     const [result] = await connection.execute<ResultSetHeader>(
       "UPDATE usuarios SET nombre = ?, correo = ?, rol = ? WHERE id = ?",
       [input.nombre, input.correo, input.rol, id],
@@ -181,6 +203,10 @@ export async function cambiarEstadoUsuario(
   const connection = await getPool().getConnection();
   try {
     await connection.beginTransaction();
+    if (!activo && (await quedariaSinAdministradores(connection, id, true))) {
+      await connection.rollback();
+      return { ok: false, error: "conflict", mensaje: ULTIMO_ADMIN_MENSAJE };
+    }
     const [result] = await connection.execute<ResultSetHeader>(
       "UPDATE usuarios SET activo = ? WHERE id = ?",
       [activo ? 1 : 0, id],

@@ -350,6 +350,16 @@ describe("sesiones", () => {
     await expect(logout(null, IP)).resolves.toBeUndefined();
   });
 
+  it("con contraseña temporal se puede cerrar sesión: logout no depende del guardián del panel", async () => {
+    addUser({ debe_cambiar_password: 1 });
+    const resultado = await tryLogin(PASSWORD);
+    if (!resultado.ok) throw new Error("login");
+    expect(resultado.user.debe_cambiar_password).toBe(1);
+    await logout(resultado.token, IP);
+    expect(db.sesiones).toHaveLength(0);
+    expect(await getSessionUser(resultado.token)).toBeNull();
+  });
+
   it("cleanExpiredSessions solo borra las vencidas", async () => {
     db.sesiones.push(
       {

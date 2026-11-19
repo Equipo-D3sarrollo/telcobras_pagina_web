@@ -21,6 +21,7 @@ function sparse(query: ListQuery): ListSearch {
     q: query.q,
     estado: query.estado,
     servicio: query.servicio,
+    responsable: query.responsable === "todos" ? undefined : query.responsable,
     desde: query.desde,
     hasta: query.hasta,
     orden: query.orden === "fecha" ? undefined : query.orden,
@@ -56,6 +57,7 @@ function ListaPage() {
   const [q, setQ] = useState(query.q ?? "");
   const [estado, setEstado] = useState(query.estado ?? "");
   const [servicio, setServicio] = useState(query.servicio ?? "");
+  const [responsable, setResponsable] = useState(String(query.responsable));
   const [desde, setDesde] = useState(query.desde ?? "");
   const [hasta, setHasta] = useState(query.hasta ?? "");
 
@@ -64,7 +66,9 @@ function ListaPage() {
   function applyFilters(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     void navigate({
-      search: sparse(parseListQuery({ ...query, q, estado, servicio, desde, hasta, page: 1 })),
+      search: sparse(
+        parseListQuery({ ...query, q, estado, servicio, responsable, desde, hasta, page: 1 }),
+      ),
     });
   }
 
@@ -72,6 +76,7 @@ function ListaPage() {
     setQ("");
     setEstado("");
     setServicio("");
+    setResponsable("todos");
     setDesde("");
     setHasta("");
     void navigate({ search: sparse(parseListQuery({ orden: query.orden, dir: query.dir })) });
@@ -83,7 +88,12 @@ function ListaPage() {
     query.orden === orden ? (query.dir === "asc" ? "ascending" : "descending") : "none";
 
   const hasFilters = Boolean(
-    query.q || query.estado || query.servicio || query.desde || query.hasta,
+    query.q ||
+    query.estado ||
+    query.servicio ||
+    query.responsable !== "todos" ||
+    query.desde ||
+    query.hasta,
   );
 
   return (
@@ -201,6 +211,36 @@ function ListaPage() {
                     {s}
                   </option>
                 ))}
+              </select>
+            </div>
+            <div>
+              <label
+                htmlFor="f-responsable"
+                className="mb-1 block text-xs font-bold text-slate-200"
+              >
+                Responsable
+              </label>
+              <select
+                id="f-responsable"
+                name="responsable"
+                value={responsable}
+                onChange={(e) => setResponsable(e.currentTarget.value)}
+                className={inputClass}
+              >
+                <option value="todos">Todos</option>
+                <option value="mios">Mis cotizaciones</option>
+                <option value="sin_asignar">Sin asignar</option>
+                {data.ok &&
+                  user.rol === "administrador" &&
+                  data.responsables.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.nombre}
+                    </option>
+                  ))}
+                {typeof query.responsable === "number" &&
+                  !(data.ok && data.responsables.some((u) => u.id === query.responsable)) && (
+                    <option value={query.responsable}>Usuario #{query.responsable}</option>
+                  )}
               </select>
             </div>
             <div>

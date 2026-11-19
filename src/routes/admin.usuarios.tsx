@@ -28,7 +28,14 @@ const inputClass = `w-full rounded-xl border border-white/25 bg-white/10 px-3 py
 const buttonClass = `inline-flex min-h-11 items-center justify-center rounded-xl px-4 text-sm font-extrabold ${focusRing}`;
 
 type Feedback = { tono: "ok" | "error"; texto: string } | null;
-type ApiResponse = { error?: string; status?: string; passwordTemporal?: string };
+type ApiResponse = {
+  error?: string;
+  status?: string;
+  passwordTemporal?: string;
+  mensaje?: string;
+};
+
+const LIMITE_MENSAJE = "Demasiadas solicitudes. Espera unos minutos e inténtalo de nuevo.";
 
 async function postJson(url: string, body: unknown): Promise<{ ok: boolean; data: ApiResponse }> {
   const response = await fetch(url, {
@@ -71,9 +78,11 @@ function UsuariosPage() {
       if (!result.ok) {
         aviso(
           "error",
-          result.data.error === "conflict"
-            ? "Ya existe una cuenta con ese correo."
-            : "No se pudo crear la cuenta.",
+          result.data.error === "rate_limit_exceeded"
+            ? LIMITE_MENSAJE
+            : result.data.error === "conflict"
+              ? "Ya existe una cuenta con ese correo."
+              : "No se pudo crear la cuenta.",
         );
         return;
       }
@@ -100,9 +109,11 @@ function UsuariosPage() {
       if (!result.ok) {
         aviso(
           "error",
-          result.data.error === "conflict"
-            ? "Ya existe otra cuenta con ese correo."
-            : "No se pudo completar la acción.",
+          result.data.error === "rate_limit_exceeded"
+            ? LIMITE_MENSAJE
+            : result.data.mensaje === undefined && result.data.error === "conflict"
+              ? "Ya existe otra cuenta con ese correo."
+              : (result.data.mensaje ?? "No se pudo completar la acción."),
         );
         return;
       }

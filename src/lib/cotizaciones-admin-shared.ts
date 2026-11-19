@@ -26,10 +26,16 @@ export const MAX_BUSQUEDA = 100;
 export const MAX_SERVICIO = 120;
 export const NOTAS_MAX = 5000;
 
+export const FILTROS_RESPONSABLE = ["todos", "mios", "sin_asignar"] as const;
+export type FiltroResponsableBase = (typeof FILTROS_RESPONSABLE)[number];
+/** «todos»/«mios»/«sin_asignar» o el id de un usuario (solo administradores). */
+export type FiltroResponsable = FiltroResponsableBase | number;
+
 export type ListQuery = {
   q: string | undefined;
   estado: Estado | undefined;
   servicio: string | undefined;
+  responsable: FiltroResponsable;
   desde: string | undefined;
   hasta: string | undefined;
   orden: Orden;
@@ -45,6 +51,19 @@ function isIsoDay(value: unknown): value is string {
 
 /** Los mismos campos, todos opcionales (lo que de verdad viaja en la URL). */
 export type ListSearch = { [K in keyof ListQuery]?: ListQuery[K] | undefined };
+
+/** Solo los valores fijos o un id entero positivo; cualquier otra cosa vuelve a «todos». */
+export function parseResponsable(value: unknown): FiltroResponsable {
+  if (typeof value === "string" && FILTROS_RESPONSABLE.some((item) => item === value)) {
+    return value as FiltroResponsableBase;
+  }
+  return parseId(value) ?? "todos";
+}
+
+/** Un comercial puede usar «mios» y «sin_asignar», nunca el id de otra persona. */
+export function responsablePermitido(valor: FiltroResponsable, rol: Rol): boolean {
+  return typeof valor !== "number" || rol === "administrador";
+}
 
 /** Convierte lo que llega de la URL en una consulta válida; lo inválido se descarta. */
 export function parseListQuery(input: unknown): ListQuery {
@@ -66,6 +85,7 @@ export function parseListQuery(input: unknown): ListQuery {
     q: text(raw["q"], MAX_BUSQUEDA),
     estado: ESTADOS.find((estado) => estado === raw["estado"]),
     servicio: text(raw["servicio"], MAX_SERVICIO),
+    responsable: parseResponsable(raw["responsable"]),
     desde: isIsoDay(raw["desde"]) ? raw["desde"] : undefined,
     hasta: isIsoDay(raw["hasta"]) ? raw["hasta"] : undefined,
     orden: ORDENES.find((orden) => orden === raw["orden"]) ?? "fecha",
@@ -141,6 +161,8 @@ export type ListaCotizaciones = {
   total: number;
   conteos: Record<Estado, number>;
   servicios: string[];
+  /** Usuarios activos para el filtro por responsable; vacío para comerciales. */
+  responsables: { id: number; nombre: string }[];
 };
 
 export type EntradaHistorial = {

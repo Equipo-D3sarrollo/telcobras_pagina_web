@@ -6,6 +6,7 @@ import {
   ESTADOS,
   PAGE_SIZE,
   escapeLike,
+  responsablePermitido,
   type DetalleCotizacion,
   type EntradaHistorial,
   type Estado,
@@ -33,10 +34,31 @@ const ORDER_COLUMN: Record<Orden, string> = {
 
 const COLOMBIA_UTC_OFFSET = "-05:00";
 
-/** Fragmento WHERE y parámetros de los filtros (con o sin el de estado). */
-export function buildFilters(query: ListQuery, options: { includeEstado: boolean }) {
+/**
+ * Fragmento WHERE y parámetros de los filtros (con o sin el de estado). El filtro por
+ * responsable se aplica tanto al listado como a los contadores, y «mios» usa siempre el id
+ * de la sesión, nunca un id que viniera del navegador.
+ */
+export function buildFilters(
+  query: ListQuery,
+  options: { includeEstado: boolean },
+  user: { id: number; rol: "administrador" | "comercial" },
+) {
   const conditions = ["c.eliminado_en IS NULL"];
-  const params: (string | Date)[] = [];
+  const params: (string | Date | number)[] = [];
+
+  const responsable = responsablePermitido(query.responsable, user.rol)
+    ? query.responsable
+    : "todos";
+  if (responsable === "mios") {
+    conditions.push("c.responsable_id = ?");
+    params.push(user.id);
+  } else if (responsable === "sin_asignar") {
+    conditions.push("c.responsable_id IS NULL");
+  } else if (typeof responsable === "number") {
+    conditions.push("c.responsable_id = ?");
+    params.push(responsable);
+  }
 
   if (query.q) {
     const like = `%${escapeLike(query.q)}%`;
@@ -67,14 +89,32 @@ export function buildFilters(query: ListQuery, options: { includeEstado: boolean
   return { where: conditions.join(" AND "), params };
 }
 
-export async function listarCotizaciones(query: ListQuery): Promise<ListaCotizaciones> {
+export async function listarCotizaciones(
+  query: ListQuery,
+  user: { id: number; rol: "administrador" | "comercial" },
+): Promise<ListaCotizaciones> {
   const pool = getPool();
-  const filtered = buildFilters(query, { includeEstado: true });
-  const forCounts = buildFilters(query, { includeEstado: false });
+
+  // Un id de responsable solo vale si es administrador y el usuario existe; lo demás se ignora.
+  let filtro = query;
+  if (typeof query.responsable === "number") {
+    if (!responsablePermitido(query.responsable, user.rol)) {
+      filtro = { ...query, responsable: "todos" };
+    } else {
+      const [existe] = await pool.execute<RowDataPacket[]>(
+        "SELECT id FROM usuarios WHERE id = ? LIMIT 1",
+        [query.responsable],
+      );
+      if (existe.length === 0) filtro = { ...query, responsable: "todos" };
+    }
+  }
+
+  const filtered = buildFilters(filtro, { includeEstado: true }, user);
+  const forCounts = buildFilters(filtro, { includeEstado: false }, user);
   const offset = (query.page - 1) * PAGE_SIZE;
   const direction = query.dir === "asc" ? "ASC" : "DESC";
 
-  const [filas, total, conteos, servicios] = await Promise.all([
+  const [filas, total, conteos, servicios, responsables] = await Promise.all([
     // LIMIT/OFFSET van como texto: MySQL 8.0.22+ rechaza los números JS (DOUBLE) en
     // sentencias preparadas y acepta el texto.
     pool.execute<RowDataPacket[]>(
@@ -96,6 +136,11 @@ export async function listarCotizaciones(query: ListQuery): Promise<ListaCotizac
     pool.execute<RowDataPacket[]>(
       "SELECT DISTINCT servicio FROM cotizaciones WHERE eliminado_en IS NULL AND servicio <> '' ORDER BY servicio LIMIT 100",
     ),
+    user.rol === "administrador"
+      ? pool.execute<RowDataPacket[]>(
+          "SELECT id, nombre FROM usuarios WHERE activo = 1 ORDER BY nombre",
+        )
+      : Promise.resolve([[] as RowDataPacket[]]),
   ]);
 
   const counts = Object.fromEntries(ESTADOS.map((estado) => [estado, 0])) as Record<Estado, number>;
@@ -114,6 +159,10 @@ export async function listarCotizaciones(query: ListQuery): Promise<ListaCotizac
     total: Number(total[0][0]?.["n"] ?? 0),
     conteos: counts,
     servicios: servicios[0].map((row) => row["servicio"] as string),
+    responsables: responsables[0].map((row) => ({
+      id: row["id"] as number,
+      nombre: row["nombre"] as string,
+    })),
   };
 }
 
@@ -166,7 +215,18 @@ export async function obtenerDetalle(
   const row = rows[0];
   if (!row) return null;
 
-  await auditar((sql, values) => pool.execute(sql, values), user.id, "ver", id, null, ip);
+  // «ver» se registra como máximo una vez por usuario y cotización cada 30 minutos: abrir el
+  // detalle varias veces seguidas no llena el historial de ruido.
+  const [vistos] = await pool.execute<RowDataPacket[]>(
+    `SELECT id FROM auditoria
+       WHERE accion = 'ver' AND usuario_id = ? AND cotizacion_id = ?
+         AND creado_en >= NOW() - INTERVAL 30 MINUTE
+       LIMIT 1`,
+    [user.id, id],
+  );
+  if (vistos.length === 0) {
+    await auditar((sql, values) => pool.execute(sql, values), user.id, "ver", id, null, ip);
+  }
   const historial = await leerHistorial(id);
   const usuarios =
     user.rol === "administrador"

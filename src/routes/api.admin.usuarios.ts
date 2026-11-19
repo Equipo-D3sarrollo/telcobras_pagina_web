@@ -1,5 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { adminJson, logAdminError, readJsonBody, requireAdminApi } from "@/lib/admin-api.server";
+import {
+  adminJson,
+  checkAdminActionLimit,
+  logAdminError,
+  readJsonBody,
+  requireAdminApi,
+} from "@/lib/admin-api.server";
 import { crearUsuario } from "@/lib/usuarios-admin.server";
 import { parseCrearUsuario } from "@/lib/usuarios-admin-shared";
 
@@ -7,8 +13,11 @@ const MAX_BODY_CHARS = 8 * 1024;
 
 // POST /api/admin/usuarios — crea una cuenta con contraseña temporal (debe cambiarse al entrar).
 async function handlePost(request: Request): Promise<Response> {
-  const auth = await requireAdminApi(request, { mutation: true });
+  const auth = await requireAdminApi(request, { mutation: true, adminOnly: true });
   if (auth instanceof Response) return auth;
+
+  const limitada = checkAdminActionLimit(request, auth.user, "crear_usuario");
+  if (limitada) return limitada;
 
   const input = parseCrearUsuario(await readJsonBody(request, MAX_BODY_CHARS));
   if (!input) return adminJson({ error: "invalid_request" }, 400);

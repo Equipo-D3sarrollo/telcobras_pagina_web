@@ -2113,8 +2113,12 @@ de la sección 5. No se modificó el esquema SQL. Ninguno de los `.server` llega
   orden por #, fecha, nombre o estado (fecha descendente por defecto), 20 por página. Todo vive
   en la URL (se puede compartir y recargar). Tabla desde 768 px y tarjetas en celular; fechas en
   es-CO (hora de Bogotá); estado vacío amable. Columnas: #, fecha, nombre, empresa, servicio,
-  estado (insignia) y responsable. Los campos del filtro tienen `name`, así que el envío
-  nativo funciona incluso antes de que cargue el JavaScript.
+  estado (insignia) y responsable. Filtro adicional **Responsable**: `todos` (por defecto),
+  `mios` (id de la sesión), `sin_asignar` y, solo para administradores, el id de un usuario
+  activo; se guarda en la URL (`?responsable=…`) y lo respetan también los contadores por
+  estado. Para comercial, un id ajeno se ignora en servidor (y un id inexistente también).
+  Los campos del filtro tienen `name`, así que el envío nativo funciona incluso antes de que
+  cargue el JavaScript.
 - **Detalle (`/admin/cotizaciones/$id`):** datos del cliente con enlaces `tel:`/`mailto:`
   (el correo se codifica contra inyección de cabeceras), mensaje con saltos de línea
   (`whitespace-pre-wrap`), fecha de autorización (Ley 1581), origen, idioma, gestión (estado,
@@ -2137,19 +2141,22 @@ de la sección 5. No se modificó el esquema SQL. Ninguno de los `.server` llega
   público (`parseContacto`), sin Turnstile, `origen = 'manual'`, `estado = 'nueva'`, `idioma = 'es'`,
   casilla **obligatoria** de autorización (Ley 1581) y auditoría `crear` con el usuario
   (`insertCotizacion` ahora acepta `origen` y `usuarioId`; el formulario público no cambia).
-- **Pruebas:** `npm test` (82): `cotizaciones-admin.server.test.ts` (validación de filtros/orden/
+- **Pruebas:** `npm test`: `cotizaciones-admin.server.test.ts` (validación de filtros/orden/
   página, SQL solo con marcadores, permisos por rol, concurrencia incluido el mismo segundo,
-  auditoría sin datos personales, creación manual) y `admin-api.server.test.ts` (sin sesión 401,
-  Origin 403, límite 429). Además, prueba real en localhost con 3 cuentas temporales (admin y 2
-  comerciales) y la interfaz en Chromium a 360, 768 y 1280 px; todo se borró y la cotización 2
-  no se tocó (el contador `AUTO_INCREMENT` avanzó).
+  auditoría sin datos personales, creación manual, deduplicado de `ver` y filtro por
+  responsable con un comercial que no puede filtrar por otro id) y `admin-api.server.test.ts`
+  (sin sesión 401, Origin 403, límite 429 genérico y límites dedicados). Además, prueba real en
+  localhost con 3 cuentas temporales (admin y 2 comerciales) y la interfaz en Chromium a 360,
+  768 y 1280 px; todo se borró y la cotización 2 no se tocó (el contador `AUTO_INCREMENT` avanzó).
 - **Desarrollo:** si en `npm run dev` las páginas del panel no responden a los clics y la
   consola dice «does not provide an export named useSyncExternalStoreWithSelector», es la caché
   de dependencias de Vite; reiniciar con `npm run dev -- --force`. No afecta al build.
-- **Pendiente / a decidir (fase 5A):** «Usuarios» es solo un marcador («Próximamente»); no hay
-  borrado ni papelera (fase 6); `ver` se registra en cada apertura del detalle (mucho ruido en el
-  historial); no hay filtro por responsable ni exportar; el control de concurrencia protege
-  estado, responsable y notas, no la creación.
+- **Mejoras cerradas el 19-11-2026:** el detalle ya no llena el historial de `ver`: solo inserta
+  esa auditoría si no hay otra fila del mismo usuario+cotización en los últimos 30 minutos
+  (`creado_en >= NOW() - INTERVAL 30 MINUTE`, consulta preparada). El marcador «Usuarios» ya no
+  existe: lo sustituye la gestión de la fase 5B.
+- **Pendiente / a decidir (fase 5A):** no hay borrado ni papelera (fase 6); no hay exportar; el
+  control de concurrencia protege estado, responsable y notas, no la creación.
 
 ### Gestión de usuarios y «Mi cuenta» (fase 5B, 19-11-2026)
 
@@ -2170,14 +2177,38 @@ Requiere la migración 001 aplicada. Ningún `.server` llega al JS del cliente.
   `debe_cambiar_password = 0` y auditoría `cambiar_password`. Si la cuenta tiene contraseña
   temporal, `requirePanelSession` redirige toda el panel a esta ruta; el login también envía ahí a
   quien corresponda. Nadie puede quitarse el rol de administrador ni desactivarse a sí mismo.
-- **Seguridad:** el rol se comprueba en el servidor en cada acción; las rutas API exigen Origin del
-  mismo sitio, sesión vigente y límite por IP (120 escrituras/5 min, heredado de la fase 5A).
-  Solo consultas preparadas, longitudes acotadas y correos normalizados; nunca se registran ni se
-  guardan contraseñas en claro. `scripts/crear-usuario.mjs` también marca las cuentas nuevas con
-  `debe_cambiar_password = 1`.
-- **Pruebas:** `npm test` pasa 88 pruebas en 8 archivos: las 82 previas más 6 nuevas de
-  `usuarios-admin-shared.server.test.ts` (validaciones y reglas de rol); las firmas de `AdminUser`
-  se actualizaron en los mocks.
+- **Último administrador:** `editarUsuario` (cambio a comercial) y `cambiarEstadoUsuario`
+  (desactivar) bloquean dentro de la transacción los administradores activos con
+  `SELECT … FOR UPDATE`, recuentan y, si la acción dejaría cero, hacen `rollback` y responden
+  409 con «Debe quedar al menos un administrador activo». Se conservan `puedeDesactivar` y
+  `puedeCambiarRol` (nadie se desactiva ni se quita el rol a sí mismo).
+- **Seguridad:** el rol se comprueba en el servidor en cada acción; un comercial recibe 403 en
+  `/admin/usuarios` y en las APIs de gestión. Las rutas API exigen Origin del mismo sitio,
+  sesión vigente y el límite genérico por IP (120 escrituras/5 min, heredado de la fase 5A) más
+  unos límites dedicados: crear cuenta y reiniciar contraseña 10/15 min, cambiar la propia
+  contraseña 5/15 min; se contabilizan por IP **y** por usuario de sesión y devuelven 429 con
+  mensaje genérico. Solo consultas preparadas, longitudes acotadas y correos normalizados; nunca
+  se registran ni se guardan contraseñas en claro. `scripts/crear-usuario.mjs` también marca las
+  cuentas nuevas con `debe_cambiar_password = 1`.
+- **Pruebas:** `npm test` pasa 117 pruebas en 11 archivos: las 88 previas más 29 nuevas. Las de
+  `usuarios-admin.server.test.ts` cubren borrado de sesiones y rollback al desactivar/reiniciar,
+  protección del último administrador (incluido el caso de dos administradores), ausencia de la
+  temporal en auditoría/logs, cambio propio y forbidden para comercial; `admin-guard.server.test.ts`
+  y `auth.server.test.ts` comprueban que con `debe_cambiar_password=1` solo se entra a Mi cuenta
+  (y se puede cerrar sesión); `admin-data.server.test.ts` verifica el 403 de la página para
+  comercial; `cotizaciones-admin.server.test.ts` añade dedup de `ver` y filtro por responsable;
+  `admin-api.server.test.ts` añade los 429 dedicados y el 403 de `adminOnly` para comercial. Las
+  firmas de `AdminUser` se actualizaron en los mocks.
+- **Prueba real (19-11-2026):** servidor de producción en el puerto alterno 8099, con un
+  administrador y un comercial temporales; los 23 pasos HTTP pasaron: crear cuenta → contraseña
+  temporal entregada una sola vez y ausente de respuestas posteriores → login obligado a cambiarla
+  (solo Mi cuenta) → 403 del comercial en `/admin/usuarios` y en las APIs → cambio obligatorio →
+  desactivar (su sesión dejó de valer) → reiniciar → protección del último administrador → filtros
+  «Mis cotizaciones» y por id → 429 dedicado tras 10 peticiones. Se borraron las cuentas, sus
+  sesiones y sus filas de auditoría; una consulta de solo lectura confirmó los recuentos iniciales
+  (2 usuarios, 2 sesiones, 38 filas de auditoría). La cuenta de administrador real y la cotización
+  2 no se tocaron. La única incidencia durante la prueba fue un error de la propia suite de
+  prueba (URL con barra final y un off-by-one en el contador), corregido sin tocar la aplicación.
 
 ### Variables de entorno
 

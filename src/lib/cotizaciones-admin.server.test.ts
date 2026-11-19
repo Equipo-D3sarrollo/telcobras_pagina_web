@@ -22,6 +22,7 @@ const state = vi.hoisted(() => ({
   },
   usuarios: new Map<number, { nombre: string; activo: number }>(),
   auditoria: [] as { usuario_id: number; accion: string; detalle: string | null }[],
+  vistoUserId: null as number | null,
   insertCotizacion: vi.fn(async (..._args: unknown[]) => 77),
 }));
 
@@ -73,6 +74,46 @@ function run(rawSql: string, params: unknown[]): [Row[]] {
     return [[{ ...c, responsable: nombre }]];
   }
   if (sql.startsWith("SELECT a.creado_en, a.accion")) return [[]];
+  if (sql.startsWith("SELECT id FROM auditoria WHERE accion = 'ver'")) {
+    return [state.vistoUserId === params[0] ? [{ id: 99 }] : []];
+  }
+  if (sql.startsWith("SELECT id FROM usuarios WHERE id = ? LIMIT 1")) {
+    return [state.usuarios.has(params[0] as number) ? [{ id: params[0] }] : []];
+  }
+  if (sql.startsWith("SELECT id, nombre FROM usuarios WHERE activo = 1")) {
+    return [
+      [...state.usuarios.entries()]
+        .filter(([, u]) => u.activo === 1)
+        .map(([id, u]) => ({ id, nombre: u.nombre })),
+    ];
+  }
+  if (sql.startsWith("SELECT c.id, c.nombre, c.empresa, c.cargo")) {
+    return [
+      [
+        {
+          id: 5,
+          nombre: "Cliente Detalle",
+          empresa: "ACME",
+          cargo: "",
+          correo: "cliente@example.invalid",
+          telefono: "3001112233",
+          servicio: "Nube",
+          mensaje: "Hola",
+          consentimiento_fecha: new Date("2026-11-01T10:00:00Z"),
+          origen: "formulario_web",
+          idioma: "es",
+          estado: c!.estado,
+          responsable_id: c!.responsable_id,
+          responsable: c!.responsable_id
+            ? (state.usuarios.get(c!.responsable_id)?.nombre ?? null)
+            : null,
+          notas: c!.notas,
+          creado_en: new Date("2026-11-01T10:00:00Z"),
+          actualizado_en: c!.actualizado_en,
+        },
+      ],
+    ];
+  }
   // Lista
   if (sql.startsWith("SELECT c.id, c.creado_en, c.nombre")) return [[]];
   if (sql.startsWith("SELECT COUNT(*) AS n")) return [[{ n: 0 }]];
@@ -91,6 +132,7 @@ const {
   buildFilters,
   crearCotizacionManual,
   listarCotizaciones,
+  obtenerDetalle,
   puedeAsignar,
 } = await import("./cotizaciones-admin.server");
 
@@ -121,6 +163,7 @@ beforeEach(() => {
   executed.length = 0;
   calls.length = 0;
   state.auditoria.length = 0;
+  state.vistoUserId = null;
   state.insertCotizacion.mockClear();
   state.cotizacion = {
     estado: "nueva",
@@ -148,6 +191,7 @@ describe("parseListQuery: filtros, orden y paginación contra listas permitidas"
       q: undefined,
       estado: undefined,
       servicio: undefined,
+      responsable: "todos",
       desde: undefined,
       hasta: undefined,
       orden: "fecha",
@@ -200,6 +244,15 @@ describe("parseListQuery: filtros, orden y paginación contra listas permitidas"
     }
   });
 
+  it("responsable: solo todos/mios/sin_asignar o un id entero positivo", () => {
+    expect(parseListQuery({ responsable: "mios" }).responsable).toBe("mios");
+    expect(parseListQuery({ responsable: "sin_asignar" }).responsable).toBe("sin_asignar");
+    expect(parseListQuery({ responsable: "7" }).responsable).toBe(7);
+    for (const malo of ["otro", "7; DROP", "0", "-1", "1.5", "", {}, null, 0, 7.5]) {
+      expect(parseListQuery({ responsable: malo }).responsable).toBe("todos");
+    }
+  });
+
   it("escapeLike neutraliza % _ y el carácter de escape", () => {
     expect(escapeLike("100%_ok!")).toBe("100!%!_ok!!");
   });
@@ -218,7 +271,7 @@ describe("buildFilters / listarCotizaciones: nada del usuario entra al texto SQL
   });
 
   it("usa solo marcadores: tantos «?» como parámetros", () => {
-    const { where, params } = buildFilters(hostile, { includeEstado: true });
+    const { where, params } = buildFilters(hostile, { includeEstado: true }, admin);
     expect(where.match(/\?/g)).toHaveLength(params.length);
     expect(where).not.toContain("DROP");
     expect(where).not.toContain("OR 1=1");
@@ -226,20 +279,35 @@ describe("buildFilters / listarCotizaciones: nada del usuario entra al texto SQL
   });
 
   it("siempre ignora las eliminadas; «hasta» incluye todo ese día (hora de Colombia)", () => {
-    const { where, params } = buildFilters(parseListQuery({ hasta: "2026-11-30" }), {
-      includeEstado: true,
-    });
+    const { where, params } = buildFilters(
+      parseListQuery({ hasta: "2026-11-30" }),
+      { includeEstado: true },
+      admin,
+    );
     expect(where).toContain("c.eliminado_en IS NULL");
     expect((params[0] as Date).toISOString()).toBe("2026-12-01T05:00:00.000Z");
   });
 
-  it("los contadores no aplican el filtro de estado", () => {
-    expect(buildFilters(hostile, { includeEstado: false }).where).not.toContain("c.estado = ?");
-    expect(buildFilters(hostile, { includeEstado: true }).where).toContain("c.estado = ?");
+  it("los contadores no aplican el filtro de estado, pero sí el de responsable", () => {
+    expect(buildFilters(hostile, { includeEstado: false }, admin).where).not.toContain(
+      "c.estado = ?",
+    );
+    expect(buildFilters(hostile, { includeEstado: true }, admin).where).toContain("c.estado = ?");
+    const mios = parseListQuery({ responsable: "mios" });
+    const contadores = buildFilters(mios, { includeEstado: false }, comercial);
+    expect(contadores.where).toContain("c.responsable_id = ?");
+    expect(contadores.params).toContain(2); // el id de la sesión, nunca uno del navegador
+    expect(
+      buildFilters(parseListQuery({ responsable: "sin_asignar" }), { includeEstado: true }, admin)
+        .where,
+    ).toContain("c.responsable_id IS NULL");
+    expect(
+      buildFilters(parseListQuery({ responsable: "3" }), { includeEstado: true }, admin).params,
+    ).toContain(3);
   });
 
   it("la consulta de la lista: ORDER BY de la lista permitida y paginación por parámetros", async () => {
-    const result = await listarCotizaciones(hostile);
+    const result = await listarCotizaciones(hostile, admin);
     const list = executed.find((e) => e.sql.startsWith("SELECT c.id, c.creado_en"))!;
     expect(list.sql).toContain("ORDER BY c.nombre ASC, c.id DESC");
     expect(list.sql).toContain("LIMIT ? OFFSET ?");
@@ -254,6 +322,60 @@ describe("buildFilters / listarCotizaciones: nada del usuario entra al texto SQL
       perdida: 0,
     });
     expect(result.servicios).toEqual(["Conectividad"]);
+  });
+
+  it("un comercial no puede filtrar por el id de otro usuario", async () => {
+    await listarCotizaciones(parseListQuery({ responsable: "3" }), comercial);
+    expect(executed.some((e) => e.sql.startsWith("SELECT id FROM usuarios WHERE id = ?"))).toBe(
+      false,
+    );
+    const list = executed.find((e) => e.sql.startsWith("SELECT c.id, c.creado_en"))!;
+    const counts = executed.find((e) => e.sql.startsWith("SELECT c.estado, COUNT(*)"))!;
+    expect(list.sql).not.toContain("c.responsable_id = ?");
+    expect(counts.sql).not.toContain("c.responsable_id = ?");
+  });
+
+  it("un id de responsable inexistente se ignora en la lista y en los contadores", async () => {
+    await listarCotizaciones(parseListQuery({ responsable: "999" }), admin);
+    for (const sql of ["SELECT c.id, c.creado_en", "SELECT c.estado, COUNT(*)"]) {
+      const query = executed.find((e) => e.sql.startsWith(sql))!;
+      expect(query.sql).not.toContain("c.responsable_id = ?");
+    }
+  });
+
+  it("la lista devuelve responsables activos solo a los administradores", async () => {
+    const result = await listarCotizaciones(parseListQuery({}), admin);
+    expect(result.responsables).toEqual([
+      { id: 1, nombre: "Ada Admin" },
+      { id: 2, nombre: "Carlos Comercial" },
+      { id: 3, nombre: "Olga Otra" },
+    ]);
+    const delComercial = await listarCotizaciones(parseListQuery({}), comercial);
+    expect(delComercial.responsables).toEqual([]);
+  });
+});
+
+describe("obtenerDetalle: «ver» deduplicado por usuario y cotización", () => {
+  it("registra «ver» la primera vez y con consulta preparada de 30 minutos", async () => {
+    await obtenerDetalle(admin, 5, "1.1.1.1");
+    const vista = executed.find((e) => e.sql.startsWith("SELECT id FROM auditoria WHERE accion"))!;
+    expect(vista.sql).toContain("creado_en >= NOW() - INTERVAL 30 MINUTE");
+    expect(vista.sql).toContain("usuario_id = ? AND cotizacion_id = ?");
+    expect(vista.params).toEqual([1, 5]);
+    expect(state.auditoria).toEqual([{ usuario_id: 1, accion: "ver", detalle: null }]);
+  });
+
+  it("no vuelve a registrar «ver» dentro de los 30 minutos", async () => {
+    state.vistoUserId = 1;
+    await obtenerDetalle(admin, 5, null);
+    expect(executed.some((e) => e.sql.startsWith("INSERT INTO auditoria"))).toBe(false);
+    expect(state.auditoria).toEqual([]);
+  });
+
+  it("otro usuario sí genera su propio «ver» aunque el primero esté en la ventana", async () => {
+    state.vistoUserId = 1;
+    await obtenerDetalle(comercial, 5, null);
+    expect(state.auditoria).toEqual([{ usuario_id: 2, accion: "ver", detalle: null }]);
   });
 });
 

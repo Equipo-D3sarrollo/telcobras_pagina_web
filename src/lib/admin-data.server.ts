@@ -27,12 +27,13 @@ export const listarCotizacionesFn = createServerFn({ method: "POST" })
   .validator((data: unknown) => parseListQuery(data))
   .handler(async ({ data }) => {
     try {
-      if (!(await sessionUser())) {
+      const user = await sessionUser();
+      if (!user) {
         setResponseStatus(401);
         return { ok: false, error: "unauthorized" } as const;
       }
       const { listarCotizaciones } = await import("./cotizaciones-admin.server");
-      return { ok: true, ...(await listarCotizaciones(data)) } as const;
+      return { ok: true, ...(await listarCotizaciones(data, user)) } as const;
     } catch (error) {
       logError(error);
       setResponseStatus(503);

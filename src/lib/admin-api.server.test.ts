@@ -19,7 +19,7 @@ vi.mock("./auth.server", async (original) => ({
   },
 }));
 
-const { requireAdminApi } = await import("./admin-api.server");
+const { checkAdminActionLimit, requireAdminApi } = await import("./admin-api.server");
 
 const post = (headers: Record<string, string> = {}) =>
   new Request("https://telcobras.com/api/admin/cotizaciones/5", {
@@ -96,6 +96,54 @@ describe("requireAdminApi: Origin en los POST", () => {
 
   it("las lecturas no exigen Origin", async () => {
     expect(status(await requireAdminApi(get(), { mutation: false }))).toBe("ok");
+  });
+
+  it("adminOnly: un comercial recibe 403 en las APIs de gestión", async () => {
+    session.user!.rol = "comercial";
+    expect(status(await requireAdminApi(post(), { mutation: true, adminOnly: true }))).toBe(403);
+    expect(status(await requireAdminApi(post(), { mutation: true }))).toBe("ok");
+    session.user!.rol = "administrador";
+    expect(status(await requireAdminApi(post(), { mutation: true, adminOnly: true }))).toBe("ok");
+  });
+});
+
+const usuario = (id: number) => ({
+  id,
+  nombre: "Usuario de prueba",
+  correo: "usuario@example.invalid",
+  rol: "administrador" as const,
+  debe_cambiar_password: 0,
+});
+
+describe("checkAdminActionLimit: límites dedicados además del genérico", () => {
+  const desde = (ip: string, id: number, accion: Parameters<typeof checkAdminActionLimit>[2]) =>
+    checkAdminActionLimit(post({ "cf-connecting-ip": ip }), usuario(id), accion);
+
+  it("crear usuario: 10 permitidas y la 11ª desde la misma IP responde 429", () => {
+    for (let i = 0; i < 10; i++) expect(desde("192.0.2.10", 700, "crear_usuario")).toBeNull();
+    const limitada = desde("192.0.2.10", 700, "crear_usuario")!;
+    expect(limitada.status).toBe(429);
+    expect(limitada.headers.get("retry-after")).toMatch(/^\d+$/);
+    expect(limitada).toBeInstanceOf(Response);
+  });
+
+  it("reiniciar contraseña: el límite por usuario se aplica aunque cambie la IP", () => {
+    for (let i = 0; i < 10; i++)
+      expect(desde(`192.0.2.${20 + i}`, 701, "reiniciar_password")).toBeNull();
+    expect(desde("192.0.2.99", 701, "reiniciar_password")!.status).toBe(429);
+    expect(desde("192.0.2.99", 702, "reiniciar_password")).toBeNull();
+  });
+
+  it("cambiar contraseña: 5 permitidas, la 6ª responde 429 con mensaje genérico", async () => {
+    for (let i = 0; i < 5; i++) expect(desde("192.0.2.40", 703, "cambiar_password")).toBeNull();
+    const limitada = desde("192.0.2.40", 703, "cambiar_password")!;
+    expect(limitada.status).toBe(429);
+    await expect(limitada.json()).resolves.toEqual({
+      error: "rate_limit_exceeded",
+      mensaje: expect.any(String),
+    });
+    // Cada acción tiene su propio contador: crear usuario sigue permitido.
+    expect(desde("192.0.2.40", 703, "crear_usuario")).toBeNull();
   });
 });
 
