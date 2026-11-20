@@ -4,10 +4,17 @@ title = "telcobras-web gitleaks"
 useDefault = true
 
 [allowlist]
-description = "Rutas generadas o no versionadas"
+description = "Rutas generadas o no versionadas y contraseñas ficticias de pruebas"
 paths = [
   '''(^|/)node_modules/''',
   '''(^|/)\.output/''',
   '''(^|/)dist/''',
   '''(^|/)\.tanstack/''',
+]
+
+# Contraseñas ficticias usadas únicamente en pruebas: no son credenciales reales.
+# Solo se ignoran estos valores exactos; cualquier otra cadena que parezca una
+# clave sigue siendo detectada por la regla generic-api-key.
+regexes = [
+  '''Clave-(Correcta|Temporal)-De-Prueba-\d+''',
 ]

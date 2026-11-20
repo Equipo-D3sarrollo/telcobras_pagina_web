@@ -1239,6 +1239,11 @@ exitosa y repetible con el módulo Webhook response configurado correctamente.
   (`core.hooksPath=.githooks`). CI lo repite en `.github/workflows/gitleaks.yml`
   (v8.30.1 fijado y verificado por checksum). `.gitignore` cubre `.env`, `.env.*` y
   `.dev.vars*`, con excepción para los archivos `*.example`.
+- Contraseñas ficticias en pruebas: deben seguir el patrón `Clave-<Palabra>-De-Prueba-<n>`;
+  el allowlist de `.gitleaks.toml` acepta las palabras `Correcta` y `Temporal` (por ejemplo
+  `Clave-Correcta-De-Prueba-1`). No se allowlistean archivos completos, ni todos los
+  `*.test.ts`, ni la regla `generic-api-key` entera: cualquier otro valor que parezca una
+  clave sigue siendo detectado por gitleaks en CI.
 - `src/router.tsx` construye el router con restauración de scroll (sin QueryClient).
 - `tsconfig.json` está en modo estricto y define alias `@/*` → `src/*`.
 - `components.json` refleja la configuración de componentes tipo shadcn.
