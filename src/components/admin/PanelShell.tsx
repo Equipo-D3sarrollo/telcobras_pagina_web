@@ -72,7 +72,7 @@ export function PanelShell({
 
           <nav
             aria-label="Principal"
-            className="order-3 flex w-full items-center gap-2 sm:order-none sm:w-auto"
+            className="order-3 flex w-full flex-wrap items-center gap-2 sm:order-none sm:w-auto"
           >
             <Link
               to="/admin"
@@ -83,13 +83,29 @@ export function PanelShell({
               Cotizaciones
             </Link>
             {user.rol === "administrador" && (
-              <Link
-                to="/admin/usuarios"
-                className={`inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-extrabold text-slate-200 hover:bg-white/10 [&.active]:bg-white/15 [&.active]:text-white ${focusRing}`}
-                activeProps={{ "aria-current": "page" }}
-              >
-                Usuarios
-              </Link>
+              <>
+                <Link
+                  to="/admin/papelera"
+                  className={`inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-extrabold text-slate-200 hover:bg-white/10 [&.active]:bg-white/15 [&.active]:text-white ${focusRing}`}
+                  activeProps={{ "aria-current": "page" }}
+                >
+                  Papelera
+                </Link>
+                <Link
+                  to="/admin/historial"
+                  className={`inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-extrabold text-slate-200 hover:bg-white/10 [&.active]:bg-white/15 [&.active]:text-white ${focusRing}`}
+                  activeProps={{ "aria-current": "page" }}
+                >
+                  Historial
+                </Link>
+                <Link
+                  to="/admin/usuarios"
+                  className={`inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-extrabold text-slate-200 hover:bg-white/10 [&.active]:bg-white/15 [&.active]:text-white ${focusRing}`}
+                  activeProps={{ "aria-current": "page" }}
+                >
+                  Usuarios
+                </Link>
+              </>
             )}
             <Link
               to="/admin/mi-cuenta"

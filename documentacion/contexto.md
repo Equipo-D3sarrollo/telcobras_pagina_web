@@ -10,6 +10,9 @@ conocidos. Debe actualizarse cuando cambien la arquitectura o las capacidades de
 > y una verificación en navegador de `/terminos-de-servicio` y `/sla`. Ver sección 11
 > («Auditoría 26-10-2026»). La revisión anterior (22-10-2026) cubrió el pipeline de
 > CSS/Tailwind, el build de Nitro/Cloudflare y el estado de Git; ver secciones 7 y 9.
+>
+> Última funcionalidad (**19-11-2026**): fase 6 del panel — papelera, exportación CSV e
+> historial completo (sección 12). Sin migración de base; `npm test` pasa 136 pruebas.
 
 ## 1. Instrucciones para quien continúe el proyecto
 
@@ -24,9 +27,9 @@ conocidos. Debe actualizarse cuando cambien la arquitectura o las capacidades de
   variables `VITE_*`, código cliente o capturas.
 - Los cambios visuales del sitio suelen hacerse en los componentes de `src/components/`
   y los estilos globales en `src/styles.css`.
-- Ejecutar `npm exec eslint -- <archivos-modificados>` y `npm run build` cuando
-  corresponda. Hay archivos de pruebas/configuración vacíos en el árbol de trabajo,
-  pero no constituyen una suite ejecutable ni hay scripts `test` en `package.json`.
+- Ejecutar `npm exec eslint -- <archivos-modificados>`, `npm test` y `npm run build`
+  cuando corresponda. `package.json` sí tiene script `test` (vitest); la suite ejecutable
+  son los `src/lib/**/*.server.test.ts` (algunos otros `*.test.ts(x)` del árbol siguen vacíos).
 - Mantener la interfaz, mensajes y documentación del producto principalmente en español.
 - No ejecutar `npm run build` con el servidor de desarrollo activo: en Windows Vite
   vigila `.output/` y se cae con `EBUSY`. Detener el servidor, compilar y volver a
@@ -190,9 +193,10 @@ se montan globalmente; el botón para volver al inicio se monta en la página pr
   `cloudflare-module`; ese preset sigue siendo el que fuerza AI Studio (sección 9).
 - Tipografía principal: Nunito autoalojada en `public/fonts/` (ver «Tipografía» en la
   sección 7); no se usa Google Fonts.
-- `vitest`, `jsdom`, Testing Library, `axe-core` y Playwright están instalados, pero
-  sus archivos de configuración y pruebas siguen vacíos (0 bytes); no hay suite
-  ejecutable ni script `test`.
+- `vitest`, `jsdom`, Testing Library, `axe-core` y Playwright están instalados. La suite
+  ejecutable vive en `src/lib/**/*.server.test.ts` (script `test`); los archivos de
+  configuración/pruebas vacíos (0 bytes) que quedan en `e2e/` y otros `*.test.ts(x)` no
+  forman parte de ella.
 
 ### Comandos del proyecto
 
@@ -221,9 +225,10 @@ el artefacto de despliegue.
 repite el escaneo en `.github/workflows/gitleaks.yml`.
 
 `npm test` (vitest, `vitest.config.ts`, pool `vmThreads` por un fallo de los pools por defecto
-con Node 26) corre solo `src/lib/**/*.server.test.ts` (capa de MySQL del formulario: 8
-pruebas). Los demás archivos `*.test.ts(x)` del proyecto siguen vacíos. Para el resto usar
-lint, build, `tsc --noEmit` y comprobaciones manuales/navegador.
+con Node 26) corre `src/lib/**/*.server.test.ts`: **136 pruebas en 12 archivos** tras la fase 6
+(capa MySQL del formulario, admin, seguridad, límites y fase 6). Los demás `*.test.ts(x)` del
+proyecto siguen vacíos. Para el resto usar lint, build, `tsc --noEmit` y comprobaciones
+manuales/navegador.
 
 ## 4. Estructura del repositorio
 
@@ -475,13 +480,16 @@ con excepciones para `*.example`, aunque hoy no existe un `.env.example` version
   (`https://telcobras.com/<ruta>`), por lo que el SEO técnico es homogéneo en las cuatro
   URLs públicas del sitemap.
 
-### Panel `/admin` (fase 4, 18-11-2026)
+### Panel `/admin` (fases 4-6, 18-19-11-2026)
 
 Rutas: `/admin/login` (`admin.login.tsx`), `/admin` (lista de cotizaciones, `admin.index.tsx`),
 `/admin/cotizaciones/$id` (detalle) y `/admin/cotizaciones/nueva` (`admin.cotizaciones.*.tsx`),
-`POST /api/admin/login`, `POST /api/admin/logout`, `POST /api/admin/cotizaciones/$id` y
-`POST /api/admin/cotizaciones/nueva` (`api.admin.*.ts`). Detalle de seguridad en «Login del
-panel» y de la gestión en «Gestión de cotizaciones» (sección 12).
+`/admin/papelera` y `/admin/historial` (fase 6), `/admin/usuarios` y `/admin/mi-cuenta` (fase 5B);
+`POST /api/admin/login`, `POST /api/admin/logout`, `POST /api/admin/cotizaciones/$id`,
+`POST /api/admin/cotizaciones/nueva`, `POST /api/admin/cotizaciones/$id/papelera` y
+`POST /api/admin/exportar` (`api.admin.*.ts`). Detalle de seguridad en «Login del panel» y de la
+gestión en «Gestión de cotizaciones» (sección 12); papelera, exportación e historial en la sección
+12. Todas las rutas administrativas se comprueban también en el servidor.
 
 ### Rutas generadas
 
@@ -2155,8 +2163,9 @@ de la sección 5. No se modificó el esquema SQL. Ninguno de los `.server` llega
   esa auditoría si no hay otra fila del mismo usuario+cotización en los últimos 30 minutos
   (`creado_en >= NOW() - INTERVAL 30 MINUTE`, consulta preparada). El marcador «Usuarios» ya no
   existe: lo sustituye la gestión de la fase 5B.
-- **Pendiente / a decidir (fase 5A):** no hay borrado ni papelera (fase 6); no hay exportar; el
-  control de concurrencia protege estado, responsable y notas, no la creación.
+- **Cerrado en fase 5A:** el control de concurrencia protege estado, responsable y notas, no la
+  creación. Borrado/papelera, exportación e historial quedaron resueltos en la fase 6 (ver más
+  abajo).
 
 ### Gestión de usuarios y «Mi cuenta» (fase 5B, 19-11-2026)
 
@@ -2209,6 +2218,62 @@ Requiere la migración 001 aplicada. Ningún `.server` llega al JS del cliente.
   (2 usuarios, 2 sesiones, 38 filas de auditoría). La cuenta de administrador real y la cotización
   2 no se tocaron. La única incidencia durante la prueba fue un error de la propia suite de
   prueba (URL con barra final y un off-by-one en el contador), corregido sin tocar la aplicación.
+
+### Papelera, exportación e historial (fase 6, 19-11-2026)
+
+**Sin migración:** se reutiliza el esquema existente (`cotizaciones.eliminado_en` /
+`eliminado_por`, `auditoria.accion` con `eliminar`/`restaurar`/`exportar`, `actualizado_en` y la FK
+`ON DELETE SET NULL` de `auditoria.cotizacion_id`). La eliminación definitiva aprovecha esa FK:
+se escribe primero la auditoría «eliminación definitiva de la solicitud #id» y, al borrar la fila,
+`cotizacion_id` pasa a `NULL`; el historial muestra entonces «Solicitud eliminada #id» sin enlace.
+
+Archivos: `cotizaciones-admin-shared.ts` y `cotizaciones-admin.server.ts` (operaciones y helpers
+CSV/historial/papelera), `admin-api.server.ts` (límite dedicado `exportar`), `admin-data.server.ts`
+(lecturas), `admin-pages-guard.server.ts` (403 real en el documento SSR), las rutas API
+`api.admin.cotizaciones.$id.papelera.ts` y `api.admin.exportar.ts`, las páginas `admin.papelera.tsx`
+y `admin.historial.tsx`, el botón «Eliminar» en `admin.cotizaciones.$id.tsx`, el botón «Exportar»
+en `admin.index.tsx`, los enlaces de navegación en `PanelShell.tsx` y las pruebas
+`cotizaciones-admin-fase6.server.test.ts` y `admin-api.server.test.ts`. Ningún `.server` llega al
+cliente.
+
+- **Papelera (solo administradores):** el detalle permite «Eliminar» con confirmación; la API
+  exige `actualizado_en` (concurrencia: 409 si cambió) y registra `eliminar` con «enviada a la
+  papelera». `/admin/papelera` lista 20 por página con búsqueda, permite «Restaurar» (`restaurar`,
+  «restaurada desde la papelera») y «Eliminar definitivamente» con doble confirmación (hay que
+  escribir el número de la solicitud); antes de borrar en la misma transacción se audita
+  `eliminar` con «eliminación definitiva de la solicitud #id». Todo comercial recibe 403, también
+  en la carga SSR de la página.
+- **Exportación (solo administradores):** botón en `/admin`; `POST /api/admin/exportar` recibe los
+  mismos filtros validados de la lista, sin paginación, con tope de 10.000 filas y aviso. CSV para
+  Excel con BOM UTF-8, `;`, CRLF, fechas `dd/mm/aaaa hh:mm` en hora de Colombia, 15 columnas en
+  español (número, fecha, nombre, empresa, cargo, correo, teléfono, servicio, mensaje, estado,
+  responsable, origen, idioma, autorización de datos con fecha, notas internas). Protección contra
+  inyección de fórmulas: se antepone `'` a celdas que empiezan por `=`, `+`, `-`, `@`, tabulador o
+  CR; comillas y saltos se escapan. Descarga `cotizaciones_telcobras_AAAA-MM-DD.csv` con
+  `Content-Disposition: attachment` y `Cache-Control: no-store`. Auditoría `exportar` con
+  «N filas; filtros: …» sin datos personales (el texto de búsqueda no se registra). Límite
+  dedicado de 10 exportaciones cada 15 minutos por IP y usuario (429 a la undécima), además del
+  guardián común de Origin/sesión/rol.
+- **Historial (solo administradores):** `/admin/historial` muestra la auditoría paginada de 50 en
+  orden cronológico inverso con fecha, usuario («Sistema / formulario web» si no hay usuario),
+  acción legible, solicitud (#id enlazado si existe; «eliminada» si `cotizacion_id` es `NULL` y el
+  detalle lo indica), detalle e IP. Filtros validados por listas permitidas (usuario, acción,
+  fechas, número de solicitud) en la URL; consultar el historial **no** genera auditoría.
+- **Navegación y responsive:** «Papelera» y «Historial» solo aparecen para administradores; el
+  contenedor de enlaces del encabezado lleva `flex-wrap` para no desbordar a 360 px.
+- **Verificación:** `npm exec tsc -- --noEmit` sin errores; `npm run lint` con 0 errores (6
+  advertencias `react-refresh` preexistentes); `npm run build` correcto y `npm test` con **136
+  pruebas en 12 archivos**. Prueba real HTTP en `http://localhost:8099` (build de producción,
+  cuentas y cotizaciones temporales propias): 36/36 comprobaciones, incluidos 403 del comercial en
+  páginas y APIs, eliminar/restaurar/definitivo con auditoría, 409 por token viejo, 400 por
+  confirmación incorrecta, «Solicitud eliminada #id», exportación 200 y 429 en la undécima. El CSV
+  crudo se abrió byte a byte: BOM `efbbbf`, CRLF, 15 columnas, tildes/ñ, fórmulas neutralizadas,
+  comillas y saltos escapados, fechas `dd/mm/aaaa hh:mm`, «Sí (fecha)» y «Nueva» (14/14). La
+  interfaz se verificó en 360/768/1280 px para `/admin`, `/admin/papelera` y `/admin/historial`:
+  9/9 con HTTP 200, sin desbordamiento horizontal, 0 errores de consola y 0 peticiones fallidas.
+  Se borraron las cuentas, sesiones, cotizaciones y auditoría temporales; una consulta de solo
+  lectura confirmó la línea base (2 usuarios, 2 sesiones, 38 auditoría, 1 cotización — la #2) y
+  las cuentas reales intactas. El servidor de prueba se detuvo y no se hizo `push`.
 
 ### Variables de entorno
 
@@ -2269,6 +2334,7 @@ autorización. Evitar registrar datos personales completos en logs.
 | Estilos globales, Tailwind v4, tokens y animaciones | `src/styles.css` y `src/routes/__root.tsx` |
 | CSS: import, `<link>` y hash del build | `src/routes/__root.tsx:14` y `.output/public/assets/styles-*.css` |
 | Despliegue: artefacto, assets y wrangler | `.output/` y `.wrangler/deploy/config.json` |
-| Pruebas (aún vacías) | `vitest.config.ts`, `playwright.config.ts`, `e2e/`, `*.test.ts(x)` |
+| Papelera, exportar CSV e historial del panel | `cotizaciones-admin.server.ts`, `admin.papelera.tsx`, `admin.historial.tsx`, `api.admin.exportar.ts` |
+| Pruebas (vitest) | `vitest.config.ts`, `src/lib/*.server.test.ts` |
 | Destino Cloudflare, plugins y entrada SSR | `vite.config.ts` y `src/server.ts` |
 | Configuración de rutas | `src/router.tsx`, `src/routes/README.md` |

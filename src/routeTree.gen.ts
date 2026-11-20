@@ -14,13 +14,16 @@ import { Route as PoliticaDePrivacidadRouteImport } from './routes/politica-de-p
 import { Route as SlaRouteImport } from './routes/sla'
 import { Route as TerminosDeServicioRouteImport } from './routes/terminos-de-servicio'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as AdminHistorialRouteImport } from './routes/admin.historial'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as AdminMiCuentaRouteImport } from './routes/admin.mi-cuenta'
+import { Route as AdminPapeleraRouteImport } from './routes/admin.papelera'
 import { Route as AdminUsuariosRouteImport } from './routes/admin.usuarios'
 import { Route as ApiChatRouteImport } from './routes/api.chat'
 import { Route as ApiContactoRouteImport } from './routes/api.contacto'
 import { Route as AdminCotizacionesIdRouteImport } from './routes/admin.cotizaciones.$id'
 import { Route as AdminCotizacionesNuevaRouteImport } from './routes/admin.cotizaciones.nueva'
+import { Route as ApiAdminExportarRouteImport } from './routes/api.admin.exportar'
 import { Route as ApiAdminLoginRouteImport } from './routes/api.admin.login'
 import { Route as ApiAdminLogoutRouteImport } from './routes/api.admin.logout'
 import { Route as ApiAdminMiCuentaRouteImport } from './routes/api.admin.mi-cuenta'
@@ -28,6 +31,7 @@ import { Route as ApiAdminUsuariosRouteImport } from './routes/api.admin.usuario
 import { Route as ApiAdminCotizacionesIdRouteImport } from './routes/api.admin.cotizaciones.$id'
 import { Route as ApiAdminCotizacionesNuevaRouteImport } from './routes/api.admin.cotizaciones.nueva'
 import { Route as ApiAdminUsuariosIdRouteImport } from './routes/api.admin.usuarios.$id'
+import { Route as ApiAdminCotizacionesIdPapeleraRouteImport } from './routes/api.admin.cotizaciones.$id.papelera'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -54,6 +58,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/admin/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminHistorialRoute = AdminHistorialRouteImport.update({
+  id: '/admin/historial',
+  path: '/admin/historial',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminLoginRoute = AdminLoginRouteImport.update({
   id: '/admin/login',
   path: '/admin/login',
@@ -62,6 +71,11 @@ const AdminLoginRoute = AdminLoginRouteImport.update({
 const AdminMiCuentaRoute = AdminMiCuentaRouteImport.update({
   id: '/admin/mi-cuenta',
   path: '/admin/mi-cuenta',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminPapeleraRoute = AdminPapeleraRouteImport.update({
+  id: '/admin/papelera',
+  path: '/admin/papelera',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminUsuariosRoute = AdminUsuariosRouteImport.update({
@@ -87,6 +101,11 @@ const AdminCotizacionesIdRoute = AdminCotizacionesIdRouteImport.update({
 const AdminCotizacionesNuevaRoute = AdminCotizacionesNuevaRouteImport.update({
   id: '/admin/cotizaciones/nueva',
   path: '/admin/cotizaciones/nueva',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminExportarRoute = ApiAdminExportarRouteImport.update({
+  id: '/api/admin/exportar',
+  path: '/api/admin/exportar',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAdminLoginRoute = ApiAdminLoginRouteImport.update({
@@ -125,48 +144,62 @@ const ApiAdminUsuariosIdRoute = ApiAdminUsuariosIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => ApiAdminUsuariosRoute,
 } as any)
+const ApiAdminCotizacionesIdPapeleraRoute =
+  ApiAdminCotizacionesIdPapeleraRouteImport.update({
+    id: '/papelera',
+    path: '/papelera',
+    getParentRoute: () => ApiAdminCotizacionesIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/politica-de-privacidad': typeof PoliticaDePrivacidadRoute
   '/sla': typeof SlaRoute
   '/terminos-de-servicio': typeof TerminosDeServicioRoute
+  '/admin/historial': typeof AdminHistorialRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/mi-cuenta': typeof AdminMiCuentaRoute
+  '/admin/papelera': typeof AdminPapeleraRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/api/chat': typeof ApiChatRoute
   '/api/contacto': typeof ApiContactoRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/cotizaciones/$id': typeof AdminCotizacionesIdRoute
   '/admin/cotizaciones/nueva': typeof AdminCotizacionesNuevaRoute
+  '/api/admin/exportar': typeof ApiAdminExportarRoute
   '/api/admin/login': typeof ApiAdminLoginRoute
   '/api/admin/logout': typeof ApiAdminLogoutRoute
   '/api/admin/mi-cuenta': typeof ApiAdminMiCuentaRoute
   '/api/admin/usuarios': typeof ApiAdminUsuariosRouteWithChildren
-  '/api/admin/cotizaciones/$id': typeof ApiAdminCotizacionesIdRoute
+  '/api/admin/cotizaciones/$id': typeof ApiAdminCotizacionesIdRouteWithChildren
   '/api/admin/cotizaciones/nueva': typeof ApiAdminCotizacionesNuevaRoute
   '/api/admin/usuarios/$id': typeof ApiAdminUsuariosIdRoute
+  '/api/admin/cotizaciones/$id/papelera': typeof ApiAdminCotizacionesIdPapeleraRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/politica-de-privacidad': typeof PoliticaDePrivacidadRoute
   '/sla': typeof SlaRoute
   '/terminos-de-servicio': typeof TerminosDeServicioRoute
+  '/admin/historial': typeof AdminHistorialRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/mi-cuenta': typeof AdminMiCuentaRoute
+  '/admin/papelera': typeof AdminPapeleraRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/api/chat': typeof ApiChatRoute
   '/api/contacto': typeof ApiContactoRoute
   '/admin': typeof AdminIndexRoute
   '/admin/cotizaciones/$id': typeof AdminCotizacionesIdRoute
   '/admin/cotizaciones/nueva': typeof AdminCotizacionesNuevaRoute
+  '/api/admin/exportar': typeof ApiAdminExportarRoute
   '/api/admin/login': typeof ApiAdminLoginRoute
   '/api/admin/logout': typeof ApiAdminLogoutRoute
   '/api/admin/mi-cuenta': typeof ApiAdminMiCuentaRoute
   '/api/admin/usuarios': typeof ApiAdminUsuariosRouteWithChildren
-  '/api/admin/cotizaciones/$id': typeof ApiAdminCotizacionesIdRoute
+  '/api/admin/cotizaciones/$id': typeof ApiAdminCotizacionesIdRouteWithChildren
   '/api/admin/cotizaciones/nueva': typeof ApiAdminCotizacionesNuevaRoute
   '/api/admin/usuarios/$id': typeof ApiAdminUsuariosIdRoute
+  '/api/admin/cotizaciones/$id/papelera': typeof ApiAdminCotizacionesIdPapeleraRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -174,21 +207,25 @@ export interface FileRoutesById {
   '/politica-de-privacidad': typeof PoliticaDePrivacidadRoute
   '/sla': typeof SlaRoute
   '/terminos-de-servicio': typeof TerminosDeServicioRoute
+  '/admin/historial': typeof AdminHistorialRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/mi-cuenta': typeof AdminMiCuentaRoute
+  '/admin/papelera': typeof AdminPapeleraRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/api/chat': typeof ApiChatRoute
   '/api/contacto': typeof ApiContactoRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/cotizaciones/$id': typeof AdminCotizacionesIdRoute
   '/admin/cotizaciones/nueva': typeof AdminCotizacionesNuevaRoute
+  '/api/admin/exportar': typeof ApiAdminExportarRoute
   '/api/admin/login': typeof ApiAdminLoginRoute
   '/api/admin/logout': typeof ApiAdminLogoutRoute
   '/api/admin/mi-cuenta': typeof ApiAdminMiCuentaRoute
   '/api/admin/usuarios': typeof ApiAdminUsuariosRouteWithChildren
-  '/api/admin/cotizaciones/$id': typeof ApiAdminCotizacionesIdRoute
+  '/api/admin/cotizaciones/$id': typeof ApiAdminCotizacionesIdRouteWithChildren
   '/api/admin/cotizaciones/nueva': typeof ApiAdminCotizacionesNuevaRoute
   '/api/admin/usuarios/$id': typeof ApiAdminUsuariosIdRoute
+  '/api/admin/cotizaciones/$id/papelera': typeof ApiAdminCotizacionesIdPapeleraRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -197,14 +234,17 @@ export interface FileRouteTypes {
     | '/politica-de-privacidad'
     | '/sla'
     | '/terminos-de-servicio'
+    | '/admin/historial'
     | '/admin/login'
     | '/admin/mi-cuenta'
+    | '/admin/papelera'
     | '/admin/usuarios'
     | '/api/chat'
     | '/api/contacto'
     | '/admin/'
     | '/admin/cotizaciones/$id'
     | '/admin/cotizaciones/nueva'
+    | '/api/admin/exportar'
     | '/api/admin/login'
     | '/api/admin/logout'
     | '/api/admin/mi-cuenta'
@@ -212,20 +252,24 @@ export interface FileRouteTypes {
     | '/api/admin/cotizaciones/$id'
     | '/api/admin/cotizaciones/nueva'
     | '/api/admin/usuarios/$id'
+    | '/api/admin/cotizaciones/$id/papelera'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/politica-de-privacidad'
     | '/sla'
     | '/terminos-de-servicio'
+    | '/admin/historial'
     | '/admin/login'
     | '/admin/mi-cuenta'
+    | '/admin/papelera'
     | '/admin/usuarios'
     | '/api/chat'
     | '/api/contacto'
     | '/admin'
     | '/admin/cotizaciones/$id'
     | '/admin/cotizaciones/nueva'
+    | '/api/admin/exportar'
     | '/api/admin/login'
     | '/api/admin/logout'
     | '/api/admin/mi-cuenta'
@@ -233,20 +277,24 @@ export interface FileRouteTypes {
     | '/api/admin/cotizaciones/$id'
     | '/api/admin/cotizaciones/nueva'
     | '/api/admin/usuarios/$id'
+    | '/api/admin/cotizaciones/$id/papelera'
   id:
     | '__root__'
     | '/'
     | '/politica-de-privacidad'
     | '/sla'
     | '/terminos-de-servicio'
+    | '/admin/historial'
     | '/admin/login'
     | '/admin/mi-cuenta'
+    | '/admin/papelera'
     | '/admin/usuarios'
     | '/api/chat'
     | '/api/contacto'
     | '/admin/'
     | '/admin/cotizaciones/$id'
     | '/admin/cotizaciones/nueva'
+    | '/api/admin/exportar'
     | '/api/admin/login'
     | '/api/admin/logout'
     | '/api/admin/mi-cuenta'
@@ -254,6 +302,7 @@ export interface FileRouteTypes {
     | '/api/admin/cotizaciones/$id'
     | '/api/admin/cotizaciones/nueva'
     | '/api/admin/usuarios/$id'
+    | '/api/admin/cotizaciones/$id/papelera'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -261,19 +310,22 @@ export interface RootRouteChildren {
   PoliticaDePrivacidadRoute: typeof PoliticaDePrivacidadRoute
   SlaRoute: typeof SlaRoute
   TerminosDeServicioRoute: typeof TerminosDeServicioRoute
+  AdminHistorialRoute: typeof AdminHistorialRoute
   AdminLoginRoute: typeof AdminLoginRoute
   AdminMiCuentaRoute: typeof AdminMiCuentaRoute
+  AdminPapeleraRoute: typeof AdminPapeleraRoute
   AdminUsuariosRoute: typeof AdminUsuariosRoute
   ApiChatRoute: typeof ApiChatRoute
   ApiContactoRoute: typeof ApiContactoRoute
   AdminIndexRoute: typeof AdminIndexRoute
   AdminCotizacionesIdRoute: typeof AdminCotizacionesIdRoute
   AdminCotizacionesNuevaRoute: typeof AdminCotizacionesNuevaRoute
+  ApiAdminExportarRoute: typeof ApiAdminExportarRoute
   ApiAdminLoginRoute: typeof ApiAdminLoginRoute
   ApiAdminLogoutRoute: typeof ApiAdminLogoutRoute
   ApiAdminMiCuentaRoute: typeof ApiAdminMiCuentaRoute
   ApiAdminUsuariosRoute: typeof ApiAdminUsuariosRouteWithChildren
-  ApiAdminCotizacionesIdRoute: typeof ApiAdminCotizacionesIdRoute
+  ApiAdminCotizacionesIdRoute: typeof ApiAdminCotizacionesIdRouteWithChildren
   ApiAdminCotizacionesNuevaRoute: typeof ApiAdminCotizacionesNuevaRoute
 }
 
@@ -314,6 +366,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/historial': {
+      id: '/admin/historial'
+      path: '/admin/historial'
+      fullPath: '/admin/historial'
+      preLoaderRoute: typeof AdminHistorialRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/login': {
       id: '/admin/login'
       path: '/admin/login'
@@ -326,6 +385,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/mi-cuenta'
       fullPath: '/admin/mi-cuenta'
       preLoaderRoute: typeof AdminMiCuentaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/papelera': {
+      id: '/admin/papelera'
+      path: '/admin/papelera'
+      fullPath: '/admin/papelera'
+      preLoaderRoute: typeof AdminPapeleraRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/usuarios': {
@@ -361,6 +427,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/cotizaciones/nueva'
       fullPath: '/admin/cotizaciones/nueva'
       preLoaderRoute: typeof AdminCotizacionesNuevaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/exportar': {
+      id: '/api/admin/exportar'
+      path: '/api/admin/exportar'
+      fullPath: '/api/admin/exportar'
+      preLoaderRoute: typeof ApiAdminExportarRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/admin/login': {
@@ -412,6 +485,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminUsuariosIdRouteImport
       parentRoute: typeof ApiAdminUsuariosRoute
     }
+    '/api/admin/cotizaciones/$id/papelera': {
+      id: '/api/admin/cotizaciones/$id/papelera'
+      path: '/papelera'
+      fullPath: '/api/admin/cotizaciones/$id/papelera'
+      preLoaderRoute: typeof ApiAdminCotizacionesIdPapeleraRouteImport
+      parentRoute: typeof ApiAdminCotizacionesIdRoute
+    }
   }
 }
 
@@ -426,24 +506,41 @@ const ApiAdminUsuariosRouteChildren: ApiAdminUsuariosRouteChildren = {
 const ApiAdminUsuariosRouteWithChildren =
   ApiAdminUsuariosRoute._addFileChildren(ApiAdminUsuariosRouteChildren)
 
+interface ApiAdminCotizacionesIdRouteChildren {
+  ApiAdminCotizacionesIdPapeleraRoute: typeof ApiAdminCotizacionesIdPapeleraRoute
+}
+
+const ApiAdminCotizacionesIdRouteChildren: ApiAdminCotizacionesIdRouteChildren =
+  {
+    ApiAdminCotizacionesIdPapeleraRoute: ApiAdminCotizacionesIdPapeleraRoute,
+  }
+
+const ApiAdminCotizacionesIdRouteWithChildren =
+  ApiAdminCotizacionesIdRoute._addFileChildren(
+    ApiAdminCotizacionesIdRouteChildren,
+  )
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   PoliticaDePrivacidadRoute: PoliticaDePrivacidadRoute,
   SlaRoute: SlaRoute,
   TerminosDeServicioRoute: TerminosDeServicioRoute,
+  AdminHistorialRoute: AdminHistorialRoute,
   AdminLoginRoute: AdminLoginRoute,
   AdminMiCuentaRoute: AdminMiCuentaRoute,
+  AdminPapeleraRoute: AdminPapeleraRoute,
   AdminUsuariosRoute: AdminUsuariosRoute,
   ApiChatRoute: ApiChatRoute,
   ApiContactoRoute: ApiContactoRoute,
   AdminIndexRoute: AdminIndexRoute,
   AdminCotizacionesIdRoute: AdminCotizacionesIdRoute,
   AdminCotizacionesNuevaRoute: AdminCotizacionesNuevaRoute,
+  ApiAdminExportarRoute: ApiAdminExportarRoute,
   ApiAdminLoginRoute: ApiAdminLoginRoute,
   ApiAdminLogoutRoute: ApiAdminLogoutRoute,
   ApiAdminMiCuentaRoute: ApiAdminMiCuentaRoute,
   ApiAdminUsuariosRoute: ApiAdminUsuariosRouteWithChildren,
-  ApiAdminCotizacionesIdRoute: ApiAdminCotizacionesIdRoute,
+  ApiAdminCotizacionesIdRoute: ApiAdminCotizacionesIdRouteWithChildren,
   ApiAdminCotizacionesNuevaRoute: ApiAdminCotizacionesNuevaRoute,
 }
 export const routeTree = rootRouteImport

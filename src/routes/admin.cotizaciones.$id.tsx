@@ -120,6 +120,8 @@ function Detalle({
   const [ok, setOk] = useState("");
   const [error, setError] = useState("");
   const [conflicto, setConflicto] = useState(false);
+  const [confirmandoEliminar, setConfirmandoEliminar] = useState(false);
+  const [eliminando, setEliminando] = useState(false);
 
   async function enviar(cambios: Record<string, unknown>) {
     setOk("");
@@ -171,6 +173,43 @@ function Detalle({
       cambios["responsable_id"] = responsable === "" ? null : Number(responsable);
     }
     void enviar(cambios);
+  }
+
+  /** Envía la solicitud a la papelera (solo administrador) respetando la concurrencia. */
+  async function eliminar() {
+    if (eliminando) return;
+    setEliminando(true);
+    setOk("");
+    setError("");
+    setConflicto(false);
+    try {
+      const response = await fetch(`/api/admin/cotizaciones/${detalle.id}/papelera`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ accion: "eliminar", actualizado_en: guardado.actualizado_en }),
+      });
+      if (response.ok) {
+        window.location.assign("/admin");
+        return;
+      }
+      if (response.status === 409) {
+        setConflicto(true);
+        setError("Otra persona modificó esta solicitud; recarga para ver los cambios.");
+      } else if (response.status === 401) {
+        window.location.assign("/admin/login");
+        return;
+      } else if (response.status === 403) {
+        setError("No tienes permiso para eliminar solicitudes.");
+      } else if (response.status === 404) {
+        setError("Esta solicitud ya no existe.");
+      } else {
+        setError("No se pudo enviar a la papelera. Inténtalo de nuevo.");
+      }
+    } catch {
+      setError("No se pudo conectar con el servidor. Inténtalo de nuevo.");
+    }
+    setEliminando(false);
+    setConfirmandoEliminar(false);
   }
 
   const mailto = `mailto:${encodeURIComponent(detalle.correo).replace(/%40/g, "@")}`;
@@ -351,6 +390,49 @@ function Detalle({
           >
             {enviando ? "Guardando…" : "Guardar cambios"}
           </button>
+
+          {esAdmin && (
+            <div className="rounded-xl border border-rose-300/30 bg-rose-500/10 p-3">
+              {!confirmandoEliminar ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOk("");
+                    setError("");
+                    setConflicto(false);
+                    setConfirmandoEliminar(true);
+                  }}
+                  className={`${button} w-full border border-rose-300/60 bg-rose-500/15 text-rose-100 hover:bg-rose-500/25`}
+                >
+                  Eliminar
+                </button>
+              ) : (
+                <div role="group" aria-label="Confirmar eliminación">
+                  <p className="mb-2 text-sm font-bold text-rose-100">
+                    ¿Enviar la solicitud #{detalle.id} a la papelera? Podrás restaurarla después.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      disabled={eliminando}
+                      onClick={() => void eliminar()}
+                      className={`${button} border border-rose-300/60 bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-60`}
+                    >
+                      {eliminando ? "Eliminando…" : "Confirmar eliminación"}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={eliminando}
+                      onClick={() => setConfirmandoEliminar(false)}
+                      className={`${button} border border-white/30 bg-white/10 hover:bg-white/20`}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           <div aria-live="polite">
             {ok && (

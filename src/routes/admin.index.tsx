@@ -100,12 +100,15 @@ function ListaPage() {
     <PanelShell user={user}>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-black tracking-tight">Cotizaciones</h1>
-        <Link
-          to="/admin/cotizaciones/nueva"
-          className={`${buttonClass} bg-gradient-to-r from-[#0087C3] to-[#478a1f] text-white hover:brightness-110`}
-        >
-          Nueva solicitud
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          {user.rol === "administrador" && <ExportarButton query={query} />}
+          <Link
+            to="/admin/cotizaciones/nueva"
+            className={`${buttonClass} bg-gradient-to-r from-[#0087C3] to-[#478a1f] text-white hover:brightness-110`}
+          >
+            Nueva solicitud
+          </Link>
+        </div>
       </div>
 
       {!data.ok ? (
@@ -431,6 +434,76 @@ function ListaPage() {
         </>
       )}
     </PanelShell>
+  );
+}
+
+/** Descarga el CSV con los mismos filtros validados de la lista (sin paginar). Solo administrador. */
+function ExportarButton({ query }: { query: ListQuery }) {
+  const [ocupado, setOcupado] = useState(false);
+  const [mensaje, setMensaje] = useState("");
+
+  async function exportar() {
+    if (ocupado) return;
+    setOcupado(true);
+    setMensaje("");
+    try {
+      const response = await fetch("/api/admin/exportar", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          q: query.q,
+          estado: query.estado,
+          servicio: query.servicio,
+          responsable: query.responsable,
+          desde: query.desde,
+          hasta: query.hasta,
+          orden: query.orden,
+          dir: query.dir,
+          page: 1,
+        }),
+      });
+      if (!response.ok) {
+        const error = (await response.json().catch(() => ({}))) as { mensaje?: unknown };
+        setMensaje(
+          typeof error.mensaje === "string"
+            ? error.mensaje
+            : "No se pudo generar el archivo. Inténtalo de nuevo.",
+        );
+        return;
+      }
+      const disposition = response.headers.get("content-disposition") ?? "";
+      const nombre = /filename="([^"]+)"/.exec(disposition)?.[1] ?? "cotizaciones_telcobras.csv";
+      const url = URL.createObjectURL(await response.blob());
+      const enlace = document.createElement("a");
+      enlace.href = url;
+      enlace.download = nombre;
+      document.body.appendChild(enlace);
+      enlace.click();
+      enlace.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch {
+      setMensaje("No se pudo conectar con el servidor. Inténtalo de nuevo.");
+    } finally {
+      setOcupado(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        onClick={() => void exportar()}
+        disabled={ocupado}
+        className={`${buttonClass} border border-[#88BD4C]/70 bg-[#88BD4C]/15 text-white hover:bg-[#88BD4C]/25 disabled:opacity-60`}
+      >
+        {ocupado ? "Preparando…" : "Exportar"}
+      </button>
+      {mensaje && (
+        <p role="alert" className="max-w-xs text-xs font-bold text-amber-200">
+          {mensaje}
+        </p>
+      )}
+    </div>
   );
 }
 

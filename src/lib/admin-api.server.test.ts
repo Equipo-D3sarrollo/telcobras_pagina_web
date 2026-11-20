@@ -145,6 +145,15 @@ describe("checkAdminActionLimit: límites dedicados además del genérico", () =
     // Cada acción tiene su propio contador: crear usuario sigue permitido.
     expect(desde("192.0.2.40", 703, "crear_usuario")).toBeNull();
   });
+
+  it("exportar: 10 permitidas y la 11ª responde 429 por IP y por usuario", () => {
+    for (let i = 0; i < 10; i++) expect(desde("192.0.2.50", 704, "exportar")).toBeNull();
+    expect(desde("192.0.2.50", 704, "exportar")!.status).toBe(429);
+    // Otra IP con el mismo usuario sigue limitada; otro usuario con la misma IP también.
+    expect(desde("192.0.2.51", 704, "exportar")!.status).toBe(429);
+    expect(desde("192.0.2.50", 705, "exportar")!.status).toBe(429);
+    expect(desde("192.0.2.51", 705, "exportar")).toBeNull();
+  });
 });
 
 describe("requireAdminApi: límite por IP", () => {

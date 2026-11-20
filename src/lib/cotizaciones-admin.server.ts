@@ -4,16 +4,32 @@ import { parseContacto } from "./contacto-validation";
 import { insertCotizacion } from "./cotizaciones.server";
 import {
   ESTADOS,
+  ESTADO_LABEL,
+  MAX_EXPORTAR,
+  ORIGEN_LABEL,
   PAGE_SIZE,
+  PAGE_SIZE_HISTORIAL,
+  celdaCsv,
+  describirFiltrosCsv,
   escapeLike,
+  fechaArchivoCsv,
+  formatFechaCsv,
   responsablePermitido,
+  solicitudEliminada,
   type DetalleCotizacion,
   type EntradaHistorial,
   type Estado,
   type FilaCotizacion,
-  type ListQuery,
+  type FilaPapelera,
+  type FilaHistorial,
+  type HistorialQuery,
   type ListaCotizaciones,
+  type ListaHistorial,
+  type ListaPapelera,
+  type ListQuery,
   type Orden,
+  type PapeleraInput,
+  type PapeleraQuery,
   type UpdateInput,
 } from "./cotizaciones-admin-shared";
 import { getPool } from "./db.server";
@@ -89,26 +105,28 @@ export function buildFilters(
   return { where: conditions.join(" AND "), params };
 }
 
+/** Un id de responsable solo vale si es administrador y el usuario existe; lo demás se ignora. */
+async function resolverFiltro(
+  query: ListQuery,
+  user: { id: number; rol: "administrador" | "comercial" },
+): Promise<ListQuery> {
+  if (typeof query.responsable !== "number") return query;
+  if (!responsablePermitido(query.responsable, user.rol)) {
+    return { ...query, responsable: "todos" };
+  }
+  const [existe] = await getPool().execute<RowDataPacket[]>(
+    "SELECT id FROM usuarios WHERE id = ? LIMIT 1",
+    [query.responsable],
+  );
+  return existe.length === 0 ? { ...query, responsable: "todos" } : query;
+}
+
 export async function listarCotizaciones(
   query: ListQuery,
   user: { id: number; rol: "administrador" | "comercial" },
 ): Promise<ListaCotizaciones> {
   const pool = getPool();
-
-  // Un id de responsable solo vale si es administrador y el usuario existe; lo demás se ignora.
-  let filtro = query;
-  if (typeof query.responsable === "number") {
-    if (!responsablePermitido(query.responsable, user.rol)) {
-      filtro = { ...query, responsable: "todos" };
-    } else {
-      const [existe] = await pool.execute<RowDataPacket[]>(
-        "SELECT id FROM usuarios WHERE id = ? LIMIT 1",
-        [query.responsable],
-      );
-      if (existe.length === 0) filtro = { ...query, responsable: "todos" };
-    }
-  }
-
+  const filtro = await resolverFiltro(query, user);
   const filtered = buildFilters(filtro, { includeEstado: true }, user);
   const forCounts = buildFilters(filtro, { includeEstado: false }, user);
   const offset = (query.page - 1) * PAGE_SIZE;
@@ -171,8 +189,8 @@ type Ejecutar = (sql: string, values: (string | number | null)[]) => Promise<unk
 async function auditar(
   ejecutar: Ejecutar,
   usuarioId: number,
-  accion: "ver" | "cambiar_estado" | "asignar" | "editar",
-  cotizacionId: number,
+  accion: "ver" | "cambiar_estado" | "asignar" | "editar" | "eliminar" | "restaurar" | "exportar",
+  cotizacionId: number | null,
   detalle: string | null,
   ip: string | null,
 ) {
@@ -421,4 +439,390 @@ export async function crearCotizacionManual(
     detalle: "Solicitud creada manualmente desde el panel",
   });
   return { ok: true, id };
+}
+
+// ---------------------------------------------------------------------------
+// Fase 6: papelera, exportación e historial. Las tres operaciones son solo para
+// administradores; el rol se comprueba aquí, en servidor, además de en las rutas.
+// ---------------------------------------------------------------------------
+
+function esAdmin(user: { rol: "administrador" | "comercial" }): boolean {
+  return user.rol === "administrador";
+}
+
+/** Token de concurrencia: siempre avanza al menos un segundo sobre el valor anterior. */
+function siguienteToken(anterior: Date): Date {
+  return new Date(Math.max(Math.floor(Date.now() / 1000) * 1000, anterior.getTime() + 1000));
+}
+
+export type ResultadoPapelera =
+  | { ok: true; actualizado_en: string }
+  | { ok: false; error: "not_found" | "conflict" | "forbidden" | "invalid" };
+
+/** Envía una solicitud a la papelera (borrado lógico) con concurrencia y auditoría. */
+export async function moverAPapelera(
+  user: AdminUser,
+  id: number,
+  input: PapeleraInput,
+  ip: string | null,
+): Promise<ResultadoPapelera> {
+  if (!esAdmin(user)) return { ok: false, error: "forbidden" };
+  const connection = await getPool().getConnection();
+  try {
+    await connection.beginTransaction();
+    const fail = async (error: "not_found" | "conflict") => {
+      await connection.rollback();
+      return { ok: false, error } as const;
+    };
+
+    const [rows] = await connection.execute<RowDataPacket[]>(
+      "SELECT eliminado_en, actualizado_en FROM cotizaciones WHERE id = ? FOR UPDATE",
+      [id],
+    );
+    const row = rows[0];
+    if (!row || row["eliminado_en"] !== null) return await fail("not_found");
+    if (new Date(input.actualizado_en).getTime() !== new Date(row["actualizado_en"]).getTime()) {
+      return await fail("conflict");
+    }
+
+    const token = siguienteToken(new Date(row["actualizado_en"]));
+    await connection.execute(
+      "UPDATE cotizaciones SET eliminado_en = NOW(), eliminado_por = ?, actualizado_en = ? WHERE id = ?",
+      [user.id, token, id],
+    );
+    await auditar(
+      (sql, values) => connection.execute(sql, values),
+      user.id,
+      "eliminar",
+      id,
+      "enviada a la papelera",
+      ip,
+    );
+    await connection.commit();
+    return { ok: true, actualizado_en: token.toISOString() };
+  } catch (error) {
+    await connection.rollback().catch(() => {});
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+/** Restaura una solicitud desde la papelera, con concurrencia y auditoría. */
+export async function restaurarCotizacion(
+  user: AdminUser,
+  id: number,
+  input: PapeleraInput,
+  ip: string | null,
+): Promise<ResultadoPapelera> {
+  if (!esAdmin(user)) return { ok: false, error: "forbidden" };
+  const connection = await getPool().getConnection();
+  try {
+    await connection.beginTransaction();
+    const fail = async (error: "not_found" | "conflict") => {
+      await connection.rollback();
+      return { ok: false, error } as const;
+    };
+
+    const [rows] = await connection.execute<RowDataPacket[]>(
+      "SELECT actualizado_en FROM cotizaciones WHERE id = ? AND eliminado_en IS NOT NULL FOR UPDATE",
+      [id],
+    );
+    const row = rows[0];
+    if (!row) return await fail("not_found");
+    if (new Date(input.actualizado_en).getTime() !== new Date(row["actualizado_en"]).getTime()) {
+      return await fail("conflict");
+    }
+
+    const token = siguienteToken(new Date(row["actualizado_en"]));
+    await connection.execute(
+      "UPDATE cotizaciones SET eliminado_en = NULL, eliminado_por = NULL, actualizado_en = ? WHERE id = ?",
+      [token, id],
+    );
+    await auditar(
+      (sql, values) => connection.execute(sql, values),
+      user.id,
+      "restaurar",
+      id,
+      "restaurada desde la papelera",
+      ip,
+    );
+    await connection.commit();
+    return { ok: true, actualizado_en: token.toISOString() };
+  } catch (error) {
+    await connection.rollback().catch(() => {});
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+/** Borra definitivamente una solicitud. La auditoría se escribe ANTES del DELETE: la FK
+ * deja su cotizacion_id a NULL y el detalle conserva el número para el historial. */
+export async function eliminarDefinitivamente(
+  user: AdminUser,
+  id: number,
+  input: PapeleraInput,
+  ip: string | null,
+): Promise<
+  { ok: true } | { ok: false; error: "not_found" | "conflict" | "forbidden" | "invalid" }
+> {
+  if (!esAdmin(user)) return { ok: false, error: "forbidden" };
+  // Doble confirmación: el número escrito por el usuario debe ser exactamente el de la fila.
+  if (input.confirmacion !== id) return { ok: false, error: "invalid" };
+
+  const connection = await getPool().getConnection();
+  try {
+    await connection.beginTransaction();
+    const fail = async (error: "not_found" | "conflict") => {
+      await connection.rollback();
+      return { ok: false, error } as const;
+    };
+
+    const [rows] = await connection.execute<RowDataPacket[]>(
+      "SELECT actualizado_en FROM cotizaciones WHERE id = ? AND eliminado_en IS NOT NULL FOR UPDATE",
+      [id],
+    );
+    const row = rows[0];
+    if (!row) return await fail("not_found");
+    if (new Date(input.actualizado_en).getTime() !== new Date(row["actualizado_en"]).getTime()) {
+      return await fail("conflict");
+    }
+
+    await auditar(
+      (sql, values) => connection.execute(sql, values),
+      user.id,
+      "eliminar",
+      id,
+      `eliminación definitiva de la solicitud #${id}`,
+      ip,
+    );
+    await connection.execute("DELETE FROM cotizaciones WHERE id = ?", [id]);
+    await connection.commit();
+    return { ok: true };
+  } catch (error) {
+    await connection.rollback().catch(() => {});
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+/** Lista paginada de la papelera, con búsqueda por número, nombre, empresa o servicio. */
+export async function listarPapelera(
+  query: PapeleraQuery,
+  user: AdminUser,
+): Promise<ListaPapelera> {
+  if (!esAdmin(user)) return { filas: [], total: 0 };
+  const conditions = ["c.eliminado_en IS NOT NULL"];
+  const params: (string | number)[] = [];
+  if (query.q) {
+    const like = `%${escapeLike(query.q)}%`;
+    conditions.push(
+      "(c.nombre LIKE ? ESCAPE '!' OR c.empresa LIKE ? ESCAPE '!' OR c.servicio LIKE ? ESCAPE '!' OR CAST(c.id AS CHAR) LIKE ? ESCAPE '!')",
+    );
+    params.push(like, like, like, like);
+  }
+  const where = conditions.join(" AND ");
+  const offset = (query.page - 1) * PAGE_SIZE;
+
+  const [filas, total] = await Promise.all([
+    getPool().execute<RowDataPacket[]>(
+      `SELECT c.id, c.creado_en, c.nombre, c.empresa, c.servicio, c.eliminado_en,
+              c.actualizado_en, u.nombre AS eliminado_por
+         FROM cotizaciones c LEFT JOIN usuarios u ON u.id = c.eliminado_por
+        WHERE ${where}
+        ORDER BY c.eliminado_en DESC, c.id DESC
+        LIMIT ? OFFSET ?`,
+      [...params, String(PAGE_SIZE), String(offset)],
+    ),
+    getPool().execute<RowDataPacket[]>(
+      `SELECT COUNT(*) AS n FROM cotizaciones c WHERE ${where}`,
+      params,
+    ),
+  ]);
+
+  return {
+    filas: filas[0].map((row): FilaPapelera => ({
+      id: row["id"],
+      creado_en: new Date(row["creado_en"]).toISOString(),
+      nombre: row["nombre"],
+      empresa: row["empresa"],
+      servicio: row["servicio"],
+      eliminado_en: new Date(row["eliminado_en"]).toISOString(),
+      eliminado_por: row["eliminado_por"] ?? null,
+      actualizado_en: new Date(row["actualizado_en"]).toISOString(),
+    })),
+    total: Number(total[0][0]?.["n"] ?? 0),
+  };
+}
+
+export type ResultadoExportacion =
+  | { ok: true; csv: string; nombreArchivo: string; filas: number }
+  | { ok: false; error: "forbidden" | "too_many"; total?: number };
+
+/** Exporta a CSV todas las no eliminadas que cumplen los filtros de la lista (sin paginar). */
+export async function exportarCotizaciones(
+  query: ListQuery,
+  user: AdminUser,
+  ip: string | null,
+): Promise<ResultadoExportacion> {
+  if (!esAdmin(user)) return { ok: false, error: "forbidden" };
+  const filtro = await resolverFiltro(query, user);
+  const { where, params } = buildFilters(filtro, { includeEstado: true }, user);
+
+  // Primero comprobamos el tope para no construir un CSV gigante en memoria.
+  const [conteo] = await getPool().execute<RowDataPacket[]>(
+    `SELECT COUNT(*) AS n FROM cotizaciones c WHERE ${where}`,
+    params,
+  );
+  const total = Number(conteo[0]?.["n"] ?? 0);
+  if (total > MAX_EXPORTAR) return { ok: false, error: "too_many", total };
+
+  const [filas] = await getPool().execute<RowDataPacket[]>(
+    `SELECT c.id, c.creado_en, c.nombre, c.empresa, c.cargo, c.correo, c.telefono, c.servicio,
+            c.mensaje, c.estado, c.consentimiento, c.consentimiento_fecha, c.origen, c.idioma,
+            c.notas, u.nombre AS responsable
+       FROM cotizaciones c LEFT JOIN usuarios u ON u.id = c.responsable_id
+      WHERE ${where}
+      ORDER BY c.creado_en DESC, c.id DESC
+      LIMIT ?`,
+    [...params, String(MAX_EXPORTAR)],
+  );
+
+  const encabezados = [
+    "Número",
+    "Fecha",
+    "Nombre",
+    "Empresa",
+    "Cargo",
+    "Correo",
+    "Teléfono",
+    "Servicio",
+    "Mensaje",
+    "Estado",
+    "Responsable",
+    "Origen",
+    "Idioma",
+    "Autorización de datos",
+    "Notas internas",
+  ];
+  const lineas = [encabezados.map(celdaCsv).join(";")];
+  for (const row of filas) {
+    const origen = row["origen"] as keyof typeof ORIGEN_LABEL;
+    const autorizacion =
+      Number(row["consentimiento"]) === 1
+        ? `Sí (${formatFechaCsv(row["consentimiento_fecha"])})`
+        : "No";
+    const valores = [
+      row["id"],
+      formatFechaCsv(row["creado_en"]),
+      row["nombre"],
+      row["empresa"],
+      row["cargo"],
+      row["correo"],
+      row["telefono"],
+      row["servicio"],
+      row["mensaje"] ?? "",
+      ESTADO_LABEL[row["estado"] as Estado] ?? String(row["estado"]),
+      row["responsable"] ?? "",
+      ORIGEN_LABEL[origen] ?? String(row["origen"]),
+      row["idioma"],
+      autorizacion,
+      row["notas"] ?? "",
+    ];
+    lineas.push(valores.map(celdaCsv).join(";"));
+  }
+  // BOM para que Excel en español reconozca UTF-8 (tildes, ñ y emojis).
+  const csv = `\uFEFF${lineas.join("\r\n")}\r\n`;
+
+  await auditar(
+    (sql, values) => getPool().execute(sql, values),
+    user.id,
+    "exportar",
+    null,
+    `${filas.length} filas; filtros: ${describirFiltrosCsv(filtro)}`,
+    ip,
+  );
+
+  return {
+    ok: true,
+    csv,
+    nombreArchivo: `cotizaciones_telcobras_${fechaArchivoCsv()}.csv`,
+    filas: filas.length,
+  };
+}
+
+/** Historial completo. NUNCA escribe en auditoría: ver el historial no deja rastro. */
+export async function listarAuditoria(
+  query: HistorialQuery,
+  user: AdminUser,
+): Promise<ListaHistorial> {
+  if (!esAdmin(user)) return { filas: [], total: 0 };
+  const conditions: string[] = [];
+  const params: (string | number | Date)[] = [];
+
+  if (query.usuario !== "todos") {
+    conditions.push("a.usuario_id = ?");
+    params.push(query.usuario);
+  }
+  if (query.accion !== "todas") {
+    conditions.push("a.accion = ?");
+    params.push(query.accion);
+  }
+  if (query.desde) {
+    conditions.push("a.creado_en >= ?");
+    params.push(new Date(`${query.desde}T00:00:00${COLOMBIA_UTC_OFFSET}`));
+  }
+  if (query.hasta) {
+    const next = new Date(`${query.hasta}T00:00:00${COLOMBIA_UTC_OFFSET}`);
+    next.setUTCDate(next.getUTCDate() + 1);
+    conditions.push("a.creado_en < ?");
+    params.push(next);
+  }
+  if (query.solicitud !== undefined) {
+    // Incluye las filas cuyo cotizacion_id quedó a NULL tras una eliminación definitiva:
+    // el número original sigue en el detalle de la auditoría.
+    conditions.push("(a.cotizacion_id = ? OR a.detalle LIKE ?)");
+    params.push(query.solicitud, `%eliminación definitiva de la solicitud #${query.solicitud}%`);
+  }
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+  const offset = (query.page - 1) * PAGE_SIZE_HISTORIAL;
+
+  const [filas, total] = await Promise.all([
+    getPool().execute<RowDataPacket[]>(
+      `SELECT a.id, a.creado_en, a.accion, a.cotizacion_id, a.detalle, a.ip,
+              COALESCE(u.nombre, 'Sistema / formulario web') AS usuario
+         FROM auditoria a LEFT JOIN usuarios u ON u.id = a.usuario_id
+         ${where}
+        ORDER BY a.id DESC
+        LIMIT ? OFFSET ?`,
+      [...params, String(PAGE_SIZE_HISTORIAL), String(offset)],
+    ),
+    getPool().execute<RowDataPacket[]>(`SELECT COUNT(*) AS n FROM auditoria a ${where}`, params),
+  ]);
+
+  return {
+    filas: filas[0].map((row): FilaHistorial => {
+      const cotizacionId = row["cotizacion_id"] as number | null;
+      const eliminada = cotizacionId === null ? solicitudEliminada(row["detalle"] ?? null) : null;
+      return {
+        id: row["id"],
+        creado_en: new Date(row["creado_en"]).toISOString(),
+        usuario: row["usuario"],
+        accion: row["accion"],
+        cotizacion_id: cotizacionId,
+        solicitud:
+          cotizacionId !== null
+            ? `#${cotizacionId}`
+            : eliminada !== null
+              ? `eliminada #${eliminada}`
+              : "—",
+        con_enlace: cotizacionId !== null,
+        detalle: row["detalle"] ?? null,
+        ip: row["ip"] ?? null,
+      };
+    }),
+    total: Number(total[0][0]?.["n"] ?? 0),
+  };
 }

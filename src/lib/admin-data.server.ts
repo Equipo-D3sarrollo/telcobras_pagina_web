@@ -1,6 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest, setResponseStatus } from "@tanstack/react-start/server";
-import { parseId, parseListQuery } from "./cotizaciones-admin-shared";
+import {
+  parseHistorialQuery,
+  parseId,
+  parseListQuery,
+  parsePapeleraQuery,
+} from "./cotizaciones-admin-shared";
 
 /**
  * Lecturas del panel (lista y detalle) como funciones de servidor: se ejecutan siempre en el
@@ -80,6 +85,52 @@ export const obtenerCotizacionFn = createServerFn({ method: "POST" })
         return { ok: false, error: "not_found" } as const;
       }
       return { ok: true, detalle, rol: user.rol, usuarioId: user.id } as const;
+    } catch (error) {
+      logError(error);
+      setResponseStatus(503);
+      return { ok: false, error: "unavailable" } as const;
+    }
+  });
+
+/** Papelera: solo lectura, solo administrador. Verla no genera auditoría. */
+export const listarPapeleraFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => parsePapeleraQuery(data))
+  .handler(async ({ data }) => {
+    try {
+      const user = await sessionUser();
+      if (!user) {
+        setResponseStatus(401);
+        return { ok: false, error: "unauthorized" } as const;
+      }
+      if (user.rol !== "administrador") {
+        setResponseStatus(403);
+        return { ok: false, error: "forbidden" } as const;
+      }
+      const { listarPapelera } = await import("./cotizaciones-admin.server");
+      return { ok: true, ...(await listarPapelera(data, user)) } as const;
+    } catch (error) {
+      logError(error);
+      setResponseStatus(503);
+      return { ok: false, error: "unavailable" } as const;
+    }
+  });
+
+/** Historial completo: solo lectura, solo administrador. NUNCA registra auditoría. */
+export const listarHistorialFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => parseHistorialQuery(data))
+  .handler(async ({ data }) => {
+    try {
+      const user = await sessionUser();
+      if (!user) {
+        setResponseStatus(401);
+        return { ok: false, error: "unauthorized" } as const;
+      }
+      if (user.rol !== "administrador") {
+        setResponseStatus(403);
+        return { ok: false, error: "forbidden" } as const;
+      }
+      const { listarAuditoria } = await import("./cotizaciones-admin.server");
+      return { ok: true, ...(await listarAuditoria(data, user)) } as const;
     } catch (error) {
       logError(error);
       setResponseStatus(503);
