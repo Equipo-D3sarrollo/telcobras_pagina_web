@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { createClient } from "@supabase/supabase-js";
 import { createRateLimiter, getClientIp, NO_CLIENT_IP_KEY } from "@/lib/rate-limit";
+import { insertCotizacion } from "@/lib/cotizaciones.server";
+import { isBoundedString, isRecord, parseContacto } from "@/lib/contacto-validation";
+import { DbConfigError } from "@/lib/db.server";
 
 const MAX_REQUEST_BYTES = 16 * 1024;
 const MAX_TURNSTILE_TOKEN_LENGTH = 2048;
-const SUPABASE_TABLE = "solicitudes_contacto";
 
 const TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 
@@ -85,74 +86,12 @@ function getAllowedTurnstileHostnames(): string[] | null {
   return configured.length > 0 ? configured : null;
 }
 
-const LIMITS = {
-  nombre: 100,
-  empresa: 100,
-  cargo: 100,
-  correo: 200,
-  telefono: 20,
-  servicio: 120,
-  mensaje: 2000,
-} as const;
-
-type ContactoRequest = {
-  nombre: string;
-  empresa: string;
-  cargo: string;
-  correo: string;
-  telefono: string;
-  servicio: string;
-  mensaje: string;
-  consentimiento: boolean;
-};
-
 function jsonResponse(body: Record<string, unknown>, status = 200, headers?: HeadersInit) {
   const responseHeaders = new Headers(headers);
   responseHeaders.set("content-type", "application/json; charset=utf-8");
   responseHeaders.set("cache-control", "no-store");
 
   return new Response(JSON.stringify(body), { status, headers: responseHeaders });
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function isBoundedString(value: unknown, maxLength: number): value is string {
-  return typeof value === "string" && value.length <= maxLength;
-}
-
-const CORREO_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function parseContacto(value: unknown): ContactoRequest | null {
-  if (!isRecord(value)) return null;
-
-  const { nombre, empresa, cargo, correo, telefono, servicio, mensaje, consentimiento } = value;
-
-  if (!isBoundedString(nombre, LIMITS.nombre) || nombre.trim().length === 0) return null;
-  if (!isBoundedString(correo, LIMITS.correo) || !CORREO_REGEX.test(correo.trim())) return null;
-  if (!isBoundedString(telefono, LIMITS.telefono) || telefono.trim().length === 0) return null;
-  if (consentimiento !== true) return null;
-
-  if (
-    !isBoundedString(empresa, LIMITS.empresa) ||
-    !isBoundedString(cargo, LIMITS.cargo) ||
-    !isBoundedString(servicio, LIMITS.servicio) ||
-    !isBoundedString(mensaje, LIMITS.mensaje)
-  ) {
-    return null;
-  }
-
-  return {
-    nombre: nombre.trim(),
-    empresa: empresa.trim(),
-    cargo: cargo.trim(),
-    correo: correo.trim(),
-    telefono: telefono.trim(),
-    servicio: servicio.trim(),
-    mensaje: mensaje.trim(),
-    consentimiento: true,
-  };
 }
 
 async function readLimitedBody(request: Request, maxBytes: number): Promise<Uint8Array | null> {
@@ -185,19 +124,19 @@ async function readLimitedBody(request: Request, maxBytes: number): Promise<Uint
   return body;
 }
 
-function getSupabaseConfig(): { url: string; serviceRoleKey: string } | null {
-  const url = process.env["SUPABASE_URL"]?.trim();
-  const serviceRoleKey = process.env["SUPABASE_SERVICE_ROLE_KEY"]?.trim();
-  if (!url || !serviceRoleKey) return null;
-
-  try {
-    const parsedUrl = new URL(url);
-    if (parsedUrl.protocol !== "https:") return null;
-  } catch {
-    return null;
+// Registra solo el tipo de fallo de MySQL (código, errno, sqlState): nunca el mensaje
+// completo ni datos del formulario.
+function logDbError(error: unknown) {
+  if (error instanceof DbConfigError) {
+    console.error("[api/contacto] Configuración de MySQL incompleta:", error.message);
+    return;
   }
-
-  return { url, serviceRoleKey };
+  const { code, errno, sqlState } = (isRecord(error) ? error : {}) as Record<string, unknown>;
+  console.error("[api/contacto] No se pudo guardar la solicitud en MySQL.", {
+    code,
+    errno,
+    sqlState,
+  });
 }
 
 async function handlePost(request: Request): Promise<Response> {
@@ -283,22 +222,13 @@ async function handlePost(request: Request): Promise<Response> {
     const contacto = parseContacto(input);
     if (!contacto) return jsonResponse({ error: "invalid_request" }, 400);
 
-    // 5. Inserción en Supabase con manejo de error seguro (sin exponer error.message interno)
-    const config = getSupabaseConfig();
-    if (!config) return jsonResponse({ error: "contacto_unavailable" }, 503);
-
-    const supabase = createClient(config.url, config.serviceRoleKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
-
+    // 5. Inserción en MySQL (cotización + auditoría en una transacción). Cualquier fallo
+    // de la base responde 503 con un mensaje genérico, sin exponer detalles internos.
     try {
-      const { error } = await supabase.from(SUPABASE_TABLE).insert(contacto);
-      if (error) {
-        console.error("Error al persistir la solicitud de contacto.", error.code);
-        return jsonResponse({ error: "insert_failed" }, 500);
-      }
-    } catch {
-      return jsonResponse({ error: "insert_failed" }, 500);
+      await insertCotizacion(contacto);
+    } catch (error) {
+      logDbError(error);
+      return jsonResponse({ error: "contacto_unavailable" }, 503);
     }
 
     return jsonResponse({ status: "success" });

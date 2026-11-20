@@ -11,10 +11,14 @@ import {
   BookOpenCheck,
   Heart,
 } from "lucide-react";
+import { useCallback } from "react";
 import { useTranslations } from "@/lib/accessibility-preferences-context";
 import { useNearViewport } from "@/hooks/use-near-viewport";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
+import { useRotatingHighlight } from "@/hooks/use-rotating-highlight";
 import { ABOUT_PHOTOS, type AboutPhotoId } from "@/lib/telcobras-data";
 import { BackgroundVideo } from "./BackgroundVideo";
+import { BrandGlowBorder } from "./BrandGlowBorder";
 import { ResponsivePicture } from "./ResponsivePicture";
 
 /**
@@ -57,11 +61,32 @@ const PHOTO_LAYOUT: { id: AboutPhotoId; cell: string; sizes: string }[] = [
   },
 ];
 
+const TOUCH_PAUSE_MS = 6000;
+
 export function AboutAndValues() {
   const t = useTranslations().about;
   // Las fotos se piden al acercarse al mosaico (no durante la carga inicial); las celdas
   // ya reservan su proporción, así que no hay saltos de diseño.
   const [mosaicRef, mosaicNear] = useNearViewport<HTMLDivElement>();
+  // Destello de marca en una foto a la vez (mismo ciclo y mecanismo que WhyUsSection):
+  // rota solo, hover/toque lo fija en esa foto y se pausa fuera de pantalla. Con
+  // movimiento reducido no hay ciclo: el borde queda estático y solo cambia con hover.
+  const reducedMotion = useReducedMotion();
+  const {
+    containerRef: glowRef,
+    isInView: mosaicInView,
+    activeIndex,
+    onHoverStart,
+    onHoverEnd,
+    onTouchActivate,
+  } = useRotatingHighlight<HTMLDivElement>(PHOTO_LAYOUT.length, 3000, { resumeDelayMs: 1500 });
+  const setMosaicRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      mosaicRef.current = node;
+      glowRef.current = node;
+    },
+    [mosaicRef, glowRef],
+  );
   const valores: { key: keyof typeof t.values; icon: typeof Handshake; color: string }[] = [
     { key: "compromiso", icon: Handshake, color: "#2491CC" },
     { key: "integridad", icon: ShieldCheck, color: "#88BD4C" },
@@ -118,33 +143,47 @@ export function AboutAndValues() {
           </div>
 
           <div
-            ref={mosaicRef}
+            ref={setMosaicRef}
+            data-animations-paused={!mosaicInView}
             className="mx-auto grid w-full max-w-2xl grid-cols-2 gap-3 md:aspect-[6/5] md:grid-cols-6 md:grid-rows-5 lg:max-w-none"
           >
-            {PHOTO_LAYOUT.map(({ id, cell, sizes }) => {
+            {PHOTO_LAYOUT.map(({ id, cell, sizes }, index) => {
               const { image, width, height } = ABOUT_PHOTOS[id];
               const photo = t.photos[id];
               return (
-                <figure
+                <div
                   key={id}
-                  className={`group relative isolate overflow-hidden rounded-3xl border border-white/70 bg-slate-200 shadow-xl shadow-slate-900/15 ${cell}`}
+                  data-active={!reducedMotion && activeIndex === index}
+                  onPointerEnter={(event) => {
+                    if (event.pointerType === "touch") onTouchActivate(index, TOUCH_PAUSE_MS);
+                    else onHoverStart(index);
+                  }}
+                  onPointerLeave={(event) => {
+                    if (event.pointerType !== "touch") onHoverEnd();
+                  }}
+                  className={`about-photo brand-glow-always group relative isolate rounded-3xl shadow-xl shadow-slate-900/15 ${
+                    reducedMotion ? "brand-glow-hover" : ""
+                  } ${cell}`}
                 >
-                  {mosaicNear && (
-                    <ResponsivePicture
-                      image={image}
-                      sizes={sizes}
-                      width={width}
-                      height={height}
-                      alt={photo.alt}
-                      loading="lazy"
-                      decoding="async"
-                      className="absolute inset-0 h-full w-full object-cover motion-safe:transition-transform motion-safe:duration-500 motion-safe:ease-out motion-safe:group-hover:scale-[1.04]"
-                    />
-                  )}
-                  <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/85 via-slate-950/45 to-transparent px-3 pb-3 pt-10 text-xs font-extrabold leading-snug text-white sm:px-4 sm:pb-4 sm:text-sm">
-                    {photo.caption}
-                  </figcaption>
-                </figure>
+                  <figure className="absolute inset-0 overflow-hidden rounded-3xl bg-slate-200">
+                    {mosaicNear && (
+                      <ResponsivePicture
+                        image={image}
+                        sizes={sizes}
+                        width={width}
+                        height={height}
+                        alt={photo.alt}
+                        loading="lazy"
+                        decoding="async"
+                        className="absolute inset-0 h-full w-full object-cover motion-safe:transition-transform motion-safe:duration-500 motion-safe:ease-out motion-safe:group-hover:scale-[1.04]"
+                      />
+                    )}
+                    <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/85 via-slate-950/45 to-transparent px-3 pb-3 pt-10 text-xs font-extrabold leading-snug text-white sm:px-4 sm:pb-4 sm:text-sm">
+                      {photo.caption}
+                    </figcaption>
+                  </figure>
+                  <BrandGlowBorder />
+                </div>
               );
             })}
           </div>

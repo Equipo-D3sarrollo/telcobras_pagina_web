@@ -1,11 +1,11 @@
 import type { LanguagePreference } from "@/lib/accessibility-preferences";
 
 /**
- * Términos de servicio y SLA están PENDIENTES DE APROBACIÓN de gerencia y revisión
- * jurídica. Mientras sea `true`, ambas páginas muestran un aviso de borrador no
- * vinculante y se marcan `noindex`. Cambiar a `false` cuando se aprueben los textos.
+ * Términos de servicio y SLA fueron APROBADOS por gerencia (18-11-2026), por eso es `false`:
+ * ya no se muestra el aviso de borrador y las páginas se indexan. Volver a `true` si un
+ * texto vuelve a revisión (aviso de borrador no vinculante y `noindex`).
  */
-export const LEGAL_DOCUMENTS_ARE_DRAFT = true;
+export const LEGAL_DOCUMENTS_ARE_DRAFT = false;
 
 export const LEGAL_DRAFT_NOTICE: Record<LanguagePreference, { title: string; text: string }> = {
   es: {

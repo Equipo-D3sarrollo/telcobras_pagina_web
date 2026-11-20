@@ -6,6 +6,7 @@ import {
 } from "@/lib/accessibility-preferences-context";
 import { htmlLang, type LanguagePreference } from "@/lib/accessibility-preferences";
 import { getTranslations } from "@/lib/translations";
+import { useMediaQuery } from "@/hooks/use-media-query";
 
 type ChatMessage = {
   id: number;
@@ -29,6 +30,8 @@ function formatBotText(text: string): string {
 
 const WELCOME_BUBBLE_MS = 8000;
 const SESSION_STORAGE_KEY = "telcobras_session_id";
+// Debajo de `sm` (640 px) el chat es una pantalla completa que sigue al teclado.
+const PHONE_QUERY = "(max-width: 639px)";
 
 export function FloatingChatbot() {
   const { preferences } = useAccessibilityPreferences();
@@ -53,6 +56,11 @@ export function FloatingChatbot() {
   const [nextMessageId, setNextMessageId] = useState(1);
   const messageInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  const wasOpenRef = useRef(false);
+  const hasSentRef = useRef(false);
+  const isPhone = useMediaQuery(PHONE_QUERY);
 
   // Solo se lee una sesión existente; el identificador se crea al enviar el primer
   // mensaje, para no guardar nada en el navegador de quien no usa el chat.
@@ -95,17 +103,80 @@ export function FloatingChatbot() {
     );
   }, [language, t.initialGreeting]);
 
+  // En táctil el input no se enfoca al abrir (abriría el teclado y taparía el saludo):
+  // el foco va al diálogo, para lectores de pantalla. Tras enviar un mensaje sí vuelve
+  // al input; en escritorio se enfoca al abrir como siempre.
   useEffect(() => {
-    if (isOpen && !isLoading) {
-      messageInputRef.current?.focus();
+    if (!isOpen) {
+      hasSentRef.current = false;
+      return;
     }
+    if (isLoading) return;
+    const isTouch = window.matchMedia("(pointer: coarse)").matches;
+    if (isTouch && !hasSentRef.current) {
+      panelRef.current?.focus({ preventScroll: true });
+      return;
+    }
+    messageInputRef.current?.focus();
   }, [isOpen, isLoading]);
+
+  // Escape cierra el chat y el foco vuelve al botón del robot.
+  useEffect(() => {
+    if (!isOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsOpen(false);
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (wasOpenRef.current && !isOpen) toggleRef.current?.focus();
+    wasOpenRef.current = isOpen;
+  }, [isOpen]);
+
+  // Celular con el chat abierto: la página de atrás no se desplaza y el panel mide
+  // exactamente el área visible (visualViewport es la fuente de verdad: con el teclado
+  // abierto se reduce y, en iOS, puede desplazarse). Al cambiar el tamaño se baja al
+  // último mensaje.
+  useEffect(() => {
+    const panel = panelRef.current;
+    if (!isOpen || !isPhone || !panel) return;
+    const root = document.documentElement;
+    const previousOverflow = { root: root.style.overflow, body: document.body.style.overflow };
+    root.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+
+    const viewport = window.visualViewport;
+    const fitToViewport = () => {
+      if (!viewport) return;
+      panel.style.setProperty("--chatbot-vv-height", `${viewport.height}px`);
+      panel.style.setProperty("--chatbot-vv-top", `${viewport.offsetTop}px`);
+    };
+    const onViewportResize = () => {
+      fitToViewport();
+      messagesEndRef.current?.scrollIntoView({ block: "end" });
+    };
+    fitToViewport();
+    viewport?.addEventListener("resize", onViewportResize);
+    viewport?.addEventListener("scroll", fitToViewport);
+
+    return () => {
+      root.style.overflow = previousOverflow.root;
+      document.body.style.overflow = previousOverflow.body;
+      viewport?.removeEventListener("resize", onViewportResize);
+      viewport?.removeEventListener("scroll", fitToViewport);
+      panel.style.removeProperty("--chatbot-vv-height");
+      panel.style.removeProperty("--chatbot-vv-top");
+    };
+  }, [isOpen, isPhone]);
 
   async function handleSendMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const userText = input.trim();
     if (!userText || isLoading) return;
     const currentSessionId = ensureSessionId();
+    hasSentRef.current = true;
     let getLocalizedError = () => getTranslations(languageRef.current).chatbot.errors.generic;
 
     setMessages((currentMessages) => [
@@ -179,14 +250,16 @@ export function FloatingChatbot() {
         <section
           aria-label={t.title}
           aria-modal="false"
-          className={`fixed z-50 flex flex-col overflow-hidden rounded-2xl bg-card text-card-foreground shadow-2xl shadow-slate-950/25 ${
+          className={`chatbot-panel fixed z-50 max-sm:z-[65] flex flex-col overflow-hidden bg-card text-card-foreground shadow-2xl shadow-slate-950/25 focus:outline-none sm:rounded-2xl ${
             isExpanded
-              ? "inset-x-2 top-2 bottom-[4.5rem] sm:inset-x-4 sm:top-4 sm:bottom-[4.5rem]"
-              : "inset-x-3 bottom-16 top-12 sm:inset-auto sm:bottom-36 sm:right-5 sm:h-[min(720px,calc(100vh-10rem))] sm:w-[380px]"
+              ? "sm:inset-x-4 sm:top-4 sm:bottom-[4.5rem]"
+              : "sm:inset-auto sm:bottom-36 sm:right-5 sm:h-[min(720px,calc(100vh-10rem))] sm:w-[380px]"
           }`}
+          ref={panelRef}
           role="dialog"
+          tabIndex={-1}
         >
-          <header className="flex shrink-0 items-center justify-between bg-[#006BA4] px-5 py-4 text-white">
+          <header className="chatbot-header flex shrink-0 items-center justify-between bg-[#006BA4] px-5 py-4 text-white">
             <div className="flex items-center gap-3">
               <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20">
                 <Bot aria-hidden="true" className="h-6 w-6" />
@@ -199,7 +272,7 @@ export function FloatingChatbot() {
             <div className="flex items-center gap-1">
               <button
                 aria-label={isExpanded ? t.restore : t.expand}
-                className="rounded-full p-2 transition-colors hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                className="rounded-full p-2 transition-colors hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white max-sm:hidden"
                 onClick={() => setIsExpanded((expanded) => !expanded)}
                 type="button"
               >
@@ -211,7 +284,7 @@ export function FloatingChatbot() {
               </button>
               <button
                 aria-label={t.close}
-                className="rounded-full p-2 transition-colors hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                className="rounded-full p-2 transition-colors hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white max-sm:flex max-sm:h-11 max-sm:w-11 max-sm:items-center max-sm:justify-center max-sm:p-0"
                 onClick={() => setIsOpen(false)}
                 type="button"
               >
@@ -222,7 +295,7 @@ export function FloatingChatbot() {
 
           <div
             aria-live="polite"
-            className="flex-1 space-y-4 overflow-y-auto bg-background p-4"
+            className="flex-1 space-y-4 overflow-y-auto overscroll-contain bg-background p-4"
             role="log"
           >
             {messages.map((message) => {
@@ -275,7 +348,7 @@ export function FloatingChatbot() {
           </div>
 
           <form
-            className="flex shrink-0 items-center gap-2 border-t border-border bg-card p-3"
+            className="chatbot-form flex shrink-0 items-center gap-2 border-t border-border bg-card p-3"
             onSubmit={handleSendMessage}
           >
             <label className="sr-only" htmlFor="telcobras-chat-message">
@@ -283,7 +356,7 @@ export function FloatingChatbot() {
             </label>
             <input
               autoComplete="off"
-              className="min-w-0 flex-1 rounded-full border border-input bg-muted px-4 py-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20"
+              className="min-w-0 flex-1 rounded-full border border-input bg-muted px-4 py-3 text-sm text-foreground max-sm:text-base outline-none transition placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20"
               disabled={isLoading}
               id="telcobras-chat-message"
               name="message"
@@ -346,13 +419,14 @@ export function FloatingChatbot() {
         aria-label={isOpen ? t.close : t.open}
         className={`fixed right-0 z-50 flex items-center justify-center rounded-2xl transition-transform duration-300 hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2491CC] ${
           isOpen
-            ? "bottom-24 h-[60px] w-[60px] bg-[#006BA4] text-white shadow-xl shadow-[#2491CC]/40"
+            ? "bottom-24 h-[60px] w-[60px] bg-[#006BA4] text-white shadow-xl shadow-[#2491CC]/40 max-sm:hidden"
             : "bottom-32 h-[128px] w-[116px]"
         }`}
         onClick={() => {
           setWelcomeVisible(false);
           setIsOpen((open) => !open);
         }}
+        ref={toggleRef}
         type="button"
       >
         {isOpen ? (

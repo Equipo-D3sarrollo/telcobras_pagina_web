@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createRateLimiter, getClientIp, NO_CLIENT_IP_KEY } from "@/lib/rate-limit";
+import { CHATBOT_ENABLED } from "@/lib/telcobras-data";
 
 const MAX_REQUEST_BYTES = 16 * 1024;
 const MAX_SESSION_ID_LENGTH = 128;
@@ -227,11 +228,17 @@ function methodNotAllowed(): Response {
   return jsonResponse({ error: "method_not_allowed" }, 405, { allow: "POST" });
 }
 
+// Chat apagado (CHATBOT_ENABLED = false): 404 para cualquier método, sin leer el cuerpo
+// ni llamar al webhook de Make.
+function notFound(): Response {
+  return new Response(null, { status: 404, headers: { "cache-control": "no-store" } });
+}
+
 export const Route = createFileRoute("/api/chat")({
   server: {
     handlers: {
-      POST: async ({ request }) => handlePost(request),
-      ANY: async () => methodNotAllowed(),
+      POST: async ({ request }) => (CHATBOT_ENABLED ? handlePost(request) : notFound()),
+      ANY: async () => (CHATBOT_ENABLED ? methodNotAllowed() : notFound()),
     },
   },
 });

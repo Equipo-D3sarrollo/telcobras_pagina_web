@@ -469,10 +469,10 @@ export function WhyUsSection() {
                         strokeWidth={2}
                       />
                     </span>
-                    <h3 className="mb-2 text-lg font-extrabold text-slate-900 sm:text-xl">
+                    <h3 className="diff-card-title mb-2 text-lg font-extrabold sm:text-xl">
                       {t.differences[item.id as keyof typeof t.differences].title}
                     </h3>
-                    <p className="why-us-card-description line-clamp-3 text-sm leading-relaxed text-slate-600 sm:text-[0.9375rem]">
+                    <p className="why-us-card-description diff-card-text line-clamp-3 text-sm leading-relaxed sm:text-[0.9375rem]">
                       {t.differences[item.id as keyof typeof t.differences].description}
                     </p>
                   </div>

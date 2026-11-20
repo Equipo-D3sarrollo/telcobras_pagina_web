@@ -1,0 +1,139 @@
+import { createServerFn } from "@tanstack/react-start";
+import { getRequest, setResponseStatus } from "@tanstack/react-start/server";
+import {
+  parseHistorialQuery,
+  parseId,
+  parseListQuery,
+  parsePapeleraQuery,
+} from "./cotizaciones-admin-shared";
+
+/**
+ * Lecturas del panel (lista y detalle) como funciones de servidor: se ejecutan siempre en el
+ * servidor, con sesión válida verificada contra la base en CADA llamada (SSR o navegación del
+ * cliente). Sin sesión responden 401 y las páginas redirigen al login. Los imports de las
+ * capas de servidor son dinámicos para que no lleguen al bundle del cliente.
+ */
+
+async function sessionUser() {
+  const { getSessionUser, readSessionToken } = await import("./auth.server");
+  const request = getRequest();
+  return getSessionUser(readSessionToken(request.headers.get("cookie")));
+}
+
+function logError(error: unknown) {
+  const { code, errno } = (typeof error === "object" && error !== null ? error : {}) as Record<
+    string,
+    unknown
+  >;
+  console.error("[admin/datos] Error.", { code, errno });
+}
+
+export const listarCotizacionesFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => parseListQuery(data))
+  .handler(async ({ data }) => {
+    try {
+      const user = await sessionUser();
+      if (!user) {
+        setResponseStatus(401);
+        return { ok: false, error: "unauthorized" } as const;
+      }
+      const { listarCotizaciones } = await import("./cotizaciones-admin.server");
+      return { ok: true, ...(await listarCotizaciones(data, user)) } as const;
+    } catch (error) {
+      logError(error);
+      setResponseStatus(503);
+      return { ok: false, error: "unavailable" } as const;
+    }
+  });
+
+/** Lista de cuentas del panel (solo lectura; la página además exige rol de administrador). */
+export const listarUsuariosFn = createServerFn({ method: "POST" }).handler(async () => {
+  try {
+    const user = await sessionUser();
+    if (!user) {
+      setResponseStatus(401);
+      return { ok: false, error: "unauthorized" } as const;
+    }
+    if (user.rol !== "administrador") {
+      setResponseStatus(403);
+      return { ok: false, error: "forbidden" } as const;
+    }
+    const { listarUsuarios } = await import("./usuarios-admin.server");
+    return { ok: true, usuarios: await listarUsuarios() } as const;
+  } catch (error) {
+    logError(error);
+    setResponseStatus(503);
+    return { ok: false, error: "unavailable" } as const;
+  }
+});
+
+export const obtenerCotizacionFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => ({ id: parseId(data) }))
+  .handler(async ({ data }) => {
+    try {
+      const user = await sessionUser();
+      if (!user) {
+        setResponseStatus(401);
+        return { ok: false, error: "unauthorized" } as const;
+      }
+      if (data.id === null) return { ok: false, error: "not_found" } as const;
+      const { obtenerDetalle } = await import("./cotizaciones-admin.server");
+      const { getClientIp } = await import("./rate-limit");
+      const detalle = await obtenerDetalle(user, data.id, getClientIp(getRequest()));
+      if (!detalle) {
+        setResponseStatus(404);
+        return { ok: false, error: "not_found" } as const;
+      }
+      return { ok: true, detalle, rol: user.rol, usuarioId: user.id } as const;
+    } catch (error) {
+      logError(error);
+      setResponseStatus(503);
+      return { ok: false, error: "unavailable" } as const;
+    }
+  });
+
+/** Papelera: solo lectura, solo administrador. Verla no genera auditoría. */
+export const listarPapeleraFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => parsePapeleraQuery(data))
+  .handler(async ({ data }) => {
+    try {
+      const user = await sessionUser();
+      if (!user) {
+        setResponseStatus(401);
+        return { ok: false, error: "unauthorized" } as const;
+      }
+      if (user.rol !== "administrador") {
+        setResponseStatus(403);
+        return { ok: false, error: "forbidden" } as const;
+      }
+      const { listarPapelera } = await import("./cotizaciones-admin.server");
+      return { ok: true, ...(await listarPapelera(data, user)) } as const;
+    } catch (error) {
+      logError(error);
+      setResponseStatus(503);
+      return { ok: false, error: "unavailable" } as const;
+    }
+  });
+
+/** Historial completo: solo lectura, solo administrador. NUNCA registra auditoría. */
+export const listarHistorialFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => parseHistorialQuery(data))
+  .handler(async ({ data }) => {
+    try {
+      const user = await sessionUser();
+      if (!user) {
+        setResponseStatus(401);
+        return { ok: false, error: "unauthorized" } as const;
+      }
+      if (user.rol !== "administrador") {
+        setResponseStatus(403);
+        return { ok: false, error: "forbidden" } as const;
+      }
+      const { listarAuditoria } = await import("./cotizaciones-admin.server");
+      return { ok: true, ...(await listarAuditoria(data, user)) } as const;
+    } catch (error) {
+      logError(error);
+      setResponseStatus(503);
+      return { ok: false, error: "unavailable" } as const;
+    }
+  });

@@ -16,7 +16,7 @@ export function LetyIaAndWhyUs() {
         <BackgroundVideo
           src="/video_inicio.mp4"
           poster="/video_inicio.webp"
-          className="absolute inset-0 z-0 h-full w-full object-cover"
+          className="absolute inset-0 z-0 h-full w-full rotate-180 object-cover"
         />
         <div aria-hidden="true" className="absolute inset-0 z-[1] bg-slate-950/55" />
         <div className="absolute top-1/2 left-0 -translate-y-1/2 w-80 h-80 bg-[#0087C3]/20 rounded-full blur-3xl pointer-events-none" />

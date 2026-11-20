@@ -16,6 +16,7 @@ import appCss from "../styles.css?url";
 import { reportVibeError } from "../lib/vibe-error-reporting";
 import { AccessibilityMenu } from "../components/AccessibilityMenu";
 import { useIdleReady } from "@/hooks/use-idle-ready";
+import { CHATBOT_ENABLED } from "@/lib/telcobras-data";
 import { useTranslations } from "@/lib/accessibility-preferences-context";
 import { AccessibilityPreferencesProvider } from "@/lib/accessibility-preferences-provider";
 import { getTranslations } from "@/lib/translations";
@@ -87,9 +88,11 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
 
 // UI secundaria que no se ve al inicio: se descarga y monta cuando el navegador queda
 // libre tras la carga (o con la primera interacción), sin competir con el LCP.
-const FloatingChatbot = lazy(() =>
-  import("../components/FloatingChatbot").then((m) => ({ default: m.FloatingChatbot })),
-);
+const FloatingChatbot = CHATBOT_ENABLED
+  ? lazy(() =>
+      import("../components/FloatingChatbot").then((m) => ({ default: m.FloatingChatbot })),
+    )
+  : null;
 const CookieBanner = lazy(() =>
   import("../components/CookieBanner").then((m) => ({ default: m.CookieBanner })),
 );
@@ -183,19 +186,27 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { accessibilityPreferences } = Route.useLoaderData();
   const idleReady = useIdleReady();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  // El panel (/admin) no carga nada del sitio público: ni menú de accesibilidad, ni botón de
+  // WhatsApp, ni banner de cookies, ni chat.
+  const isAdmin = pathname === "/admin" || pathname.startsWith("/admin/");
 
   return (
     <AccessibilityPreferencesProvider initialPreferences={accessibilityPreferences}>
       <LocalizedMetadata />
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
-      <AccessibilityMenu />
-      <WhatsAppFloatingButton />
-      {idleReady && (
-        <Suspense fallback={null}>
-          <FloatingChatbot />
-          <CookieBanner />
-        </Suspense>
+      {!isAdmin && (
+        <>
+          <AccessibilityMenu />
+          <WhatsAppFloatingButton />
+          {idleReady && (
+            <Suspense fallback={null}>
+              {FloatingChatbot && <FloatingChatbot />}
+              <CookieBanner />
+            </Suspense>
+          )}
+        </>
       )}
     </AccessibilityPreferencesProvider>
   );

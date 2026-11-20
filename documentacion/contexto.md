@@ -10,6 +10,9 @@ conocidos. Debe actualizarse cuando cambien la arquitectura o las capacidades de
 > y una verificación en navegador de `/terminos-de-servicio` y `/sla`. Ver sección 11
 > («Auditoría 26-10-2026»). La revisión anterior (22-10-2026) cubrió el pipeline de
 > CSS/Tailwind, el build de Nitro/Cloudflare y el estado de Git; ver secciones 7 y 9.
+>
+> Última funcionalidad (**19-11-2026**): fase 6 del panel — papelera, exportación CSV e
+> historial completo (sección 12). Sin migración de base; `npm test` pasa 136 pruebas.
 
 ## 1. Instrucciones para quien continúe el proyecto
 
@@ -24,14 +27,15 @@ conocidos. Debe actualizarse cuando cambien la arquitectura o las capacidades de
   variables `VITE_*`, código cliente o capturas.
 - Los cambios visuales del sitio suelen hacerse en los componentes de `src/components/`
   y los estilos globales en `src/styles.css`.
-- Ejecutar `npm exec eslint -- <archivos-modificados>` y `npm run build` cuando
-  corresponda. Hay archivos de pruebas/configuración vacíos en el árbol de trabajo,
-  pero no constituyen una suite ejecutable ni hay scripts `test` en `package.json`.
+- Ejecutar `npm exec eslint -- <archivos-modificados>`, `npm test` y `npm run build`
+  cuando corresponda. `package.json` sí tiene script `test` (vitest); la suite ejecutable
+  son los `src/lib/**/*.server.test.ts` (algunos otros `*.test.ts(x)` del árbol siguen vacíos).
 - Mantener la interfaz, mensajes y documentación del producto principalmente en español.
 - No ejecutar `npm run build` con el servidor de desarrollo activo: en Windows Vite
   vigila `.output/` y se cae con `EBUSY`. Detener el servidor, compilar y volver a
   levantarlo.
-- El artefacto desplegable canónico es **`.output/`** (Nitro/Cloudflare). `dist/` es un
+- El artefacto desplegable canónico es **`.output/`** (desde el 18-11-2026 Nitro `node-server`
+  para cPanel con Node.js; antes Cloudflare — ver sección 9). `dist/` es un
   build antiguo (7-10-2026) y no debe desplegarse; si producción sirve `dist/` o HTML
   cacheado, el diseño puede quedar desfasado aunque el código fuente sea correcto.
 - Reconstruir siempre antes de desplegar si se tocó `src/styles.css`,
@@ -76,13 +80,13 @@ se montan globalmente; el botón para volver al inicio se monta en la página pr
 - Cloudflare Turnstile está implementado en el formulario de contacto. El widget vive
   en `src/components/TurnstileWidget.tsx` y se monta desde `ContactAndFooter.tsx`; el
   token se envía como `turnstile_token` y el servidor lo valida contra
-  `siteverify` antes de persistir en Supabase.
+  `siteverify` antes de persistir en MySQL.
 - El endpoint `/api/contacto` aplica limitación de tasa por IP (5 envíos por ventana
   de 10 minutos) y responde `429` con cabecera `retry-after`. El contador es en
   memoria del proceso, por lo que no es un límite distribuido entre instancias.
-- La higiene de errores evita exponer mensajes crudos de Supabase: el endpoint
-  devuelve códigos genéricos (`insert_failed`, `internal_error`, etc.) y solo registra
-  el código interno en logs. `src/server.ts` también normaliza errores SSR
+- La higiene de errores evita exponer mensajes crudos de la base: el endpoint devuelve
+  códigos genéricos (`contacto_unavailable`, `internal_error`, etc.) y solo registra el
+  código interno (`code`, `errno`, `sqlState` de MySQL) en logs, sin datos del formulario. `src/server.ts` también normaliza errores SSR
   catastróficos de rutas `/api/*` a `{ "error": "internal_error" }`.
 - Las rutas legales `/terminos-de-servicio` y `/sla` ya están creadas y registran sus
   propias rutas en el árbol de TanStack (`src/routes/terminos-de-servicio.tsx` y
@@ -92,9 +96,9 @@ se montan globalmente; el botón para volver al inicio se monta en la página pr
   inicio»), con metadatos SEO/Open Graph y `canonical` propios. El contenido vive en
   `src/lib/terms-content.ts` (15 secciones) y `src/lib/sla-content.ts` (10 secciones);
   los tipos compartidos están en `src/lib/legal-types.ts`. Los valores numéricos del
-  SLA se centralizan en `SLA_VALUES` (`src/lib/sla-content.ts`) y son una **propuesta
-  pendiente de aprobación de gerencia y revisión jurídica**: no cambiarlos ni la
-  redacción sin esa aprobación.
+  SLA se centralizan en `SLA_VALUES` (`src/lib/sla-content.ts`). **Gerencia aprobó
+  «Términos de servicio» y «SLA y garantías» el 18-11-2026**: no cambiar los valores ni la
+  redacción sin una nueva aprobación.
 - Todos los enlaces legales del footer y del banner de cookies usan `<Link>` de
   `@tanstack/react-router` (navegación SPA sin recarga completa). Las rutas internas se
   resuelven con las constantes `PRIVACY_POLICY_URL`, `TERMS_OF_SERVICE_URL` y
@@ -184,13 +188,15 @@ se montan globalmente; el botón para volver al inicio se monta en la página pr
 - Tailwind CSS 4 (`package.json` declara `^4.2.1`; el lock/build resuelve 4.3.3),
   `tw-animate-css`, Radix UI y `lucide-react`.
 - TanStack Query está configurado en el contexto del router.
-- Nitro 3 (beta) genera el despliegue para Cloudflare con preset `cloudflare-module`;
-  `nodeCompat` está habilitado.
+- Nitro 3 (beta) genera el despliegue con el preset **`node-server`** (desde el 18-11-2026,
+  destino cPanel con Node.js: `node .output/server/index.mjs`). Antes usaba
+  `cloudflare-module`; ese preset sigue siendo el que fuerza AI Studio (sección 9).
 - Tipografía principal: Nunito autoalojada en `public/fonts/` (ver «Tipografía» en la
   sección 7); no se usa Google Fonts.
-- `vitest`, `jsdom`, Testing Library, `axe-core` y Playwright están instalados, pero
-  sus archivos de configuración y pruebas siguen vacíos (0 bytes); no hay suite
-  ejecutable ni script `test`.
+- `vitest`, `jsdom`, Testing Library, `axe-core` y Playwright están instalados. La suite
+  ejecutable vive en `src/lib/**/*.server.test.ts` (script `test`); los archivos de
+  configuración/pruebas vacíos (0 bytes) que quedan en `e2e/` y otros `*.test.ts(x)` no
+  forman parte de ella.
 
 ### Comandos del proyecto
 
@@ -199,7 +205,9 @@ npm install                     # ejecuta prepare -> scripts/install-hooks.mjs
 npm run dev
 npm run build                   # cliente + servidor -> .output/
 npm run build:dev               # build con modo development
-npm run preview
+npm run preview                 # node .output/server/index.mjs (carga .env.local si existe; puerto: PORT, por defecto 3000)
+npm test                        # vitest: pruebas de src/lib/*.server.test.ts y rate-limit.test.ts
+npm run usuario:crear           # crea una cuenta del panel /admin (interactivo; ver sección 12)
 npm run lint                    # eslint .
 npm run format                  # prettier --write .
 npm run secrets:scan            # gitleaks sobre todo el historial
@@ -216,9 +224,11 @@ el artefacto de despliegue.
 `prepare`. `npm run secrets:scan` requiere `gitleaks` instalado en el `PATH`. La CI
 repite el escaneo en `.github/workflows/gitleaks.yml`.
 
-No hay script `test` en `package.json` ni se encontró una suite de pruebas del producto.
-Usar lint, build, `tsc --noEmit` y comprobaciones manuales/navegador hasta que se
-agreguen pruebas.
+`npm test` (vitest, `vitest.config.ts`, pool `vmThreads` por un fallo de los pools por defecto
+con Node 26) corre `src/lib/**/*.server.test.ts`: **136 pruebas en 12 archivos** tras la fase 6
+(capa MySQL del formulario, admin, seguridad, límites y fase 6). Los demás `*.test.ts(x)` del
+proyecto siguen vacíos. Para el resto usar lint, build, `tsc --noEmit` y comprobaciones
+manuales/navegador.
 
 ## 4. Estructura del repositorio
 
@@ -277,7 +287,7 @@ con excepciones para `*.example`, aunque hoy no existe un `.env.example` version
   (`IntersectionObserver` con `rootMargin: "600px 0px"`).
 - `src/routes/api.contacto.ts`: endpoint de contacto usado por el formulario. Valida
   honeypot, longitudes de campos, estructura de payload, Turnstile y limitación de tasa
-  por IP antes de persistir en Supabase.
+  por IP antes de persistir en MySQL (`src/lib/cotizaciones.server.ts`).
 - `src/routes/api.chat.ts`: integración con Make/WhatsApp y respuesta del chatbot.
 - `src/lib/translations.ts`: catálogos ES/EN para UI, SEO, formulario y chatbot.
 - `src/lib/accessibility-preferences.ts`: configuración de idioma/tema/tamaño y
@@ -287,7 +297,7 @@ con excepciones para `*.example`, aunque hoy no existe un `.env.example` version
 - `src/routes/terminos-de-servicio.tsx` y `src/routes/sla.tsx`: páginas legales
   bilingües que renderizan `LegalDocument` con el contenido de
   `src/lib/terms-content.ts` y `src/lib/sla-content.ts` (valores del SLA en
-  `SLA_VALUES`, pendientes de aprobación).
+  `SLA_VALUES`, aprobados por gerencia el 18-11-2026).
 - `src/components/LegalDocument.tsx` y `src/lib/legal-types.ts`: componente y tipos
   compartidos de las páginas legales; el contenido se renderiza como texto, sin HTML.
 - `src/routes/__root.tsx`: shell, metadatos, providers y montajes globales del sitio.
@@ -320,7 +330,8 @@ con excepciones para `*.example`, aunque hoy no existe un `.env.example` version
   aparecer en el bundle cliente y en el SSR. No hay `index.html` ni `src/main.tsx`.
 - Monta globalmente `AccessibilityMenu` (solo el botón; el panel se carga al abrirlo)
   y `WhatsAppFloatingButton` (enlace flotante a `wa.me` con el número comercial de
-  `CONTACT`, definido en este archivo). `FloatingChatbot` y `CookieBanner` se cargan
+  `CONTACT`, definido en este archivo). `CookieBanner` (y `FloatingChatbot` solo si
+  `CHATBOT_ENABLED` es `true`; hoy es `false`, ver sección 8) se cargan
   con `React.lazy` y se montan cuando el navegador queda libre tras la carga o con la
   primera interacción (`useIdleReady`, `src/hooks/use-idle-ready.ts`:
   `requestIdleCallback` con tope de 2 s, `setTimeout` donde no exista). En la primera
@@ -425,6 +436,11 @@ con excepciones para `*.example`, aunque hoy no existe un `.env.example` version
 
 ### `src/routes/api.chat.ts`
 
+- **Apagado (18-11-2026):** con `CHATBOT_ENABLED = false` (`src/lib/telcobras-data.ts`) la ruta
+  responde `404` (sin cuerpo, `cache-control: no-store`) a **cualquier método**, sin leer
+  el cuerpo ni llamar al webhook de Make. Verificado en desarrollo y en la build de
+  producción con Wrangler (POST, GET, PUT, DELETE, OPTIONS y HEAD). Lo que sigue describe el
+  comportamiento con el chat encendido.
 - Endpoint del servidor `POST /api/chat`; también responde `405` a otros métodos.
 - Valida JSON y los campos `session_id`/`mensaje`.
 - Límites actuales: cuerpo de solicitud 16 KiB, ID de sesión 128 caracteres,
@@ -454,14 +470,26 @@ con excepciones para `*.example`, aunque hoy no existe un `.env.example` version
 - El contenido bilingüe está en `src/lib/terms-content.ts` (15 secciones) y
   `src/lib/sla-content.ts` (10 secciones, con tablas de prioridades y de créditos que se
   desplazan dentro de su caja en móvil). El idioma sigue la preferencia del menú de
-  accesibilidad. Los compromisos del SLA salen de `SLA_VALUES`; son una propuesta
-  pendiente de aprobación de gerencia y revisión jurídica.
+  accesibilidad. Los compromisos del SLA salen de `SLA_VALUES`; gerencia aprobó ambos
+  documentos el 18-11-2026 (`LEGAL_DOCUMENTS_ARE_DRAFT = false`: sin aviso de borrador y
+  sin `noindex`; fecha «updated» de los textos: 18 de noviembre de 2026).
 - El footer enlaza a estas páginas con `<Link>` de `@tanstack/react-router` usando
   `TERMS_OF_SERVICE_URL` y `SLA_URL` de `telcobras-data.ts` (igual que
   `PRIVACY_POLICY_URL`). El banner de cookies usa el mismo patrón para la política.
 - Cada ruta legal declara sus propios metadatos SEO/Open Graph y `canonical`
   (`https://telcobras.com/<ruta>`), por lo que el SEO técnico es homogéneo en las cuatro
   URLs públicas del sitemap.
+
+### Panel `/admin` (fases 4-6, 18-19-11-2026)
+
+Rutas: `/admin/login` (`admin.login.tsx`), `/admin` (lista de cotizaciones, `admin.index.tsx`),
+`/admin/cotizaciones/$id` (detalle) y `/admin/cotizaciones/nueva` (`admin.cotizaciones.*.tsx`),
+`/admin/papelera` y `/admin/historial` (fase 6), `/admin/usuarios` y `/admin/mi-cuenta` (fase 5B);
+`POST /api/admin/login`, `POST /api/admin/logout`, `POST /api/admin/cotizaciones/$id`,
+`POST /api/admin/cotizaciones/nueva`, `POST /api/admin/cotizaciones/$id/papelera` y
+`POST /api/admin/exportar` (`api.admin.*.ts`). Detalle de seguridad en «Login del panel» y de la
+gestión en «Gestión de cotizaciones» (sección 12); papelera, exportación e historial en la sección
+12. Todas las rutas administrativas se comprueban también en el servidor.
 
 ### Rutas generadas
 
@@ -490,6 +518,42 @@ o Remix: la guía local está en `src/routes/README.md`.
 - Hero de inicio: badge «Sede Principal en Cali • Cobertura Nacional», titular con
   degradado de marca, dos CTA (`#contacto` y `#servicios`) y eslogan «Una nueva forma
   de entender las redes».
+- **Isotipo en el eslogan (29-10-2026):** en lugar de los tres puntos de colores, el
+  «Slogan Pill» lleva `<BrandIsotipo />` (`src/components/BrandIsotipo.tsx`), el isotipo de
+  las tres velas dibujado **en línea** (SVG con tres `<path>`; no es una `<img>`, para
+  animar cada vela). Es decorativo: `aria-hidden="true"`, `focusable="false"`, sin título.
+  Mide 24 px de alto en móvil (`h-6 w-[0.91rem]`) y 28 px desde `sm` (`sm:h-7
+  sm:w-[1.06rem]`), con ancho fijo (viewBox `1 1 77 127`), centrado verticalmente con el
+  texto; el resto del Slogan Pill (texto, colores, centrado en móvil / izquierda en `lg`)
+  no cambió. Sin requests nuevos, sin CLS y sin tocar el LCP, el preload ni las fuentes.
+  - **Origen de los paths:** no existía `src/assets/isotipo-telcobras.svg` (ni la carpeta),
+    así que se vectorizó desde `public/images/logo.png` (recorte de las velas, x < 80 px):
+    pertenencia continua por color a verde `#1dab66`, amarillo `#f3cf28` y azul `#0087c3`,
+    suavizado, trazado de bézier (potracer) y un contorno por vela; las velas verde y azul se
+    extienden 2 px bajo el amarillo para que no haya costuras. Orden de dibujo: verde, azul,
+    amarillo (el amarillo va delante, como en el logo). A 28 px las diferencias con el logo
+    son de fracciones de píxel; si gerencia entrega el SVG vectorial original, basta
+    sustituir las tres cadenas `d` del componente (`VELAS`).
+  - **Iluminación secuencial** (solo CSS, `.brand-isotipo-glow*` al final de `styles.css`):
+    detrás de cada vela hay una copia con su color, borde ensanchado y un único filtro SVG
+    `feGaussianBlur` estático (id único con `useId`). Una keyframe compartida de 3 s
+    (`brand-isotipo-glow`) anima **solo la opacidad** del halo, con `animation-delay` de 0 s
+    (verde), 1 s (amarillo) y 2 s (azul): cada vela enciende en 0,3 s, se mantiene y se
+    apaga mientras la siguiente se enciende. Las velas siempre se ven con su color normal;
+    no se anima `filter`, `box-shadow` ni el desenfoque.
+  - **Movimiento reducido:** `@media (prefers-reduced-motion: reduce)` quita la animación y
+    deja el halo en opacidad 0 (isotipo estático). El panel de accesibilidad del sitio no
+    tiene una preferencia de movimiento propia, así que no hay otra condición. En celular la
+    animación sigue activa (la regla global que detiene animaciones decorativas por debajo
+    de 768 px no incluye estas clases).
+  - Verificado a 360, 768, 1280 y 1440 px (ES y EN, tema claro y oscuro): una sola línea,
+    centro del isotipo y del texto a la misma altura, sin desborde, secuencia verde →
+    amarillo → azul con fundido cruzado y estático con movimiento reducido.
+  - **Lighthouse** (12.8.2, build de producción, corridas intercaladas del commit anterior
+    y del nuevo): móvil, mediana de 5, 66 antes (60-75) y 74 ahora (72-77); LCP 3,8 s y
+    FCP 2,5 s en ambos; peso 498 y 501 KiB. Escritorio (3 corridas): 80 y 84. La máquina es
+    muy ruidosa, así que las diferencias de puntos no son concluyentes; no hay cambio en
+    LCP/FCP y el peso sube 3 KiB.
 - Fondo de video `/video_inicio.mp4`.
 - Tarjeta lateral con rotación automática de tres imágenes (`HERO_SLIDES`:
   `HERO_IMAGE`, `TECHNICIAN_IMAGE`, `CALI_IMAGE`) cada 4 segundos y una tarjeta
@@ -534,6 +598,28 @@ o Remix: la guía local está en `src/routes/README.md`.
 - Interfaz con dos formas de selección sincronizadas: una barra de pestañas
   (`services-tabs` / `services-tab` / `services-tab-indicator`) y una cuadrícula de
   5 tarjetas (`services-card`) que también cambia el servicio y marca el activo.
+- **Pestañas en celular (29-10-2026):** antes, por debajo de 768 px el grid interno tenía
+  `min-w-[36rem]` y `grid-cols-5`: a 360 px las pestañas quedaban amontonadas y la barra
+  hacía scroll horizontal (262 px de desplazamiento). Ahora, solo por debajo de `md`:
+  - Grid de 6 columnas con `gap-1.5` (6 px): las tres primeras pestañas ocupan 2
+    columnas y las dos últimas 3, es decir, dos filas (3 + 2) a todo el ancho. Ya no hay
+    `min-w` ni `overflow-x-auto` (el scroll y el `snap` quedan solo desde `md`).
+  - Cada pestaña apila ícono y nombre (`flex-col`, centrado, `leading-tight`), con
+    `min-h-11` (44 px). Se ocultan el número (01…05) y el `CheckCircle2` de la activa
+    (`max-md:hidden`). El nombre puede saltar de línea (en inglés «High-Availability»
+    se parte tras el guion) y por debajo de 380 px baja a 11 px; nunca se corta con «…».
+    Medido a 320, 360, 390, 414 y 767 px en ES y EN: sin scroll horizontal ni recortes;
+    alturas 44-51 px en español y 51-64 px en inglés.
+  - `.services-tab-indicator` se oculta (su `translateX` de 20 % solo sirve en una
+    fila) y la activa usa el fondo propio `.services-tab::before` (#0a192f con borde
+    degradado de marca) con fundido de opacidad, el mismo mecanismo que con movimiento
+    reducido (bloque `@media (max-width: 767px)` al final de la sección de estilos).
+  - Sin cambios: desde `md` la barra mide y se comporta exactamente igual (comparadas las
+    dimensiones y posiciones de las 5 pestañas a 768, 1280 y 1440 px en ES y EN y en modo
+    daltónico, con el indicador deslizante); `aria-pressed`, `aria-controls`, foco
+    visible, modo daltónico (contorno doble + subrayado), movimiento reducido, tema
+    oscuro, lógica de `activeTab`, colores por servicio y panel del video. Preexistente:
+    a 768 px en inglés «Comprehensive» no cabe del todo en su pestaña (141 px).
 - Cambia automáticamente al siguiente servicio cada 30 segundos. La selección manual
   por pestañas/tarjetas también se conserva; el intervalo sigue rotando desde la
   selección actual.
@@ -551,6 +637,13 @@ Compone cuatro bloques, en este orden:
 
 1. `#inteligencia-artificial`: presentación de inteligencia artificial y video de fondo
    `/video_inicio.mp4` (definido en este archivo).
+   Desde el 29-10-2026 ese video se ve **girado 180°** (`rotate-180` en el `className`
+   de esa instancia de `BackgroundVideo`; no cambia el componente ni las demás secciones).
+   El póster (`/video_inicio.webp`) es el atributo `poster` del mismo `<video>`, así que
+   gira con él (también en móvil y con movimiento reducido, donde se queda en el póster)
+   y no hay salto al cargar. El overlay, los textos y los círculos decorativos no giran;
+   el video sigue cubriendo toda la sección (`object-cover`, sin bordes vacíos). El archivo
+   no se re-codificó.
 2. `#proyectos`: `<ProjectsSection />`.
 3. `#por-que`: `<WhyUsSection />`.
 4. «Alianzas y Ecosistema Tecnológico» (definido en este archivo): heading destacado,
@@ -607,6 +700,42 @@ Compone cuatro bloques, en este orden:
   colorea el icono y muestra una barra de señal a la izquierda.
 - Colores por tarjeta: Instalación `#0087C3`, Soporte `#F3CB35`, Compromiso
   `#88BD4C`, Soluciones `#1a6f9c`, Acompañamiento `#6A9D32`.
+- **Color y contraste de las tarjetas (29-10-2026):** antes, con tema oscuro o «Sistema»
+  con el SO en oscuro, las reglas globales del tema convertían `text-slate-900/600` en
+  texto claro (`--foreground`, `--text-secondary`) pero el fondo seguía siendo el
+  tinte mezclado con **blanco** fijo: texto casi blanco sobre fondo casi blanco
+  (ilegible, p. ej. «Soporte técnico 24/7»). Ahora (`src/styles.css`, antes de
+  `.diff-card`):
+  - `--diff-card-surface`: `#ffffff` en claro y `#10284a` (marino de la tarjeta
+    destacada) en oscuro. Se define con los mismos selectores de la paleta
+    (`.dark, :root[data-theme="dark"]` y `@media (prefers-color-scheme: dark)` con
+    `:root[data-theme="system"]`). `.diff-card-tint-base` y `.diff-card-tint` mezclan
+    `--node-color` con esa variable (`color-mix`), no con `white`.
+  - Porcentajes de `--node-color` (de la esquina superior izquierda a la inferior
+    derecha, `--diff-tint-*`): claro, reposo 22 % → 16 % (antes 10 % → 4 %) y activa
+    34 % → 24 % (antes 24 % → 11 %); oscuro, reposo 24 % → 17 % y activa 34 % → 24 %.
+  - Texto con clases propias `.diff-card-title` y `.diff-card-text` (ya no
+    `text-slate-900/600`, así que no hace falta `!important`): claro `#0A192F` y
+    `#334155` (slate-700); oscuro `#ffffff` y `#e2e8f0` (slate-200).
+  - Acento fijo: `.diff-card::after`, franja de 3 px en el borde superior (de
+    `--node-color` a 25 % transparente, con 1,75 rem de margen a cada lado), siempre
+    visible y encima del tinte activo; no toca la señal izquierda.
+  - Sin cambios: ciclo, `scale` 0,94/1,03 y su transición, `.diff-card-glow`,
+    `.diff-card-signal`, iconos, `BrandGlowBorder`, tarjeta destacada, ilustración,
+    reveal, modo daltónico (contorno doble de 3 px en la activa) y movimiento reducido.
+    Las transiciones de tinte, glow y señal siguen siendo solo de opacidad.
+  - Contraste WCAG (peor caso entre los dos extremos del degradado; AA ≥ 4,5):
+    | Tarjeta | Claro reposo (título / desc.) | Claro activa | Oscuro reposo | Oscuro activa |
+    |---|---|---|---|---|
+    | Instalación | 13,30 / 7,82 | 11,32 / 6,66 | 10,95 / 8,88 | 9,56 / 7,76 |
+    | Soporte (amarilla) | 15,91 / 9,36 | 15,06 / 8,86 | 8,50 / 6,89 | 6,56 / 5,32 |
+    | Acompañamiento | 14,04 / 8,26 | 12,32 / 7,25 | 10,53 / 8,54 | 8,98 / 7,29 |
+    | Soluciones | 12,87 / 7,57 | 10,69 / 6,29 | 11,84 / 9,61 | 10,73 / 8,71 |
+    | Compromiso | 14,95 / 8,79 | 13,63 / 8,02 | 9,38 / 7,61 | 7,61 / 6,18 |
+
+    El mínimo es 5,32 (Soporte activa en oscuro; con 40 % → 28 % bajaba a 4,57, por eso
+    la activa en oscuro usa 34 % → 24 %). Calculado con las fórmulas de WCAG sobre la
+    mezcla sRGB de `color-mix`; los colores computados en el navegador coinciden.
 - Cierre «¿Quieres conocer nuestra red?» con botón verde «Hablemos» → `#contacto`.
 - Los textos de los diferenciales se acortaron (≤ ~110 caracteres) y los IDs son
   estables: `instalacion-15-dias`, `soporte-24-7`, `acompanamiento-cercano`,
@@ -652,9 +781,9 @@ Exporta dos componentes: `ContactSection` (`#contacto` y `#ubicacion`, dentro de
 
 El formulario hace `POST /api/contacto` y muestra éxito solo si el endpoint responde
 con estado HTTP exitoso. El servidor valida el JSON y longitudes, exige
-`consentimiento: true` y persiste el registro en Supabase, tabla
-`solicitudes_contacto`, usando `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` del entorno
-de servidor.
+`consentimiento: true` y persiste el registro en **MySQL** (desde el 18-11-2026; antes
+Supabase): tabla `cotizaciones` y, en la misma transacción, una fila de `auditoria`, con
+las variables `DB_*` del entorno de servidor (ver «Base de datos MySQL» en la sección 12).
 
 **Seguridad del formulario implementada:** el endpoint aplica limitación de tasa por IP
 (5 envíos por ventana de 10 minutos, con `429` y `retry-after`), descarta el honeypot
@@ -663,11 +792,13 @@ widget está en `src/components/TurnstileWidget.tsx` y se monta en el formulario
 token se resetea tras cada intento. La verificación usa `TURNSTILE_SECRET_KEY` en el
 servidor (y `VITE_TURNSTILE_SITE_KEY` en el cliente); si la clave secreta falta, el
 endpoint responde `503` con `contacto_unavailable` antes de llamar a `siteverify` o a
-Supabase, sin usar claves de prueba. Si falta la site key, el cliente no carga el widget y
+MySQL, sin usar claves de prueba. Si falta la site key, el cliente no carga el widget y
 deshabilita el envío con un aviso. El rate limit es
 un `Map` en memoria: protege por instancia, pero no es un límite distribuido/global.
-La respuesta 500 ya no incluye `error.message` de Supabase: solo se registra el código
-interno en el servidor y el cliente recibe `insert_failed` o `internal_error`.
+Si MySQL falla (conexión, consulta o variables `DB_*` ausentes) el endpoint responde
+`503` con `contacto_unavailable` (el formulario muestra el aviso de «formulario no
+disponible» con el correo de contacto) y solo se registra el tipo de fallo, sin datos
+personales ni mensajes crudos.
 Las etiquetas visibles de nombre, empresa, cargo, correo, teléfono, servicio y mensaje
 están asociadas mediante `htmlFor`/`id`; los límites HTML y los del endpoint están
 alineados para esos campos. Los campos tienen `autoComplete` (`name`, `organization`,
@@ -684,6 +815,16 @@ política legal aprobada.
 
 ### `src/components/FloatingChatbot.tsx`
 
+- **Desactivado (18-11-2026):** Make no está en uso, así que `CHATBOT_ENABLED = false`
+  (`src/lib/telcobras-data.ts`). `__root.tsx` solo crea el `lazy(() => import(...))` y monta
+  `<FloatingChatbot />` cuando el interruptor es `true`: el componente, la burbuja de
+  invitación y el botón del robot no aparecen en ningún tamaño de pantalla y no se pide
+  su chunk. El código no se borró. El botón de WhatsApp y la tarjeta «Chatbot para la
+  ESPY» de `ProjectsSection` (que enlaza a WhatsApp, no a este chat) siguen igual. No
+  quedaba ningún otro enlace, botón o texto que abriera el chat (la invitación vive dentro
+  del propio componente). Sin sesión de chat: ya no se crea `telcobras_session_id` en
+  `localStorage`.
+
 - Chat flotante con bienvenida cerrable (se cierra sola a los 8 s, `WELCOME_BUBBLE_MS`,
   para no tapar contenido como el correo y el horario del footer en móvil), botón de robot, historial en memoria mientras
   está montado, mensajes de usuario/asistente, loading indicator (tres puntos) y
@@ -695,13 +836,50 @@ política legal aprobada.
   lee una existente; si no hay, se crea con `crypto.randomUUID()` al enviar el primer
   mensaje (`ensureSessionId`), así quien no usa el chat no guarda nada. Si el acceso a
   `localStorage` falla, usa el UUID en memoria y registra el error.
-- Al abrir el panel y al terminar la petición enfoca el input; desplaza el log al
-  mensaje más reciente.
+- En escritorio (puntero fino), al abrir el panel y al terminar la petición enfoca el
+  input; desplaza el log al mensaje más reciente. En táctil (`(pointer: coarse)`) el
+  input **no** se enfoca al abrir (abriría el teclado y taparía el saludo): el foco va
+  al diálogo (`tabIndex={-1}`, para lectores de pantalla) y el teclado aparece cuando
+  la persona toca el input; tras enviar un mensaje el foco sí vuelve al input
+  (`hasSentRef`).
+- **Chat en celular, < 640 px (29-10-2026):** antes el panel era `fixed inset-x-3 top-12
+  bottom-16`, no se adaptaba al teclado (encabezado y saludo quedaban fuera de vista) y
+  el botón X flotante se montaba sobre el botón Enviar. Ahora, solo por debajo de `sm`:
+  - Pantalla completa (`.chatbot-panel` en `styles.css`): `top/right/left` 0, sin
+    bordes redondeados (`sm:rounded-2xl`), alto `100vh` con `100dvh` bajo `@supports`,
+    y zonas seguras con `env(safe-area-inset-*)` (relleno lateral, `padding-top` del
+    encabezado y `padding-bottom` del formulario). El encabezado azul siempre queda
+    arriba y el log tiene su propio scroll (`overscroll-contain`).
+  - Adaptación al teclado: un efecto fija las variables `--chatbot-vv-height` y
+    `--chatbot-vv-top` del panel desde `window.visualViewport` (eventos `resize` y
+    `scroll`; fuente de verdad, también cubre el desplazamiento de iOS) y, al cambiar el
+    tamaño, baja al último mensaje. No se añadió `interactive-widget=resizes-content` al
+    `<meta viewport>`: afectaría a todas las páginas y formularios del sitio y con
+    `visualViewport` no hace falta.
+  - Mientras está abierto: se oculta el botón flotante del robot/X (`max-sm:hidden`; se
+    cierra con la X del encabezado, de 44×44 px), se oculta el botón de ampliar y el
+    scroll de `html`/`body` queda bloqueado (`overflow: hidden`, restaurado al cerrar).
+    El panel sube a `z-[65]` solo en celular: el widget de accesibilidad es `z-[60]` y
+    tapaba el borde izquierdo del formulario; el banner de cookies (`z-[70]`) sigue por
+    encima.
+  - Botón Enviar de 44×44 px (ya lo era) y input a 16 px (`max-sm:text-base`) para que
+    iOS no haga zoom al enfocarlo.
+  - Escape cierra el chat y, al cerrar (Escape o X), el foco vuelve al botón del robot.
+    Antes no había manejador de Escape (solo el menú de accesibilidad lo tenía); se añadió
+    para todos los tamaños.
+  - Sin cambios: lógica de mensajes, webhook, textos ES/EN, burbuja de invitación,
+    animación del robot, modo expandido de escritorio (inset 16/16/72 px), tema oscuro,
+    modo daltónico y movimiento reducido. En escritorio el panel sigue en 380 px ×
+    `min(720px, 100vh − 10rem)`, a 20 px del borde derecho y 144 px del inferior.
+  - Hook nuevo `src/hooks/use-media-query.ts`. Verificado a 360×740 y 390×844 con
+    emulación táctil (CDP, `pointer: coarse`) y el teclado simulado reduciendo
+    `visualViewport` (panel de 429 px con el encabezado, el saludo y el formulario a la
+    vista): sin teclado al abrir, la rueda no mueve la página, nada tapa el panel.
 - Enviar mensaje hace `POST /api/chat` con JSON `{ session_id, mensaje }`; espera
   `{ respuesta_bot: string }`. El texto del bot se normaliza con `formatBotText`
   (unifica saltos de línea y quita los de los extremos).
 - El input se deshabilita durante la petición o mientras se inicializa la sesión.
-- El panel se amplió verticalmente: casi toda la altura disponible en móvil y hasta
+- El panel se amplió verticalmente: pantalla completa en móvil (ver arriba) y hasta
   720 px en escritorio, limitado por altura de viewport.
 - Los mensajes de error del backend se traducen al idioma seleccionado mediante el
   catálogo de chatbot, incluido `agent_response_unavailable`. Cada mensaje del historial
@@ -886,6 +1064,19 @@ Los textos de los diferenciales de «¿Por qué TELCOBRAS?» no están aquí: vi
 
 ## 8. Integración del chatbot con Make
 
+> **Estado (18-11-2026): chat apagado.** Make no está en uso. `CHATBOT_ENABLED = false` en
+> `src/lib/telcobras-data.ts`: no se monta `FloatingChatbot`, no se descarga su chunk
+> (el archivo `FloatingChatbot-*.js` aún se genera en el build, pero nada lo referencia) y
+> `/api/chat` responde 404 a todo. **`MAKE_CHAT_WEBHOOK_URL` ya no es obligatoria** mientras
+> el chat esté apagado (puede faltar en `.env.local` y en Cloudflare). **Para reactivarlo:**
+> 1) poner `CHATBOT_ENABLED = true`; 2) configurar `MAKE_CHAT_WEBHOOK_URL` como se explica
+> abajo (HTTPS; secreto en Cloudflare); 3) `npm run build` y comprobar que aparece el robot
+> y que `POST /api/chat` responde. Nada en la CSP ni en `public/_headers` es exclusivo del
+> chat (`connect-src 'self'` lo usan todas las peticiones), así que no hay que tocarlos. La
+> política de privacidad menciona el identificador de sesión «solo si usas el chat»: sigue
+> siendo cierto, pero conviene revisar ese texto si el chat queda apagado de forma
+> definitiva (texto legal; no se cambió sin aprobación).
+
 ### Flujo
 
 ```text
@@ -938,6 +1129,42 @@ de la salida del escenario Make no debe darse por confirmado hasta obtener una p
 exitosa y repetible con el módulo Webhook response configurado correctamente.
 
 ## 9. Despliegue y configuración
+
+> **Cambio del 18-11-2026: destino cPanel con Node.js (preset `node-server`).** El formulario
+> guarda en MySQL con `mysql2` (TCP), que no puede usarse desde Workers, y el sitio se
+> publicará en cPanel (Latinoamérica Hosting). `vite.config.ts` fija
+> `nitro.preset: "node-server"`; el build deja `.output/server/index.mjs` (arranca con
+> `node .output/server/index.mjs`; puerto en la variable `PORT`, 3000 por defecto) y
+> `.output/public/`. `npm run preview` lo sirve (carga `.env.local` si existe; requiere
+> Node ≥ 22.9 por `--env-file-if-exists`). Qué cambió y qué no:
+> - **Sin cambios:** las cabeceras de seguridad y la CSP (`src/server.ts`, medidas en
+>   `/` con el servidor de Node), `/assets/*` con `cache-control: public, max-age=31536000,
+>   immutable`, y el SSR.
+> - **Caché de estáticos:** `public/_headers` solo lo lee Cloudflare; con Node no se aplica.
+>   Se reprodujo en `vite.config.ts` con `nitro.routeRules` (`/images/**`, `/fonts/**`,
+>   `/video_*`, `/logo_*`, `/favicon.ico`, `/apple-touch-icon.png`, calculados con
+>   `readdirSync("public")`): mismo `public, max-age=2592000, stale-while-revalidate=604800`.
+>   `robots.txt` y `sitemap.xml` siguen sin caché. `public/_headers` se conserva (inofensivo,
+>   y por si se vuelve a Cloudflare).
+> - **Wrangler:** `.output/server/wrangler.json`, `.wrangler/` y el script de `wrangler dev` ya
+>   no se generan para este preset. Los párrafos siguientes que hablan de Cloudflare/Wrangler
+>   describen el destino anterior (y el que AI Studio sigue forzando con `VIBE_SANDBOX=1`:
+>   allí el formulario responderá 503 porque no alcanza la MySQL local).
+> - **IP del cliente y límite de tasa en cPanel (resuelto el 18-11-2026):** `getClientIp`
+>   (`src/lib/rate-limit.ts`) solo leía `cf-connecting-ip` (Cloudflare); en cPanel no existe
+>   y el límite de 5 envíos / 10 minutos habría sido global para todo el sitio. Ahora, con
+>   **`TRUST_PROXY=1`** (en cPanel: «Setup Node.js App» > variables de entorno), toma la IP
+>   de `X-Forwarded-For` usando la entrada de más a la **derecha** (la que añade el proxy de
+>   confianza; las de la izquierda las envía el cliente y pueden ser falsas). Un valor que
+>   no parece una IP (solo hex, `.` y `:`, máx. 45) se ignora. Sin `TRUST_PROXY` (por
+>   defecto), sin encabezado o con un valor inválido, conserva el comportamiento anterior
+>   (`cf-connecting-ip`, o `null` → clave compartida `no-client-ip`). **No activar
+>   `TRUST_PROXY` si no hay proxy delante:** el encabezado lo podría falsificar cualquiera
+>   y se evadiría el límite. Con dos proxies encadenados la entrada de la derecha sería la
+>   del proxy interno. Pruebas: `src/lib/rate-limit.test.ts`.
+> - **Variables de entorno:** en cPanel se definen en «Setup Node.js App» (no hay
+>   `.env.local`). `VITE_TURNSTILE_SITE_KEY` se incrusta **al compilar**: debe existir
+>   cuando se ejecuta `npm run build`.
 
 - `vite.config.ts` importa el wrapper `@leadconnector/vite-tanstack-config`; este
   wrapper ya instala plugins TanStack Start, React, Tailwind, alias, Nitro y otros.
@@ -1012,6 +1239,11 @@ exitosa y repetible con el módulo Webhook response configurado correctamente.
   (`core.hooksPath=.githooks`). CI lo repite en `.github/workflows/gitleaks.yml`
   (v8.30.1 fijado y verificado por checksum). `.gitignore` cubre `.env`, `.env.*` y
   `.dev.vars*`, con excepción para los archivos `*.example`.
+- Contraseñas ficticias en pruebas: deben seguir el patrón `Clave-<Palabra>-De-Prueba-<n>`;
+  el allowlist de `.gitleaks.toml` acepta las palabras `Correcta` y `Temporal` (por ejemplo
+  `Clave-Correcta-De-Prueba-1`). No se allowlistean archivos completos, ni todos los
+  `*.test.ts`, ni la regla `generic-api-key` entera: cualquier otro valor que parezca una
+  clave sigue siendo detectado por gitleaks en CI.
 - `src/router.tsx` construye el router con restauración de scroll (sin QueryClient).
 - `tsconfig.json` está en modo estricto y define alias `@/*` → `src/*`.
 - `components.json` refleja la configuración de componentes tipo shadcn.
@@ -1041,7 +1273,7 @@ En `public/` se encontraron:
 
 | Recurso | Uso |
 |---|---|
-| `video_inicio.mp4` | Fondos de Inicio, Inteligencia Artificial y «¿Por qué TELCOBRAS?» (girado 90°) |
+| `video_inicio.mp4` | Fondos de Inicio, Inteligencia Artificial (girado 180°) y «¿Por qué TELCOBRAS?» (girado 90°) |
 | `video_conectividad.mp4` | Servicio de Conectividad |
 | `video_seguridad.mp4` | Servicio de Seguridad |
 | `video_colaboracion.mp4` | Servicio Colaboración |
@@ -1101,6 +1333,39 @@ Criterios:
   esas `<img>` (sí los rótulos).
 - **Hover:** `motion-safe:group-hover:scale-[1.04]` con transición de 0,5 s (Tailwind v4
   usa la propiedad `scale`); con `prefers-reduced-motion` no se aplica.
+- **Borde de marca con destello (29-10-2026):** las cinco fotos reutilizan
+  `BrandGlowBorder` y las clases `.brand-glow-*` (no hay efecto nuevo). Estructura de
+  cada celda: contenedor exterior `.about-photo.brand-glow-always` (`relative isolate
+  rounded-3xl`, con la sombra y `data-active`), el `<figure>` interior con
+  `overflow-hidden` (imagen, zoom y rótulo) y `<BrandGlowBorder />` después, para que el
+  anillo quede sobre el borde de la foto y el halo no se recorte (reemplaza al
+  `border-white/70`). Los padres (cuadrícula, contenedor `max-w-7xl`) no recortan; solo la
+  sección `overflow-hidden`, cuyo margen (24 px en móvil, 48 px en tablet, mucho más en
+  escritorio) es el límite del halo (~40 px), de modo que solo se corta en el borde de
+  la pantalla a 360 px.
+  - Anillo de marca siempre visible y sutil (`.brand-glow-always`, opacidad 0,7). La foto
+    activa (`data-active="true"`) suma anillo completo, halo y luz giratoria.
+  - Ciclo con `useRotatingHighlight(5, 3000, { resumeDelayMs: 1500 })`, el mismo hook que
+    `WhyUsSection`: equipo → torre → técnico → tablero → río, una foto a la vez. Hover
+    salta el destello a esa foto y pausa el ciclo; al salir se reanuda tras 1,5 s. Táctil:
+    ciclo automático y un toque activa esa foto y pausa 6 s (`TOUCH_PAUSE_MS`). Las fotos
+    no son interactivas, así que no se les añadió foco de teclado.
+  - Fuera de pantalla: `data-animations-paused` en la cuadrícula (con `isInView` del mismo
+    hook; el ref se comparte con `useNearViewport` mediante un ref combinado) y el ciclo
+    también se pausa. Solo una luz giratoria activa a la vez; todo es `transform` y
+    `opacity`.
+  - Por debajo de 768 px y con movimiento reducido el CSS global ya oculta la luz giratoria
+    (`.brand-glow-ring-light`, igual que en «¿Por qué?»): en celular el destello es anillo
+    completo + halo. Con `prefers-reduced-motion` además no hay ciclo (`data-active` nunca
+    se activa): borde estático y solo hover con fundido (`brand-glow-hover`).
+  - Modo daltónico: la foto activa lleva contorno doble de 3 px
+    (`[data-colorblind-mode="true"] .about-photo[data-active="true"]`), como las tarjetas de
+    «¿Por qué?».
+  - Medición (Lighthouse 12.8.2, build de producción, corridas intercaladas del commit
+    anterior y del nuevo): móvil, mediana de 5, 75 antes (67-82) y 71 ahora (66-78); LCP
+    3,8 s y FCP 2,5 s en ambos; peso 497 y 498 KiB. Escritorio (3 corridas): 90 y 91.
+    La máquina es muy ruidosa (una primera tanda quedó invalidada por trabajo en paralelo),
+    así que la diferencia de pocos puntos no es concluyente.
 - **`content-visibility`:** `--section-estimated-height` de `#nosotros` medido con el
   mosaico: 2.800 px por debajo de 768 px (2.691 a 2.856), 2.250 px entre 768 y 1023
   (antes 1.750) y 1.750 px de 1024 a 1279 (sin cambio: manda la columna de texto);
@@ -1157,11 +1422,11 @@ ese dominio (hoy `telcobras.com` sirve otro sitio, ver pendiente 17).
 - Preferencias de accesibilidad persistidas/validadas y aplicadas en SSR; catálogos
   tipados ES/EN para el contenido principal, el formulario, el chatbot y los errores raíz.
 - Formulario conectado al endpoint `/api/contacto`, con persistencia de solicitudes en
-  Supabase mediante credenciales de servidor.
+  MySQL (`cotizaciones` + `auditoria`) mediante credenciales de servidor (antes Supabase).
 - Protección anti-abuso del formulario: Cloudflare Turnstile, honeypot, validación de
   longitudes y limitación de tasa por IP (5 envíos / 10 minutos).
-- Higiene de errores: respuestas públicas genéricas (`insert_failed`, `internal_error`)
-  sin exponer mensajes crudos de Supabase, tanto en `api.contacto.ts` como en la
+- Higiene de errores: respuestas públicas genéricas (`contacto_unavailable`, `internal_error`)
+  sin exponer mensajes crudos de la base, tanto en `api.contacto.ts` como en la
   normalización de errores SSR de `src/server.ts` para rutas `/api/*`.
 - Cabeceras de seguridad y CSP **activa (bloqueante)** aplicadas desde `src/server.ts`
   a SSR, API y respuestas de error (ver sección 9). La cabecera emitida es
@@ -1169,7 +1434,7 @@ ese dominio (hoy `telcobras.com` sirve otro sitio, ver pendiente 17).
 - Rutas legales `/terminos-de-servicio` y `/sla` con su contenido completo en ES/EN
   mediante el componente compartido `LegalDocument`; el footer navega a ellas con
   `<Link>`, igual que al resto de enlaces legales y al banner de cookies. Los valores
-  del SLA (`SLA_VALUES`) siguen pendientes de aprobación.
+  del SLA (`SLA_VALUES`) fueron aprobados por gerencia el 18-11-2026.
 - SEO técnico: metadatos por ruta (`title`, `description`, `canonical`), etiquetas
   Open Graph y Twitter Card en las cuatro rutas públicas, datos estructurados JSON-LD
   de `Organization` en la landing y `public/sitemap.xml` referenciado desde
@@ -1204,7 +1469,7 @@ punto están en la lista «Pendiente/por confirmar» (número entre paréntesis)
 | Prioridad | Hallazgo | Pendiente |
 |---|---|---|
 | Crítica (corregida) | XSS reflejado en TanStack Start (CVE-2026-102989): corregido con `react-start@1.168.60`; el plugin de AI Studio queda en `0.3.3-beta.0` hasta que salga la estable | 20 |
-| Alta (mitigada) | Las páginas `/terminos-de-servicio` y `/sla` ya están en el remoto con textos y valores de SLA pendientes de aprobación; ahora muestran un aviso de borrador y son `noindex` | 7, 24 |
+| Alta (resuelta 18-11-2026) | Las páginas `/terminos-de-servicio` y `/sla` estaban en el remoto con textos y valores de SLA sin aprobar (aviso de borrador y `noindex`); gerencia los aprobó y `LEGAL_DOCUMENTS_ARE_DRAFT` es `false` | 7, 24 |
 | Alta (corregida, `066ef0f`) | `TurnstileWidget` se destruía y se volvía a crear en cada render del formulario | 21 |
 | Alta | No hay pruebas: todos los archivos de test y configuración están vacíos | 2 |
 | Alta (corregida) | `/video_tel.mp4` daba 404: se movió a `public/` | 4 |
@@ -1307,8 +1572,9 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
      empieza con un fundido desde negro.
 7. **Privacidad y textos legales:** `/politica-de-privacidad` está implementada y el
    formulario exige consentimiento. `/terminos-de-servicio` y `/sla` ya muestran sus
-   textos completos, pero están pendientes de aprobación de gerencia y revisión
-   jurídica, incluidos los valores de `SLA_VALUES` en `src/lib/sla-content.ts`. Revisar también bases
+   textos completos y **gerencia los aprobó el 18-11-2026** (incluidos los valores de
+   `SLA_VALUES` en `src/lib/sla-content.ts`). Queda la revisión jurídica de la política de
+   privacidad y del texto del banner de cookies. Revisar también bases
    jurídicas, proveedores/transferencias, retención, acceso y borrado de la política.
    El 27-10-2026 se reescribió la sección 6 («Cookies y almacenamiento local») de la
    política, ES/EN, para que describa el funcionamiento real (esencial frente a
@@ -1321,7 +1587,8 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
    dispositivo) al verificar el formulario: **también va a revisión de jurídica**.
 8. **Protección de endpoints HTTP:** `/api/contacto` tiene Turnstile y rate limit por IP
    (5 envíos cada 10 min) y `/api/chat` tiene rate limit (20 mensajes cada 5 min), ambos
-   con el limitador compartido `src/lib/rate-limit.ts` basado en `cf-connecting-ip`. El
+   con el limitador compartido `src/lib/rate-limit.ts` basado en `cf-connecting-ip` o, con
+   `TRUST_PROXY=1`, en `X-Forwarded-For` (ver sección 9). El
    límite vive en memoria de cada isolate del Worker: no es global, así que el límite
    efectivo se multiplica entre isolates y centros de datos. `/api/chat` no tiene
    Turnstile y cada mensaje consume operaciones de Make. Considerar el binding de
@@ -1337,7 +1604,7 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
     el otro mediante una decisión coordinada para evitar instalaciones divergentes.
 11. **Formulario:** los enlaces «Términos de Servicio» y «SLA y garantías» del footer ya
     apuntan con `<Link>` a `/terminos-de-servicio` y `/sla`, que ya muestran el
-    contenido completo (pendiente de aprobación, ver pendiente 7).
+    contenido completo (aprobado por gerencia el 18-11-2026, ver pendiente 7).
 12. **Integración real de proyectos/fotos/redes:** comprobar enlaces sociales e imágenes
     externas antes de publicar en producción.
 13. **Tarjetas invisibles antes de hidratar:** las tarjetas de `#por-que` se renderizan
@@ -1428,7 +1695,11 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
     comprimir): `git show f5b2d90:video_agentes.mp4 > video_agentes.mp4` (mismo patrón
     para los otros tres), o la versión de `public/` previa a la compresión:
     `git show ab17f5a~1:public/video_tel.mp4 > video_tel_original.mp4`.
-24. **Páginas legales publicadas sin aprobar:** `0cef096` ya está en el `main` del
+24. **Páginas legales — aprobadas (18-11-2026):** gerencia aprobó «Términos de servicio» y
+    «SLA y garantías». `LEGAL_DOCUMENTS_ARE_DRAFT` quedó en `false`: desaparecen el aviso de
+    borrador y el `noindex` (SSR incluido) y las dos rutas siguen en `sitemap.xml`. Lo que
+    sigue es el historial de cuando estaban sin aprobar. **Publicadas sin aprobar
+    (histórico):** `0cef096` ya está en el `main` del
     repo personal (PR #2) y en la rama que se sube al repo oficial. Si se despliega, `/terminos-de-servicio` y `/sla` quedarán públicas con compromisos
     (disponibilidad, tiempos y créditos de `SLA_VALUES`) que gerencia y jurídica aún no
     aprobaron. **Mitigado:** mientras `LEGAL_DOCUMENTS_ARE_DRAFT` sea `true`
@@ -1459,9 +1730,8 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
     el build de producción en Wrangler local (503 y 403) y en `vite dev` (pasa). No se
     comprueba `action` porque el widget no la define. **Antes de desplegar:** configurar
     `TURNSTILE_ALLOWED_HOSTNAMES` en Cloudflare con el dominio real.
-29. **`sitemap.xml`:** `<lastmod>` de las cuatro URLs se actualizó a 2026-10-27.
-    Volver a actualizar el de `/terminos-de-servicio` y `/sla` cuando se publiquen los
-    textos aprobados.
+29. **`sitemap.xml`:** `<lastmod>` de las cuatro URLs se actualizó a 2026-10-27. El de
+    `/terminos-de-servicio` y `/sla` se renovó a 2026-11-18 al aprobarse los textos.
 30. **Horario de atención — resuelto (28-10-2026):** gerencia confirmó soporte técnico
     24/7. `HORARIO = "24/7"` y el footer muestra «Soporte técnico 24 horas, 7 días a la
     semana» / «Technical support 24/7» junto con los datos de `SUPPORT`. Ya no queda
@@ -1670,29 +1940,362 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
 
 ## 12. Operación y privacidad del formulario
 
-La captura de leads está implementada en `src/routes/api.contacto.ts` y usa Supabase
-desde el servidor; no cambiar el camino de persistencia sin una decisión explícita. Mantener
-la URL y la service-role key exclusivamente en variables de entorno de servidor. La
-clave service-role tiene privilegios elevados y no debe aparecer en código cliente,
-logs, documentación ni variables `VITE_*`.
+La captura de leads está implementada en `src/routes/api.contacto.ts` y, desde el
+18-11-2026 (fase 2 del panel de cotizaciones), guarda en **MySQL/MariaDB** desde el servidor
+(ver «Base de datos MySQL» más abajo). Las credenciales viven solo en variables de entorno
+de servidor y no deben aparecer en código cliente, logs, documentación ni variables `VITE_*`.
 
-Pendiente: verificar esquema/RLS/políticas de acceso de la tabla
-`solicitudes_contacto`, validar con el responsable de datos el contenido de la política,
-definir retención/borrado y probar la inserción en staging de extremo a extremo. El
+Pendiente: validar con el responsable de datos el contenido de la política, definir
+retención/borrado de `cotizaciones` y `auditoria`, y probar la inserción en el hosting real
+(cPanel) de extremo a extremo. El
 anti-spam (Turnstile + honeypot) y la higiene de errores ya están implementados; el rate
 limit por IP es en memoria y conviene complementarlo con un mecanismo distribuido.
+
+### Base de datos MySQL (fase 2, 18-11-2026)
+
+Arquitectura: `api.contacto.ts` → `insertCotizacion()` (`src/lib/cotizaciones.server.ts`) →
+pool de `mysql2/promise` (`src/lib/db.server.ts`) → MySQL/MariaDB. Los dos archivos `.server.ts`
+solo se importan desde código de servidor (TanStack Start impide importarlos en el cliente;
+comprobado que `mysql2`, `createPool` y `DB_*` no aparecen en ningún JS de `.output/public/`).
+
+- **Pool** (`getPool()`): una sola instancia por proceso (en desarrollo, en `globalThis`
+  para sobrevivir al HMR), `charset utf8mb4`, `timezone '-05:00'`, `connectionLimit 5`,
+  `queueLimit 20`, `connectTimeout 10 s`, keep-alive e `idleTimeout 60 s`. Si faltan
+  `DB_HOST`, `DB_NAME`, `DB_USER` o `DB_PASSWORD` (o `DB_PORT` no es un puerto válido) lanza
+  `DbConfigError` con el **nombre** de las variables, nunca sus valores.
+- **`insertCotizacion(datos)`**: solo consultas preparadas (`connection.execute` con
+  marcadores `?`; ningún dato del usuario entra al texto SQL). En **una transacción**
+  inserta en `cotizaciones` (nombre, empresa, cargo, correo, telefono, servicio, mensaje
+  —vacío se guarda como NULL—, `consentimiento = 1`, `consentimiento_fecha` = ahora,
+  `origen = 'formulario_web'`, `idioma`, `estado = 'nueva'`) y en `auditoria`
+  (`usuario_id` NULL, `accion = 'crear'`, `cotizacion_id`, `detalle = 'Solicitud recibida
+  desde el formulario web'`, sin datos personales). Si falla una de las dos, `rollback`: no
+  queda ninguna. Devuelve el id.
+- **Idioma:** el formulario envía `idioma` (`es`/`en`, el de la página); `api.contacto.ts`
+  guarda `es` ante cualquier otro valor.
+- **Errores:** cualquier fallo de MySQL (conexión caída, consulta, variables ausentes)
+  responde `503 { "error": "contacto_unavailable" }` y registra solo `code`/`errno`/`sqlState`
+  (o el nombre de las variables que faltan). Antes un fallo de inserción daba 500
+  `insert_failed`.
+- **Esquema:** `documentacion/db/telcobras_cotizaciones.sql` (tablas `usuarios`,
+  `cotizaciones`, `sesiones`, `auditoria`; MySQL 5.7+ / MariaDB 10.3+; `utf8mb4`). El usuario
+  de la aplicación solo necesita SELECT, INSERT, UPDATE y DELETE sobre esa base (no crea ni
+  altera tablas). Las cuentas del panel no se crean en el SQL (las contraseñas deben ir
+  cifradas): las creará un script del proyecto en una fase posterior.
+- **Migraciones (`documentacion/db/migraciones/`):** cambios del esquema para bases YA
+  instaladas, numerados y para aplicar en orden. El usuario de la aplicación no puede alterar
+  tablas, así que cada migración la ejecuta una persona con permiso ALTER (en XAMPP,
+  `root` en phpMyAdmin: seleccionar la base > «Importar» > el archivo). No son idempotentes
+  (si la columna ya existe, el `ADD COLUMN` da «Duplicate column» y se puede ignorar; el
+  `MODIFY` del ENUM se puede repetir sin tocar datos), pero son compatibles con MariaDB 10.4+
+  y MySQL 8; cada una termina con consultas de verificación sobre las tablas propias.
+  `telcobras_cotizaciones.sql` ya incluye todas las migraciones, así que una instalación nueva
+  no las necesita. **No usar `PREPARE`/`EXECUTE`, SQL dinámico, `information_schema`,
+  `DATABASE()` ni `USE`: en phpMyAdmin de XAMPP (MariaDB 10.4) la consulta de control a
+  `information_schema` devolvió `#1044 Access denied ... information_schema`, el import se
+  abortó en el bloque `PREPARE` y no se aplicó ningún DDL; además `DATABASE()` puede dejar de
+  apuntar a la base elegida y en cPanel el nombre de la base lleva prefijo. Las migraciones
+  van con sentencias simples (`ALTER TABLE ...`) sobre la base ya seleccionada, sin escribir
+  su nombre.** Hoy: `001_usuarios_y_auditoria.sql` (fase 5B, 19-11-2026): agrega
+  `usuarios.debe_cambiar_password` (0 por defecto; 1 = debe cambiar la contraseña) y amplía el
+  ENUM `auditoria.accion` conservando los 11 valores actuales y agregando `crear_usuario`,
+  `editar_usuario`, `activar_usuario`, `desactivar_usuario`, `desbloquear_usuario`,
+  `reiniciar_password` y `cambiar_password`. **El código de la fase 5B necesita esta migración
+  aplicada.** Estado verificado en solo lectura el 19-11-2026: la columna existe y el ENUM tiene
+  18 valores; la fase 5B ya usa el aviso de contraseña temporal.
+- **Crear la base local con XAMPP:** 1) iniciar MySQL en el panel de XAMPP; 2) en phpMyAdmin
+  (`http://localhost/phpmyadmin`) crear la base (cotejamiento `utf8mb4_unicode_ci`) y un
+  usuario con contraseña fuerte y solo esos cuatro privilegios sobre ella; 3) seleccionar la
+  base > pestaña «Importar» > `documentacion/db/telcobras_cotizaciones.sql`; 4) poner
+  `DB_HOST` (`localhost`), `DB_PORT` (`3306`), `DB_NAME`, `DB_USER` y `DB_PASSWORD` en
+  `.env.local`; 5) reiniciar `npm run dev` y enviar el formulario. En cPanel: «Bases de datos
+  MySQL» crea la base y el usuario con prefijo de cuenta y los privilegios; se importa el
+  mismo archivo con phpMyAdmin.
+- **Verificado el 18-11-2026** en localhost contra MySQL real (con la clave pública de pruebas
+  de Cloudflare solo para esa ejecución): envío válido → 200 y 1 fila en `cotizaciones`
+  (estado `nueva`, tildes y ñ correctas) y 1 en `auditoria`; sin nombre, correo inválido o sin
+  consentimiento → 400 sin insertar; GET → 405. Con MySQL detenido (XAMPP): envío válido →
+  `503 { "error": "contacto_unavailable" }` y el log solo muestra `code: 'ECONNREFUSED'` y el
+  errno, sin datos del formulario. Las filas de prueba se eliminaron (el contador
+  `AUTO_INCREMENT` de `cotizaciones` y `auditoria` ya avanzó: la primera solicitud real tendrá id 2).
+- **Supabase — en desuso, pendiente de migración (fase 7):** la ruta ya no importa
+  `@supabase/supabase-js` ni lee `SUPABASE_*`. Se conservan, sin tocar, la dependencia
+  `@supabase/supabase-js`, las variables `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY`
+  (documentadas en `.env.example` como en desuso) y la tabla `solicitudes_contacto` con las
+  solicitudes anteriores; el valor `migracion_supabase` de `cotizaciones.origen` está previsto
+  para importarlas. No se borró nada.
+
+### Login del panel `/admin` (fase 4, 18-11-2026)
+
+Usa las tablas `usuarios`, `sesiones` y `auditoria` del esquema (sin modificarlo) y
+`src/lib/db.server.ts`. Archivos: `password.server.ts` (hash), `auth.server.ts` (login, sesiones,
+cookie, CSRF), `admin-session.server.ts` (función de servidor que verifica la sesión),
+`api.admin.login.ts`, `api.admin.logout.ts`, `admin.login.tsx`, `admin.index.tsx` y
+`scripts/crear-usuario.mjs`. Ninguno llega al JS del cliente (comprobado en `.output/public`).
+
+- **Contraseñas:** `crypto.scrypt` de Node (sin dependencias nativas), sal aleatoria de 16 bytes,
+  N=32768, r=8, p=3 (≈ 32 MiB, ≈ 0,15 s; combinación equivalente de OWASP), clave de 64 bytes.
+  Se guarda en `usuarios.password_hash` como `scrypt$N=32768,r=8,p=3$<sal base64>$<hash base64>`:
+  cada hash se verifica con los parámetros con que se creó (se pueden subir luego sin invalidar
+  cuentas; al verificar se rechazan N fuera de 2^10..2^16, r y p fuera de 1..16). Normalización
+  Unicode NFKC y comparación con `timingSafeEqual`.
+- **Sesiones:** token aleatorio de 32 bytes (`randomBytes`, base64url). En `sesiones` solo se
+  guarda su **SHA-256** (columna `id`), con `expira_en` = 8 horas, `ip` y `user_agent` (255
+  caracteres como máximo). Cookie `__Host-telcobras_admin`: `HttpOnly; Secure; SameSite=Strict;
+  Path=/; Max-Age=28800` (el prefijo `__Host-` exige Secure, Path=/ y sin Domain; Chromium la
+  acepta también en `http://localhost`). Cada inicio de sesión genera un token nuevo (descarta
+  el anterior); cerrar sesión borra la fila y la cookie. Al iniciar sesión se borran las sesiones
+  vencidas. Una sesión deja de valer si vence o si la cuenta pasa a `activo = 0`.
+- **Bloqueo:** 5 intentos fallidos seguidos → `bloqueado_hasta` = ahora + 15 min y el contador
+  vuelve a 0; un acceso correcto reinicia `intentos_fallidos` y actualiza `ultimo_acceso`. Una
+  cuenta bloqueada o con `activo = 0` no entra ni con la contraseña correcta (y no suma
+  intentos). Además, límite por IP en el endpoint: 10 peticiones cada 15 minutos (429 con
+  `retry-after`), con `getClientIp` (`TRUST_PROXY=1` en cPanel: sin eso todos comparten un
+  único contador).
+- **Mensajes:** siempre «Correo o contraseña incorrectos» (401, mismo cuerpo) para contraseña
+  incorrecta, correo inexistente, cuenta inactiva o bloqueada. Si el correo no existe se
+  ejecuta igualmente un hash (contra uno ficticio) para que el tiempo sea parecido.
+- **CSRF:** todo POST de `/admin` exige que el encabezado `Origin` tenga el mismo host que el
+  sitio (`Host`, la URL de la petición o, con `TRUST_PROXY`, `X-Forwarded-Host`); sin Origin,
+  con `null` o con otro host/puerto → 403. Se suma a `SameSite=Strict`. Cerrar sesión es POST
+  (un GET responde 405).
+- **Auditoría:** `login`, `login_fallido` (con `usuario_id` si el correo existe; si no, NULL) y
+  `logout`, con la IP y un texto genérico. Nunca contraseñas, tokens ni el correo escrito.
+- **Verificación en el servidor:** `beforeLoad` de `/admin` y `/admin/login` llama a
+  `getAdminSession` (función de servidor): en la carga directa corre en el SSR y en la
+  navegación del cliente es una llamada RPC. Sin sesión válida (o con la base caída: falla
+  cerrado) `/admin` redirige (307) a `/admin/login`; con sesión, `/admin/login` redirige a
+  `/admin`. Las futuras rutas de datos (fase 5) deben verificar la sesión también en el servidor.
+- **Aislamiento del sitio público:** todo `/admin` y `/api/admin` sale con
+  `X-Robots-Tag: noindex, nofollow` y `Cache-Control: no-store` (`src/server.ts`) y con
+  `<meta name="robots" content="noindex, nofollow">`. `public/robots.txt` lleva
+  `Disallow: /admin` **en cada grupo** (un rastreador usa solo el grupo más específico).
+  `/admin` no está en el sitemap ni en ningún enlace del sitio. `__root.tsx` no monta en
+  `/admin` el menú de accesibilidad, el botón de WhatsApp, el banner de cookies ni el chat
+  (Turnstile solo existe en el formulario de contacto).
+- **Formulario de login:** correo + contraseña con botón mostrar/ocultar (`aria-pressed`),
+  etiquetas, error con `role="alert"` (el foco vuelve al campo de contraseña, vacío), marca
+  TELCOBRAS y el estilo del sitio, en español. `method="post"` evita que, si se envía antes de
+  que cargue el JavaScript, la contraseña viaje en la URL.
+- **Crear cuentas:** `npm run usuario:crear` (= `node --env-file=.env.local
+  scripts/crear-usuario.mjs`). Pide nombre, correo, rol (`administrador`/`comercial`) y
+  contraseña (oculta, dos veces, mínimo 12 caracteres), usa la misma función de hash y la misma
+  conexión y no deja ver ni guardar la contraseña en claro. Ejecuta los `.ts` de `src/lib`
+  directamente: **requiere Node 22.18 o superior** y una terminal interactiva. Si el correo ya
+  existe, no crea nada. No hay registro público: las cuentas las crea quien tenga acceso al
+  servidor y a `.env.local`.
+- **Pruebas:** `npm test` (`password.server.test.ts`, `auth.server.test.ts` con una base
+  simulada en memoria): hash y verificación, sesión vencida, bloqueo a los 5 intentos y
+  desbloqueo a los 15 minutos, cuenta inactiva, token manipulado, logout, cookie y Origin
+  inválido. Además se probó en localhost contra la MySQL real con una cuenta temporal (ya
+  eliminada): login correcto e incorrecto, bloqueo, sesión vencida, logout, `/admin` sin sesión,
+  Origin ajeno, límite por IP y la interfaz en Chromium a 360 y 1280 px.
+- **Pendiente / a decidir (login):** la vida de la sesión es fija (8 h, sin renovación); no hay recuperación
+  de contraseña ni cambio de contraseña desde el panel (fase posterior); la auditoría y las
+  sesiones no tienen política de retención todavía.
+
+### Gestión de cotizaciones en `/admin` (fase 5A, 18-11-2026)
+
+Archivos: `cotizaciones-admin-shared.ts` (tipos, listas permitidas y validación; **sin código de
+servidor**, lo usan páginas y servidor), `cotizaciones-admin.server.ts` (consultas, permisos y
+transacciones), `admin-api.server.ts` (guardián común de las rutas API), `admin-data.server.ts`
+(lecturas como funciones de servidor), `contacto-validation.ts` (validación del formulario,
+compartida con `/api/contacto`), `admin-guard.ts`, `components/admin/PanelShell.tsx` y las rutas
+de la sección 5. No se modificó el esquema SQL. Ninguno de los `.server` llega al JS del cliente.
+
+- **Reglas generales:** toda lectura y escritura pasa por el servidor con sesión válida,
+  comprobada contra la base en cada llamada; **el rol se verifica en el servidor en cada
+  acción** (ocultar botones es solo comodidad). Solo consultas preparadas: filtros, orden y
+  paginación se validan contra listas permitidas (`parseListQuery`: estados del esquema; orden
+  `fecha|id|nombre|estado` → columna fija; `asc|desc`; página = entero con dígitos, máx. 100.000;
+  búsqueda ≤ 100; fechas `YYYY-MM-DD` reales). Lo inválido se descarta y la URL se limpia
+  (307 a la versión canónica). `LIMIT/OFFSET` van como parámetros de texto (MySQL 8.0.22+
+  rechaza números JS en sentencias preparadas). El texto del cliente se muestra siempre como
+  texto plano (React; sin `dangerouslySetInnerHTML`). Se ignoran las filas con `eliminado_en`
+  (la papelera es la fase 6). Sin datos personales en la lista, la auditoría ni los logs
+  (solo `code`/`errno`).
+- **Lecturas** (`listarCotizacionesFn`, `obtenerCotizacionFn`): funciones de servidor; sin sesión
+  responden 401 y las páginas redirigen a `/admin/login`. **Escrituras:** rutas API
+  `POST`; `requireAdminApi` exige Origin del mismo sitio (403), límite de 120 escrituras cada
+  5 minutos por IP (429), sesión válida (401; 503 si la base falla) y el cuerpo se valida
+  (400). Otros métodos → 405. Códigos de `POST /api/admin/cotizaciones/$id`: 400 inválido, 403
+  sin permiso, 404 no existe o eliminada, 409 conflicto.
+- **Lista (`/admin`):** contadores por estado (clic = filtra; respetan los demás filtros),
+  búsqueda por nombre, empresa o correo (`LIKE … ESCAPE '!'` con `%`, `_` y `!` escapados),
+  filtros de estado, servicio (valores existentes) y fechas (día completo en hora de Colombia),
+  orden por #, fecha, nombre o estado (fecha descendente por defecto), 20 por página. Todo vive
+  en la URL (se puede compartir y recargar). Tabla desde 768 px y tarjetas en celular; fechas en
+  es-CO (hora de Bogotá); estado vacío amable. Columnas: #, fecha, nombre, empresa, servicio,
+  estado (insignia) y responsable. Filtro adicional **Responsable**: `todos` (por defecto),
+  `mios` (id de la sesión), `sin_asignar` y, solo para administradores, el id de un usuario
+  activo; se guarda en la URL (`?responsable=…`) y lo respetan también los contadores por
+  estado. Para comercial, un id ajeno se ignora en servidor (y un id inexistente también).
+  Los campos del filtro tienen `name`, así que el envío nativo funciona incluso antes de que
+  cargue el JavaScript.
+- **Detalle (`/admin/cotizaciones/$id`):** datos del cliente con enlaces `tel:`/`mailto:`
+  (el correo se codifica contra inyección de cabeceras), mensaje con saltos de línea
+  (`whitespace-pre-wrap`), fecha de autorización (Ley 1581), origen, idioma, gestión (estado,
+  responsable, notas de hasta 5000) e historial (auditoría; «Formulario web» cuando la acción
+  `crear` no tiene usuario). Id inexistente, eliminado o inválido → 404 con el marco del panel.
+  Abrir el detalle registra `ver`.
+- **Permisos:** el administrador asigna a cualquier usuario **activo** (o deja sin asignar); el
+  comercial solo «Tomar» (asignársela a sí mismo) y solo si no tiene responsable o ya es suya
+  (`puedeAsignar`); ambos roles pueden cambiar estado y notas.
+- **Guardado y concurrencia:** una transacción con `SELECT … FOR UPDATE`, comprobación de
+  permisos, un solo `UPDATE` con columnas fijas y las filas de auditoría: `cambiar_estado`
+  («estado: X -> Y»), `asignar` («Responsable: nombre» / «sin asignar») y `editar` («Notas
+  internas actualizadas», sin copiar el texto). El cliente envía el `actualizado_en` que cargó; si
+  en la base cambió responde 409 («Otra persona modificó esta solicitud; recarga para ver los
+  cambios») y no escribe nada. **Cada escritura avanza `actualizado_en` al menos 1 s** sobre el
+  valor anterior (explícito, no `ON UPDATE`): la columna no guarda fracciones y, sin esto, dos
+  guardados dentro del mismo segundo dejaban el mismo valor y uno con datos viejos pasaba el
+  control (lo encontró la prueba real; hay prueba unitaria). Sin cambios no se escribe nada.
+- **Crear a mano (`/admin/cotizaciones/nueva`):** mismos campos y validaciones que el formulario
+  público (`parseContacto`), sin Turnstile, `origen = 'manual'`, `estado = 'nueva'`, `idioma = 'es'`,
+  casilla **obligatoria** de autorización (Ley 1581) y auditoría `crear` con el usuario
+  (`insertCotizacion` ahora acepta `origen` y `usuarioId`; el formulario público no cambia).
+- **Pruebas:** `npm test`: `cotizaciones-admin.server.test.ts` (validación de filtros/orden/
+  página, SQL solo con marcadores, permisos por rol, concurrencia incluido el mismo segundo,
+  auditoría sin datos personales, creación manual, deduplicado de `ver` y filtro por
+  responsable con un comercial que no puede filtrar por otro id) y `admin-api.server.test.ts`
+  (sin sesión 401, Origin 403, límite 429 genérico y límites dedicados). Además, prueba real en
+  localhost con 3 cuentas temporales (admin y 2 comerciales) y la interfaz en Chromium a 360,
+  768 y 1280 px; todo se borró y la cotización 2 no se tocó (el contador `AUTO_INCREMENT` avanzó).
+- **Desarrollo:** si en `npm run dev` las páginas del panel no responden a los clics y la
+  consola dice «does not provide an export named useSyncExternalStoreWithSelector», es la caché
+  de dependencias de Vite; reiniciar con `npm run dev -- --force`. No afecta al build.
+- **Mejoras cerradas el 19-11-2026:** el detalle ya no llena el historial de `ver`: solo inserta
+  esa auditoría si no hay otra fila del mismo usuario+cotización en los últimos 30 minutos
+  (`creado_en >= NOW() - INTERVAL 30 MINUTE`, consulta preparada). El marcador «Usuarios» ya no
+  existe: lo sustituye la gestión de la fase 5B.
+- **Cerrado en fase 5A:** el control de concurrencia protege estado, responsable y notas, no la
+  creación. Borrado/papelera, exportación e historial quedaron resueltos en la fase 6 (ver más
+  abajo).
+
+### Gestión de usuarios y «Mi cuenta» (fase 5B, 19-11-2026)
+
+Archivos: `usuarios-admin-shared.ts` (tipos, validación y reglas de rol; sin código de servidor),
+`usuarios-admin.server.ts` (consultas preparadas, transacciones, hash scrypt y auditoría),
+`admin-data.server.ts` (lectura `listarUsuariosFn`), `api.admin.usuarios.ts`,
+`api.admin.usuarios.$id.ts` y `api.admin.mi-cuenta.ts` (escrituras con `requireAdminApi`), las rutas
+`admin.usuarios.tsx` y `admin.mi-cuenta.tsx`, `admin-guard.ts`, `auth.server.ts` y `PanelShell.tsx`.
+Requiere la migración 001 aplicada. Ningún `.server` llega al JS del cliente.
+
+- **Gestión (`/admin/usuarios`, solo administradores):** lista de cuentas con rol, estado, aviso de
+  contraseña temporal, bloqueo y último acceso; crear cuenta con contraseña temporal (mínimo 12),
+  editar nombre/correo/rol, activar, desactivar, desbloquear y reiniciar contraseña (valor temporal
+  generado en el servidor, se muestra una sola vez). Desactivar o reiniciar borra las sesiones de
+  esa cuenta. Auditoría: `crear_usuario`, `editar_usuario`, `activar_usuario`,
+  `desactivar_usuario`, `desbloquear_usuario` y `reiniciar_password`, con IP y detalle genérico.
+- **«Mi cuenta» (`/admin/mi-cuenta`):** cambio de contraseña propia con verificación de la actual,
+  `debe_cambiar_password = 0` y auditoría `cambiar_password`. Si la cuenta tiene contraseña
+  temporal, `requirePanelSession` redirige toda el panel a esta ruta; el login también envía ahí a
+  quien corresponda. Nadie puede quitarse el rol de administrador ni desactivarse a sí mismo.
+- **Último administrador:** `editarUsuario` (cambio a comercial) y `cambiarEstadoUsuario`
+  (desactivar) bloquean dentro de la transacción los administradores activos con
+  `SELECT … FOR UPDATE`, recuentan y, si la acción dejaría cero, hacen `rollback` y responden
+  409 con «Debe quedar al menos un administrador activo». Se conservan `puedeDesactivar` y
+  `puedeCambiarRol` (nadie se desactiva ni se quita el rol a sí mismo).
+- **Seguridad:** el rol se comprueba en el servidor en cada acción; un comercial recibe 403 en
+  `/admin/usuarios` y en las APIs de gestión. Las rutas API exigen Origin del mismo sitio,
+  sesión vigente y el límite genérico por IP (120 escrituras/5 min, heredado de la fase 5A) más
+  unos límites dedicados: crear cuenta y reiniciar contraseña 10/15 min, cambiar la propia
+  contraseña 5/15 min; se contabilizan por IP **y** por usuario de sesión y devuelven 429 con
+  mensaje genérico. Solo consultas preparadas, longitudes acotadas y correos normalizados; nunca
+  se registran ni se guardan contraseñas en claro. `scripts/crear-usuario.mjs` también marca las
+  cuentas nuevas con `debe_cambiar_password = 1`.
+- **Pruebas:** `npm test` pasa 117 pruebas en 11 archivos: las 88 previas más 29 nuevas. Las de
+  `usuarios-admin.server.test.ts` cubren borrado de sesiones y rollback al desactivar/reiniciar,
+  protección del último administrador (incluido el caso de dos administradores), ausencia de la
+  temporal en auditoría/logs, cambio propio y forbidden para comercial; `admin-guard.server.test.ts`
+  y `auth.server.test.ts` comprueban que con `debe_cambiar_password=1` solo se entra a Mi cuenta
+  (y se puede cerrar sesión); `admin-data.server.test.ts` verifica el 403 de la página para
+  comercial; `cotizaciones-admin.server.test.ts` añade dedup de `ver` y filtro por responsable;
+  `admin-api.server.test.ts` añade los 429 dedicados y el 403 de `adminOnly` para comercial. Las
+  firmas de `AdminUser` se actualizaron en los mocks.
+- **Prueba real (19-11-2026):** servidor de producción en el puerto alterno 8099, con un
+  administrador y un comercial temporales; los 23 pasos HTTP pasaron: crear cuenta → contraseña
+  temporal entregada una sola vez y ausente de respuestas posteriores → login obligado a cambiarla
+  (solo Mi cuenta) → 403 del comercial en `/admin/usuarios` y en las APIs → cambio obligatorio →
+  desactivar (su sesión dejó de valer) → reiniciar → protección del último administrador → filtros
+  «Mis cotizaciones» y por id → 429 dedicado tras 10 peticiones. Se borraron las cuentas, sus
+  sesiones y sus filas de auditoría; una consulta de solo lectura confirmó los recuentos iniciales
+  (2 usuarios, 2 sesiones, 38 filas de auditoría). La cuenta de administrador real y la cotización
+  2 no se tocaron. La única incidencia durante la prueba fue un error de la propia suite de
+  prueba (URL con barra final y un off-by-one en el contador), corregido sin tocar la aplicación.
+
+### Papelera, exportación e historial (fase 6, 19-11-2026)
+
+**Sin migración:** se reutiliza el esquema existente (`cotizaciones.eliminado_en` /
+`eliminado_por`, `auditoria.accion` con `eliminar`/`restaurar`/`exportar`, `actualizado_en` y la FK
+`ON DELETE SET NULL` de `auditoria.cotizacion_id`). La eliminación definitiva aprovecha esa FK:
+se escribe primero la auditoría «eliminación definitiva de la solicitud #id» y, al borrar la fila,
+`cotizacion_id` pasa a `NULL`; el historial muestra entonces «Solicitud eliminada #id» sin enlace.
+
+Archivos: `cotizaciones-admin-shared.ts` y `cotizaciones-admin.server.ts` (operaciones y helpers
+CSV/historial/papelera), `admin-api.server.ts` (límite dedicado `exportar`), `admin-data.server.ts`
+(lecturas), `admin-pages-guard.server.ts` (403 real en el documento SSR), las rutas API
+`api.admin.cotizaciones.$id.papelera.ts` y `api.admin.exportar.ts`, las páginas `admin.papelera.tsx`
+y `admin.historial.tsx`, el botón «Eliminar» en `admin.cotizaciones.$id.tsx`, el botón «Exportar»
+en `admin.index.tsx`, los enlaces de navegación en `PanelShell.tsx` y las pruebas
+`cotizaciones-admin-fase6.server.test.ts` y `admin-api.server.test.ts`. Ningún `.server` llega al
+cliente.
+
+- **Papelera (solo administradores):** el detalle permite «Eliminar» con confirmación; la API
+  exige `actualizado_en` (concurrencia: 409 si cambió) y registra `eliminar` con «enviada a la
+  papelera». `/admin/papelera` lista 20 por página con búsqueda, permite «Restaurar» (`restaurar`,
+  «restaurada desde la papelera») y «Eliminar definitivamente» con doble confirmación (hay que
+  escribir el número de la solicitud); antes de borrar en la misma transacción se audita
+  `eliminar` con «eliminación definitiva de la solicitud #id». Todo comercial recibe 403, también
+  en la carga SSR de la página.
+- **Exportación (solo administradores):** botón en `/admin`; `POST /api/admin/exportar` recibe los
+  mismos filtros validados de la lista, sin paginación, con tope de 10.000 filas y aviso. CSV para
+  Excel con BOM UTF-8, `;`, CRLF, fechas `dd/mm/aaaa hh:mm` en hora de Colombia, 15 columnas en
+  español (número, fecha, nombre, empresa, cargo, correo, teléfono, servicio, mensaje, estado,
+  responsable, origen, idioma, autorización de datos con fecha, notas internas). Protección contra
+  inyección de fórmulas: se antepone `'` a celdas que empiezan por `=`, `+`, `-`, `@`, tabulador o
+  CR; comillas y saltos se escapan. Descarga `cotizaciones_telcobras_AAAA-MM-DD.csv` con
+  `Content-Disposition: attachment` y `Cache-Control: no-store`. Auditoría `exportar` con
+  «N filas; filtros: …» sin datos personales (el texto de búsqueda no se registra). Límite
+  dedicado de 10 exportaciones cada 15 minutos por IP y usuario (429 a la undécima), además del
+  guardián común de Origin/sesión/rol.
+- **Historial (solo administradores):** `/admin/historial` muestra la auditoría paginada de 50 en
+  orden cronológico inverso con fecha, usuario («Sistema / formulario web» si no hay usuario),
+  acción legible, solicitud (#id enlazado si existe; «eliminada» si `cotizacion_id` es `NULL` y el
+  detalle lo indica), detalle e IP. Filtros validados por listas permitidas (usuario, acción,
+  fechas, número de solicitud) en la URL; consultar el historial **no** genera auditoría.
+- **Navegación y responsive:** «Papelera» y «Historial» solo aparecen para administradores; el
+  contenedor de enlaces del encabezado lleva `flex-wrap` para no desbordar a 360 px.
+- **Verificación:** `npm exec tsc -- --noEmit` sin errores; `npm run lint` con 0 errores (6
+  advertencias `react-refresh` preexistentes); `npm run build` correcto y `npm test` con **136
+  pruebas en 12 archivos**. Prueba real HTTP en `http://localhost:8099` (build de producción,
+  cuentas y cotizaciones temporales propias): 36/36 comprobaciones, incluidos 403 del comercial en
+  páginas y APIs, eliminar/restaurar/definitivo con auditoría, 409 por token viejo, 400 por
+  confirmación incorrecta, «Solicitud eliminada #id», exportación 200 y 429 en la undécima. El CSV
+  crudo se abrió byte a byte: BOM `efbbbf`, CRLF, 15 columnas, tildes/ñ, fórmulas neutralizadas,
+  comillas y saltos escapados, fechas `dd/mm/aaaa hh:mm`, «Sí (fecha)» y «Nueva» (14/14). La
+  interfaz se verificó en 360/768/1280 px para `/admin`, `/admin/papelera` y `/admin/historial`:
+  9/9 con HTTP 200, sin desbordamiento horizontal, 0 errores de consola y 0 peticiones fallidas.
+  Se borraron las cuentas, sesiones, cotizaciones y auditoría temporales; una consulta de solo
+  lectura confirmó la línea base (2 usuarios, 2 sesiones, 38 auditoría, 1 cotización — la #2) y
+  las cuentas reales intactas. El servidor de prueba se detuvo y no se hizo `push`.
 
 ### Variables de entorno
 
 Solo en servidor (nunca con prefijo `VITE_` ni en el cliente):
 
-- `SUPABASE_URL`: URL del proyecto Supabase usada por `api.contacto.ts`.
-- `SUPABASE_SERVICE_ROLE_KEY`: clave service-role de Supabase; privilegios elevados.
-  Solo se usa en el servidor para insertar en `solicitudes_contacto`.
+- `DB_HOST`, `DB_PORT` (opcional, 3306), `DB_NAME`, `DB_USER`, `DB_PASSWORD`: conexión a
+  MySQL (ver arriba). `.env.example` trae valores de ejemplo. Obligatorias: sin ellas el
+  formulario responde 503.
+- `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY`: **en desuso** (pendiente migración, fase 7);
+  la ruta ya no las usa.
+- `TRUST_PROXY`: `1` o `true` cuando hay un proxy de confianza delante (**en cPanel debe ir
+  `TRUST_PROXY=1`**); vacío por defecto. Ver «IP del cliente» en la sección 9.
 - `MAKE_CHAT_WEBHOOK_URL`: webhook HTTPS de Make para `/api/chat` (ver sección 8).
+  **No es obligatoria mientras el chat esté apagado** (`CHATBOT_ENABLED = false`).
 - `TURNSTILE_SECRET_KEY`: clave secreta de Cloudflare Turnstile. Si falta,
   `api.contacto.ts` responde `503` con `contacto_unavailable` antes de `siteverify` y
-  Supabase, sin usar claves de prueba; debe configurarse antes de desplegar.
+  MySQL, sin usar claves de prueba; debe configurarse antes de desplegar.
 - `TURNSTILE_ALLOWED_HOSTNAMES`: hostnames permitidos para el token de Turnstile,
   separados por comas (p. ej. `telcobras.com,www.telcobras.com`). Si falta en
   producción, `api.contacto.ts` responde `503` (fail-closed); en desarrollo se añaden
@@ -1704,8 +2307,9 @@ Pública de compilación:
   pública por diseño; si falta, el widget no se carga y el formulario queda deshabilitado
   con un aviso. No se usa ninguna site key de prueba. No confundirla con la secreta.
 
-Local: definir estas variables en `.env.local` (ignorado por Git). En Cloudflare,
-guardar las secretas con `wrangler secret put <NOMBRE>`. `.env.example` lista todas las
+Local: definir estas variables en `.env.local` (ignorado por Git). En cPanel: «Setup Node.js
+App» > Environment variables (en Cloudflare, el destino anterior, se guardaban con
+`wrangler secret put <NOMBRE>`). `.env.example` lista todas las
 variables con un comentario (sin valores).
 
 No crear un endpoint público para listar todas las solicitudes sin autenticación y
@@ -1735,6 +2339,7 @@ autorización. Evitar registrar datos personales completos en logs.
 | Estilos globales, Tailwind v4, tokens y animaciones | `src/styles.css` y `src/routes/__root.tsx` |
 | CSS: import, `<link>` y hash del build | `src/routes/__root.tsx:14` y `.output/public/assets/styles-*.css` |
 | Despliegue: artefacto, assets y wrangler | `.output/` y `.wrangler/deploy/config.json` |
-| Pruebas (aún vacías) | `vitest.config.ts`, `playwright.config.ts`, `e2e/`, `*.test.ts(x)` |
+| Papelera, exportar CSV e historial del panel | `cotizaciones-admin.server.ts`, `admin.papelera.tsx`, `admin.historial.tsx`, `api.admin.exportar.ts` |
+| Pruebas (vitest) | `vitest.config.ts`, `src/lib/*.server.test.ts` |
 | Destino Cloudflare, plugins y entrada SSR | `vite.config.ts` y `src/server.ts` |
 | Configuración de rutas | `src/router.tsx`, `src/routes/README.md` |

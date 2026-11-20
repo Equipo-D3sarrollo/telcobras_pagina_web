@@ -151,6 +151,7 @@ export function ContactSection() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           ...formData,
+          idioma: languageRef.current,
           turnstile_token: turnstileToken,
         }),
       });
