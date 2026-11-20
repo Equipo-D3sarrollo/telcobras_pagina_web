@@ -117,6 +117,8 @@ function Detalle({
   const [notas, setNotas] = useState(detalle.notas);
   const [responsable, setResponsable] = useState(detalle.responsable_id?.toString() ?? "");
   const [enviando, setEnviando] = useState(false);
+  const [reenviando, setReenviando] = useState(false);
+  const [avisoEnviado, setAvisoEnviado] = useState(detalle.aviso_correo_enviado);
   const [ok, setOk] = useState("");
   const [error, setError] = useState("");
   const [conflicto, setConflicto] = useState(false);
@@ -212,6 +214,37 @@ function Detalle({
     setConfirmandoEliminar(false);
   }
 
+  /** Reenvía el aviso a contabilidad (solo administrador, con límite propio). */
+  async function reenviarAviso() {
+    if (reenviando) return;
+    setReenviando(true);
+    setOk("");
+    setError("");
+    try {
+      const response = await fetch(`/api/admin/cotizaciones/${detalle.id}/aviso`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      });
+      if (response.ok) {
+        setAvisoEnviado(true);
+        setOk("Aviso reenviado a contabilidad.");
+      } else if (response.status === 401) {
+        window.location.assign("/admin/login");
+        return;
+      } else if (response.status === 429) {
+        setError("Demasiados reenvíos seguidos. Espera un momento e inténtalo de nuevo.");
+      } else if (response.status === 404) {
+        setError("Esta solicitud ya no existe.");
+      } else {
+        setError("No se pudo reenviar el aviso. Inténtalo de nuevo.");
+      }
+    } catch {
+      setError("No se pudo conectar con el servidor. Inténtalo de nuevo.");
+    }
+    setReenviando(false);
+  }
+
   const mailto = `mailto:${encodeURIComponent(detalle.correo).replace(/%40/g, "@")}`;
   const tel = `tel:${detalle.telefono.replace(/[^\d+]/g, "")}`;
 
@@ -304,6 +337,27 @@ function Detalle({
           <h2 id="h-gestion" className="text-lg font-black">
             Gestión
           </h2>
+
+          <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-300">
+              Aviso por correo
+            </p>
+            <p
+              className={`mt-0.5 text-sm font-bold ${avisoEnviado ? "text-emerald-200" : "text-amber-200"}`}
+            >
+              {avisoEnviado ? "enviado" : "pendiente"}
+            </p>
+            {esAdmin && detalle.origen === "formulario_web" && (
+              <button
+                type="button"
+                disabled={reenviando || enviando}
+                onClick={() => void reenviarAviso()}
+                className={`${button} mt-2 w-full border border-white/30 bg-white/10 hover:bg-white/20`}
+              >
+                {reenviando ? "Reenviando…" : "Reenviar aviso"}
+              </button>
+            )}
+          </div>
 
           <div>
             <label htmlFor="d-estado" className="mb-1 block text-xs font-bold text-slate-200">

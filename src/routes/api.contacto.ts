@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createRateLimiter, getClientIp, NO_CLIENT_IP_KEY } from "@/lib/rate-limit";
-import { insertCotizacion } from "@/lib/cotizaciones.server";
+import { guardarCotizacionConAviso } from "@/lib/cotizaciones.server";
 import { isBoundedString, isRecord, parseContacto } from "@/lib/contacto-validation";
 import { DbConfigError } from "@/lib/db.server";
 
@@ -225,7 +225,7 @@ async function handlePost(request: Request): Promise<Response> {
     // 5. Inserción en MySQL (cotización + auditoría en una transacción). Cualquier fallo
     // de la base responde 503 con un mensaje genérico, sin exponer detalles internos.
     try {
-      await insertCotizacion(contacto);
+      await guardarCotizacionConAviso(contacto);
     } catch (error) {
       logDbError(error);
       return jsonResponse({ error: "contacto_unavailable" }, 503);

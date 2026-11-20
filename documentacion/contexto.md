@@ -11,8 +11,11 @@ conocidos. Debe actualizarse cuando cambien la arquitectura o las capacidades de
 > («Auditoría 26-10-2026»). La revisión anterior (22-10-2026) cubrió el pipeline de
 > CSS/Tailwind, el build de Nitro/Cloudflare y el estado de Git; ver secciones 7 y 9.
 >
-> Última funcionalidad (**19-11-2026**): fase 6 del panel — papelera, exportación CSV e
-> historial completo (sección 12). Sin migración de base; `npm test` pasa 136 pruebas.
+> Última funcionalidad (**19-11-2026**): fase 3 — aviso por correo a contabilidad cuando llega
+> una cotización del formulario web (sección 12), además de las redirecciones 301 del Joomla
+> (sección 5) y la fase 6 del panel — papelera, exportación CSV e historial completo (sección 12).
+> Sin migración de base (la columna `aviso_correo_enviado` ya está en el esquema);
+> `npm test` pasa 164 pruebas en 14 archivos.
 
 ## 1. Instrucciones para quien continúe el proyecto
 
@@ -225,8 +228,9 @@ el artefacto de despliegue.
 repite el escaneo en `.github/workflows/gitleaks.yml`.
 
 `npm test` (vitest, `vitest.config.ts`, pool `vmThreads` por un fallo de los pools por defecto
-con Node 26) corre `src/lib/**/*.server.test.ts`: **136 pruebas en 12 archivos** tras la fase 6
-(capa MySQL del formulario, admin, seguridad, límites y fase 6). Los demás `*.test.ts(x)` del
+con Node 26) corre `src/lib/**/*.server.test.ts`: **164 pruebas en 14 archivos** tras la fase 3
+(capa MySQL del formulario, aviso por correo, admin, seguridad, límites, redirecciones Joomla y
+fase 6). Los demás `*.test.ts(x)` del
 proyecto siguen vacíos. Para el resto usar lint, build, `tsc --noEmit` y comprobaciones
 manuales/navegador.
 
@@ -287,7 +291,8 @@ con excepciones para `*.example`, aunque hoy no existe un `.env.example` version
   (`IntersectionObserver` con `rootMargin: "600px 0px"`).
 - `src/routes/api.contacto.ts`: endpoint de contacto usado por el formulario. Valida
   honeypot, longitudes de campos, estructura de payload, Turnstile y limitación de tasa
-  por IP antes de persistir en MySQL (`src/lib/cotizaciones.server.ts`).
+  por IP antes de persistir en MySQL (`src/lib/cotizaciones.server.ts`), que después
+  programa el aviso por correo (`src/lib/cotizaciones-mail.server.ts`).
 - `src/routes/api.chat.ts`: integración con Make/WhatsApp y respuesta del chatbot.
 - `src/lib/translations.ts`: catálogos ES/EN para UI, SEO, formulario y chatbot.
 - `src/lib/accessibility-preferences.ts`: configuración de idioma/tema/tamaño y
@@ -512,11 +517,13 @@ legales conservan su respuesta (`/admin` mantiene su 307 de la app).
 ### Panel `/admin` (fases 4-6, 18-19-11-2026)
 
 Rutas: `/admin/login` (`admin.login.tsx`), `/admin` (lista de cotizaciones, `admin.index.tsx`),
-`/admin/cotizaciones/$id` (detalle) y `/admin/cotizaciones/nueva` (`admin.cotizaciones.*.tsx`),
+`/admin/cotizaciones/$id` (detalle, con «Aviso por correo: enviado / pendiente» y el botón de
+administrador «Reenviar aviso») y `/admin/cotizaciones/nueva` (`admin.cotizaciones.*.tsx`),
 `/admin/papelera` y `/admin/historial` (fase 6), `/admin/usuarios` y `/admin/mi-cuenta` (fase 5B);
 `POST /api/admin/login`, `POST /api/admin/logout`, `POST /api/admin/cotizaciones/$id`,
-`POST /api/admin/cotizaciones/nueva`, `POST /api/admin/cotizaciones/$id/papelera` y
-`POST /api/admin/exportar` (`api.admin.*.ts`). Detalle de seguridad en «Login del panel» y de la
+`POST /api/admin/cotizaciones/nueva`, `POST /api/admin/cotizaciones/$id/papelera`,
+`POST /api/admin/cotizaciones/$id/aviso` (fase 3) y `POST /api/admin/exportar`
+(`api.admin.*.ts`). Detalle de seguridad en «Login del panel» y de la
 gestión en «Gestión de cotizaciones» (sección 12); papelera, exportación e historial en la sección
 12. Todas las rutas administrativas se comprueban también en el servidor.
 
@@ -1451,7 +1458,8 @@ ese dominio (hoy `telcobras.com` sirve otro sitio, ver pendiente 17).
 - Preferencias de accesibilidad persistidas/validadas y aplicadas en SSR; catálogos
   tipados ES/EN para el contenido principal, el formulario, el chatbot y los errores raíz.
 - Formulario conectado al endpoint `/api/contacto`, con persistencia de solicitudes en
-  MySQL (`cotizaciones` + `auditoria`) mediante credenciales de servidor (antes Supabase).
+  MySQL (`cotizaciones` + `auditoria`) mediante credenciales de servidor (antes Supabase) y
+  aviso por correo asíncrono a contabilidad solo para las solicitudes del formulario web.
 - Protección anti-abuso del formulario: Cloudflare Turnstile, honeypot, validación de
   longitudes y limitación de tasa por IP (5 envíos / 10 minutos).
 - Higiene de errores: respuestas públicas genéricas (`contacto_unavailable`, `internal_error`)
@@ -2051,6 +2059,60 @@ comprobado que `mysql2`, `createPool` y `DB_*` no aparecen en ningún JS de `.ou
   script, workflow de CI ni documento usa bun, y los comandos del proyecto usan npm con
   `package-lock.json`, que es la fuente canónica.
 
+### Aviso por correo de cotizaciones nuevas (fase 3, 19-11-2026)
+
+`nodemailer` (JS puro, sin dependencias nativas: compatible con cPanel/Node.js) notifica a
+contabilidad cuando el **formulario web** guarda una solicitud. No aplica a cotizaciones
+creadas a mano en el panel: `insertCotizacion()` sigue siendo el núcleo de la transacción y
+`guardarCotizacionConAviso()` (`src/lib/cotizaciones.server.ts`) solo añade el aviso después
+de que la transacción termine.
+
+Archivos: `src/lib/cotizaciones-mail.server.ts` (configuración, mensaje, envío, marcado y
+lectura de datos), `src/routes/api.admin.cotizaciones.$id.aviso.ts` (reenvío),
+`src/lib/admin-api.server.ts` (límite propio), `src/lib/cotizaciones-admin.server.ts`
+(auditoría) y `src/routes/admin.cotizaciones.$id.tsx` (estado y botón).
+
+- **Configuración:** `SMTP_HOST`, `SMTP_PORT` (465), `SMTP_SECURE` (true), `SMTP_USER`,
+  `SMTP_PASSWORD`, `MAIL_FROM`, `MAIL_TO_COTIZACIONES` y `PUBLIC_SITE_URL`. Todos en
+  `.env.example` sin secretos reales. Si falta cualquiera de las obligatorias, no se envía
+  nada, se registra **una** advertencia por proceso sin datos ni credenciales
+  (`[cotizaciones/mail] SMTP sin configurar…`) y el formulario sigue respondiendo igual.
+- **Flujo:** `api.contacto.ts` → `guardarCotizacionConAviso()` → guardar en MySQL →
+  `programarAvisoCotizacion()`. El envío se lanza sin `await` (fire-and-forget), con
+  `connectionTimeout`, `greetingTimeout` y `socketTimeout` de **15 s** más un `Promise.race`
+  de 15 s: la respuesta al cliente no espera al SMTP. El transporte se puede inyectar en
+  pruebas, igual que en `guardarCotizacionConAviso`.
+- **Columna:** solo si SMTP responde bien se ejecuta
+  `UPDATE cotizaciones SET aviso_correo_enviado = 1 WHERE id = ?`. Si falla el envío o no
+  hay configuración, la columna queda en `0` y se registra únicamente el código de error
+  (`{ code }`), sin datos personales ni credenciales. La columna ya existe en
+  `documentacion/db/telcobras_cotizaciones.sql`: **no hace falta migración**.
+- **Contenido:** asunto `Nueva solicitud de cotización #id`; texto y HTML simple con la
+  marca; fecha en hora Colombia (`America/Bogota`, `es-CO`), servicio, empresa, nombre del
+  contacto y enlace `PUBLIC_SITE_URL/admin/cotizaciones/id`. **No** incluye teléfono, correo
+  del contacto, mensaje ni notas. El HTML escapa `& < > " '` y la cabecera del asunto
+  elimina saltos de línea y caracteres de control (sin `no-control-regex` en ESLint).
+- **Panel:** el detalle muestra «Aviso por correo: enviado / pendiente». Solo administradores
+  ven «Reenviar aviso» para cotizaciones con origen `formulario_web`. El endpoint
+  `POST /api/admin/cotizaciones/:id/aviso` exige sesión, rol de administrador, mismo Origin
+  y el límite genérico de escrituras más uno propio de **10 cada 15 min** por IP y usuario.
+  Si el reenvío funciona, registra en `auditoria` la acción `editar` con el detalle exacto
+  `aviso por correo reenviado` (sin datos personales).
+- **Pruebas:** `src/lib/cotizaciones-mail.server.test.ts` (10 pruebas) usa un transporte
+  simulado y cubre guardar-antes-de-enviar, no bloqueo, marcado, fallo sin romper el
+  formulario, ausencia de configuración, contenido sin datos sensibles, escapado HTML,
+  asunto sin saltos, origen manual y lectura de datos para reenvío. Demo local con
+  `jsonTransport` de nodemailer y datos ficticios: el correo generado muestra
+  `Fecha: 19/11/2026, 3:30 p. m.` (UTC 20:30 → Colombia 15:30) y el enlace al panel.
+
+| Verificación (19-11-2026) | Resultado |
+|---|---|
+| `npx tsc --noEmit` | ✅ sin errores |
+| `npm run lint` | ✅ 0 errores; 6 advertencias preexistentes de fast-refresh en `src/components/ui/` |
+| `npm run build` | ✅ cliente + servidor en `.output/` (preset `node-server`); `nodemailer` en `.output/server/_libs/nodemailer.mjs` |
+| `npm test` | ✅ 14 archivos / 164 pruebas |
+| Demo local `jsonTransport` | ✅ correo completo generado con datos ficticios, sin red ni SMTP real |
+
 ### Login del panel `/admin` (fase 4, 18-11-2026)
 
 Usa las tablas `usuarios`, `sesiones` y `auditoria` del esquema (sin modificarlo) y
@@ -2324,6 +2386,11 @@ Solo en servidor (nunca con prefijo `VITE_` ni en el cliente):
   separados por comas (p. ej. `telcobras.com,www.telcobras.com`). Si falta en
   producción, `api.contacto.ts` responde `503` (fail-closed); en desarrollo se añaden
   `localhost` y `127.0.0.1`.
+- `SMTP_HOST`, `SMTP_PORT` (465), `SMTP_SECURE` (true), `SMTP_USER`, `SMTP_PASSWORD`,
+  `MAIL_FROM`, `MAIL_TO_COTIZACIONES` y `PUBLIC_SITE_URL`: aviso por correo de la fase 3
+  (sección 12). **Opcionales**: sin ellos no se envía nada, se registra una sola advertencia
+  y el formulario sigue funcionando. Nunca poner la contraseña real en `.env.example` ni en
+  documentación.
 
 Pública de compilación:
 
@@ -2352,6 +2419,7 @@ autorización. Evitar registrar datos personales completos en logs.
 | Chat visual, sesión, foco o errores en UI | `src/components/FloatingChatbot.tsx` |
 | Contrato y proxy de Make | `src/routes/api.chat.ts` y `README.md` |
 | Formulario, mapa, datos de contacto y footer | `src/components/ContactAndFooter.tsx` |
+| Aviso por correo de cotizaciones, SMTP o reenvío | `src/lib/cotizaciones-mail.server.ts` |
 | Widget y validación de Turnstile | `src/components/TurnstileWidget.tsx`, `src/routes/api.contacto.ts` |
 | Páginas legales y enlaces del footer | `src/routes/politica-de-privacidad.tsx`, `src/routes/terminos-de-servicio.tsx`, `src/routes/sla.tsx`, `src/components/LegalDocument.tsx` |
 | Textos de Términos y SLA (valores del SLA en `SLA_VALUES`) | `src/lib/terms-content.ts`, `src/lib/sla-content.ts` |
