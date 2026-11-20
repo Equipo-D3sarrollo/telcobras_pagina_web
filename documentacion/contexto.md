@@ -1599,9 +1599,8 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
 9. **Codificación de README:** `README.md` decodifica como UTF-8, pero contiene 24 bytes
     NUL. Revisar y guardar el documento como UTF-8 limpio; no copiar/re-guardar con una
     codificación ambigua.
-10. **Lockfiles:** están versionados `package-lock.json` y `bun.lock`, mientras que los
-    comandos documentados usan npm. Elegir cuál es la fuente canónica y mantener o retirar
-    el otro mediante una decisión coordinada para evitar instalaciones divergentes.
+10. **Lockfiles — resuelto (19-11-2026):** `package-lock.json` es la fuente canónica (npm);
+    `bun.lock` se eliminó porque ningún script, CI ni documento usa bun. Ver sección 12.
 11. **Formulario:** los enlaces «Términos de Servicio» y «SLA y garantías» del footer ya
     apuntan con `<Link>` a `/terminos-de-servicio` y `/sla`, que ya muestran el
     contenido completo (aprobado por gerencia el 18-11-2026, ver pendiente 7).
@@ -1643,17 +1642,17 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
 18. **Ruta base del CSS:** los assets se referencian como `/assets/...`. Si el deploy
     final vive bajo un subpath (por ejemplo `https://dominio/app/`), configurar `base`
     en Vite o servir la app en la raíz; hoy no hay `base` configurado.
-19. **`.env.example` — creado (27-10-2026):** contiene los nombres (sin valores) y un
-    comentario de las 6 variables que lee el código: `SUPABASE_URL`,
-    `SUPABASE_SERVICE_ROLE_KEY`, `MAKE_CHAT_WEBHOOK_URL`, `TURNSTILE_SECRET_KEY`,
-    `VITE_TURNSTILE_SITE_KEY` y `TURNSTILE_ALLOWED_HOSTNAMES`.
+19. **`.env.example` — creado (27-10-2026), actualizado (19-11-2026):** contiene los nombres
+    (sin valores) y un comentario de las variables que lee el código: las 5 de MySQL,
+    `MAKE_CHAT_WEBHOOK_URL`, `TURNSTILE_SECRET_KEY`, `VITE_TURNSTILE_SITE_KEY` y
+    `TURNSTILE_ALLOWED_HOSTNAMES`. Ya no aparecen `SUPABASE_URL` ni
+    `SUPABASE_SERVICE_ROLE_KEY`.
 20. **Dependencias y CVE-2026-102989 (corregido el 26-10-2026):** el XSS reflejado en
     respuestas de server functions de TanStack Start (GHSA-qx66-fv34-fjm8; afecta a
     `@tanstack/react-start` <1.168.60 y `@tanstack/start-server-core` <1.169.39) está
     corregido con versiones exactas: `@tanstack/react-start@1.168.60`,
     `@tanstack/react-router@1.170.41`, `@tanstack/router-plugin@1.168.42` y
-    `@tanstack/start-server-core@1.169.39` (transitiva). `package-lock.json` y
-    `bun.lock` coinciden.
+    `@tanstack/start-server-core@1.169.39` (transitiva), reflejado en `package-lock.json`.
     **Plugin de AI Studio en beta:** `@leadconnector/vite-tanstack-config` está fijado en
     **`0.3.3-beta.0`**. La versión estable `0.3.2` modifica en desarrollo
     `start-server-core/dist/esm/server-functions-handler.js` buscando la línea
@@ -2018,12 +2017,10 @@ comprobado que `mysql2`, `createPool` y `DB_*` no aparecen en ningún JS de `.ou
   `503 { "error": "contacto_unavailable" }` y el log solo muestra `code: 'ECONNREFUSED'` y el
   errno, sin datos del formulario. Las filas de prueba se eliminaron (el contador
   `AUTO_INCREMENT` de `cotizaciones` y `auditoria` ya avanzó: la primera solicitud real tendrá id 2).
-- **Supabase — en desuso, pendiente de migración (fase 7):** la ruta ya no importa
-  `@supabase/supabase-js` ni lee `SUPABASE_*`. Se conservan, sin tocar, la dependencia
-  `@supabase/supabase-js`, las variables `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY`
-  (documentadas en `.env.example` como en desuso) y la tabla `solicitudes_contacto` con las
-  solicitudes anteriores; el valor `migracion_supabase` de `cotizaciones.origen` está previsto
-  para importarlas. No se borró nada.
+- Supabase descartado el 19-11-2026; el proyecto debe eliminarse en Supabase (responsable: Diego)
+- **Lockfiles (19-11-2026):** se eliminó `bun.lock` y su entrada en `.prettierignore`: ningún
+  script, workflow de CI ni documento usa bun, y los comandos del proyecto usan npm con
+  `package-lock.json`, que es la fuente canónica.
 
 ### Login del panel `/admin` (fase 4, 18-11-2026)
 
@@ -2287,8 +2284,6 @@ Solo en servidor (nunca con prefijo `VITE_` ni en el cliente):
 - `DB_HOST`, `DB_PORT` (opcional, 3306), `DB_NAME`, `DB_USER`, `DB_PASSWORD`: conexión a
   MySQL (ver arriba). `.env.example` trae valores de ejemplo. Obligatorias: sin ellas el
   formulario responde 503.
-- `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY`: **en desuso** (pendiente migración, fase 7);
-  la ruta ya no las usa.
 - `TRUST_PROXY`: `1` o `true` cuando hay un proxy de confianza delante (**en cPanel debe ir
   `TRUST_PROXY=1`**); vacío por defecto. Ver «IP del cliente» en la sección 9.
 - `MAKE_CHAT_WEBHOOK_URL`: webhook HTTPS de Make para `/api/chat` (ver sección 8).
