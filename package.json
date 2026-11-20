@@ -11,6 +11,8 @@
     "lint": "eslint .",
     "test": "vitest run",
     "usuario:crear": "node --env-file=.env.local scripts/crear-usuario.mjs",
+    "usuario:sql": "node scripts/crear-usuario-sql.mjs",
+    "empaquetar": "node scripts/empaquetar.mjs",
     "format": "prettier --write .",
     "prepare": "node scripts/install-hooks.mjs",
     "secrets:scan": "gitleaks detect --source . --config .gitleaks.toml --redact --verbose --log-opts=--all"

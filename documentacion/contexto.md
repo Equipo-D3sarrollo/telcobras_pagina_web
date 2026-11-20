@@ -11,11 +11,11 @@ conocidos. Debe actualizarse cuando cambien la arquitectura o las capacidades de
 > («Auditoría 26-10-2026»). La revisión anterior (22-10-2026) cubrió el pipeline de
 > CSS/Tailwind, el build de Nitro/Cloudflare y el estado de Git; ver secciones 7 y 9.
 >
-> Última funcionalidad (**19-11-2026**): fase 3 — aviso por correo a contabilidad cuando llega
-> una cotización del formulario web (sección 12), además de las redirecciones 301 del Joomla
-> (sección 5) y la fase 6 del panel — papelera, exportación CSV e historial completo (sección 12).
-> Sin migración de base (la columna `aviso_correo_enviado` ya está en el esquema);
-> `npm test` pasa 164 pruebas en 14 archivos.
+> Última funcionalidad (**19-11-2026**): fase 7/C — paquete de publicación en cPanel,
+> script para crear la primera cuenta sin terminal y guía de despliegue (sección 12), además de
+> las fases 3 y 6 del panel (aviso por correo, papelera, exportación CSV e historial; sección 12)
+> y las redirecciones 301 del Joomla (sección 5). Sin migración de base (la columna
+> `aviso_correo_enviado` ya está en el esquema); `npm test` pasa 167 pruebas en 15 archivos.
 
 ## 1. Instrucciones para quien continúe el proyecto
 
@@ -211,6 +211,8 @@ npm run build:dev               # build con modo development
 npm run preview                 # node .output/server/index.mjs (carga .env.local si existe; puerto: PORT, por defecto 3000)
 npm test                        # vitest: pruebas de src/lib/*.server.test.ts y rate-limit.test.ts
 npm run usuario:crear           # crea una cuenta del panel /admin (interactivo; ver sección 12)
+npm run usuario:sql             # imprime el INSERT de la cuenta inicial para phpMyAdmin (sin BD)
+npm run empaquetar              # build + ZIP deploy/telcobras-web-cpanel.zip para cPanel
 npm run lint                    # eslint .
 npm run format                  # prettier --write .
 npm run secrets:scan            # gitleaks sobre todo el historial
@@ -228,9 +230,9 @@ el artefacto de despliegue.
 repite el escaneo en `.github/workflows/gitleaks.yml`.
 
 `npm test` (vitest, `vitest.config.ts`, pool `vmThreads` por un fallo de los pools por defecto
-con Node 26) corre `src/lib/**/*.server.test.ts`: **164 pruebas en 14 archivos** tras la fase 3
-(capa MySQL del formulario, aviso por correo, admin, seguridad, límites, redirecciones Joomla y
-fase 6). Los demás `*.test.ts(x)` del
+con Node 26) corre `src/lib/**/*.server.test.ts`: **167 pruebas en 15 archivos** tras la fase 7
+(capa MySQL del formulario, aviso por correo, admin, seguridad, límites, redirecciones Joomla,
+fase 6 y generación del INSERT de la cuenta inicial). Los demás `*.test.ts(x)` del
 proyecto siguen vacíos. Para el resto usar lint, build, `tsc --noEmit` y comprobaciones
 manuales/navegador.
 
@@ -242,11 +244,20 @@ manuales/navegador.
 ├── .githooks/pre-commit            # Hook local: gitleaks sobre archivos staged
 ├── .gitattributes                  # EOL LF para hooks, CI y configuración
 ├── .gitleaks.toml                  # Reglas de gitleaks + allowlist de artefactos
+├── deploy/
+│   └── telcobras-web-cpanel.zip    # Paquete generado (ignorado por Git; no se versiona)
 ├── documentacion/
-│   └── contexto.md                 # Esta guía de traspaso
+│   ├── contexto.md                 # Esta guía de traspaso
+│   ├── GUIA_PUBLICACION_CPANEL.md  # Guía paso a paso de publicación en cPanel (fase 7)
+│   └── db/                         # Esquema SQL y migraciones
 ├── e2e/                            # Placeholder de Playwright (spec vacío)
 ├── public/                         # Recursos estáticos servidos desde /
 ├── scripts/
+│   ├── app.cjs                     # Plantilla de app.js (CommonJS) incluida en el ZIP
+│   ├── empaquetar.mjs              # Build + ZIP para cPanel
+│   ├── crear-usuario.mjs           # Crea cuenta en MySQL (terminal con DB_*)
+│   ├── crear-usuario-sql.mjs       # Imprime el INSERT para phpMyAdmin (sin BD)
+│   ├── usuario-input.mjs           # Preguntas/validaciones compartidas
 │   └── install-hooks.mjs           # Activa core.hooksPath en npm install
 ├── src/
 │   ├── components/                 # Secciones y controles de la interfaz
@@ -1201,6 +1212,16 @@ exitosa y repetible con el módulo Webhook response configurado correctamente.
 > - **Variables de entorno:** en cPanel se definen en «Setup Node.js App» (no hay
 >   `.env.local`). `VITE_TURNSTILE_SITE_KEY` se incrusta **al compilar**: debe existir
 >   cuando se ejecuta `npm run build`.
+
+> **Paquete de publicación (fase 7, 19-11-2026):** `npm run empaquetar` ejecuta el build y
+> genera `deploy/telcobras-web-cpanel.zip` (ignorado por Git) con `.output/` completo, un
+> `app.js` CommonJS que carga `.output/server/index.mjs` con `import()` dinámico y respeta el
+> `PORT` que asigna Passenger, y un `package.json` mínimo sin dependencias que instalar
+> (`.output/server/node_modules/tslib` es la única dependencia traceada y va incluida).
+> **Node mínimo comprobado en producción: 20.19.0** (arranca el ZIP con 20.19.0; con 20.18.0
+> no; recomendable 22.x LTS). `TRUST_PROXY=1` es obligatorio en cPanel y **no** se configuran
+> `PORT` ni `NITRO_PORT`. La guía completa está en
+> `documentacion/GUIA_PUBLICACION_CPANEL.md` (sección 12).
 
 - `vite.config.ts` importa el wrapper `@leadconnector/vite-tanstack-config`; este
   wrapper ya instala plugins TanStack Start, React, Tailwind, alias, Nitro y otros.
@@ -2406,6 +2427,61 @@ variables con un comentario (sin valores).
 No crear un endpoint público para listar todas las solicitudes sin autenticación y
 autorización. Evitar registrar datos personales completos en logs.
 
+### Publicación en cPanel y primera cuenta (fase 7, 19-11-2026)
+
+Archivos nuevos: `scripts/empaquetar.mjs`, `scripts/app.cjs`,
+`scripts/crear-usuario-sql.mjs`, `scripts/usuario-input.mjs`,
+`src/lib/usuario-validacion.ts`, `src/lib/usuario-sql.server.ts`,
+`src/lib/usuario-sql.server.test.ts` y `documentacion/GUIA_PUBLICACION_CPANEL.md`.
+`scripts/crear-usuario.mjs` se refactorizó para usar las mismas preguntas y validaciones.
+
+- **Paquete:** `npm run empaquetar` invoca Vite con el Node del script (sin depender de `npm`
+  en el PATH ni del flag `shell` obsoleto), comprueba `.output/server/index.mjs` y
+  `.output/public/`, y escribe el ZIP con `zlib` de Node (sin dependencias nuevas). Contiene
+  237 archivos y ~17,5 MB. `deploy/*.zip` está en `.gitignore`: el ZIP se sube por el
+  administrador de archivos de cPanel, nunca a Git. No hay que ejecutar `npm install` en el
+  destino: `.output/server/node_modules/` incluye `tslib` (única dependencia traceada) y no
+  queda ninguna otra sin incluir.
+- **Arranque:** `app.js` (CommonJS) usa `import()` dinámico sobre
+  `.output/server/index.mjs` y **no** sobrescribe `process.env.PORT`: Nitro lo lee
+  directamente (`process.env.NITRO_PORT ?? process.env.PORT`, 3000 por defecto). Así Passenger
+  asigna el puerto. Mínimo verificado: Node 20.19.0 (20.18.0 no arranca); recomendación 22.x
+  LTS. `npm run preview` sigue siendo útil en local (requiere Node ≥ 22.9).
+- **Cuenta inicial sin terminal:** `npm run usuario:sql` (`node scripts/crear-usuario-sql.mjs`)
+  pide nombre, correo, rol y contraseña oculta dos veces (mínimo 12) con
+  `src/lib/usuario-validacion.ts`, genera el hash con la **misma** función scrypt del login
+  (`src/lib/password.server.ts`) e imprime solo un `INSERT INTO usuarios (...)` listo para
+  phpMyAdmin, con `debe_cambiar_password = 1`. No conecta a MySQL, no guarda archivos y la
+  contraseña en claro nunca se imprime. `escaparSql()` escapa barras, comillas y saltos para
+  MySQL en modo estándar. Alternativa con acceso a la base: `npm run usuario:crear`.
+- **Pruebas del INSERT:** `src/lib/usuario-sql.server.test.ts` (3 pruebas) comprueba que el
+  SQL es válido, que los cuatro literales se leen de ida y vuelta (incluidas comillas, barras
+  y saltos), que el hash verifica con la contraseña y no con otra, que la contraseña no aparece
+  en el SQL y que las validaciones son compartidas.
+- **Prueba local del paquete (19-11-2026):** se descomprimió el ZIP en
+  `%TEMP%/opencode/deploy-test-telcobras` (fuera del repo) y se arrancó con `node app.js`:
+  con Node 26 en `PORT=3101`, `/` → 200, `/admin/login` → 200, `GET /api/contacto` → 405 y
+  `/index.php?option=com_sppagebuilder&view=page&id=99` → 301 a `/#servicios` con cabeceras de
+  seguridad; con `node@20.19.0` en `PORT=3102`, 200/200/405; con `node@20.18.0` en 3103 no
+  arrancó (`curl` → `000`). La carpeta temporal y los procesos se eliminaron después.
+- **Guía:** `documentacion/GUIA_PUBLICACION_CPANEL.md` cubre a)–j): datos previos, base y
+  permisos, cuenta inicial, Setup Node.js App y todas las variables (marcando las secretas),
+  `VITE_TURNSTILE_SITE_KEY` solo al compilar, HTTPS/www sin bucles, Turnstile, subdominio de
+  prueba, cambio de Joomla con backup y plan de vuelta atrás, checklist post-publicación y
+  backups/logs/reinicio. `TURNSTILE_ALLOWED_HOSTNAMES=telcobras.com,www.telcobras.com`.
+
+| Verificación final (19-11-2026) | Resultado |
+|---|---|
+| `npx tsc --noEmit` | ✅ sin errores |
+| `npm run lint` | ✅ 0 errores; 6 advertencias preexistentes de fast-refresh en `src/components/ui/` |
+| `npm run build` | ✅ cliente + servidor en `.output/` (preset `node-server`) |
+| `npm test` | ✅ 15 archivos / 167 pruebas |
+| `npm run empaquetar` | ✅ ZIP generado sin `DEP0190`; 237 archivos, 17,5 MB |
+| ZIP fuera del repo, Node 26 | ✅ `/` 200, `/admin/login` 200, `GET /api/contacto` 405, Joomla 301 |
+| ZIP con Node 20.19.0 | ✅ 200 / 200 / 405 |
+| ZIP con Node 20.18.0 | ✅ descartado (no arranca) |
+| Commits locales A, B, C | ✅ sin push (mensajes exactos; ver sección 1) |
+
 ## 13. Guía de navegación rápida para otra IA
 
 | Si la tarea trata de... | Empezar por... |
@@ -2431,6 +2507,8 @@ autorización. Evitar registrar datos personales completos en logs.
 | Estilos globales, Tailwind v4, tokens y animaciones | `src/styles.css` y `src/routes/__root.tsx` |
 | CSS: import, `<link>` y hash del build | `src/routes/__root.tsx:14` y `.output/public/assets/styles-*.css` |
 | Despliegue: artefacto, assets y wrangler | `.output/` y `.wrangler/deploy/config.json` |
+| Publicación en cPanel, ZIP, `app.js` y Node mínimo | `scripts/empaquetar.mjs`, `scripts/app.cjs`, `documentacion/GUIA_PUBLICACION_CPANEL.md` |
+| Primera cuenta sin terminal (INSERT para phpMyAdmin) | `npm run usuario:sql`, `scripts/crear-usuario-sql.mjs`, `src/lib/usuario-sql.server.ts` |
 | Papelera, exportar CSV e historial del panel | `cotizaciones-admin.server.ts`, `admin.papelera.tsx`, `admin.historial.tsx`, `api.admin.exportar.ts` |
 | Pruebas (vitest) | `vitest.config.ts`, `src/lib/*.server.test.ts` |
 | Destino Cloudflare, plugins y entrada SSR | `vite.config.ts` y `src/server.ts` |
