@@ -480,6 +480,35 @@ con excepciones para `*.example`, aunque hoy no existe un `.env.example` version
   (`https://telcobras.com/<ruta>`), por lo que el SEO técnico es homogéneo en las cuatro
   URLs públicas del sitemap.
 
+### Redirecciones del sitio Joomla (19-11-2026)
+
+`src/lib/joomla-redirects.ts`, invocado desde `src/server.ts` antes del router, resuelve las
+URLs del Joomla sustituido. Solo intercepta `/index.php*` y `/administrator*`. La query se
+compara por nombre de parámetro: el orden y los parámetros extra (`Itemid`, `lang`, `catid`,
+...) son indiferentes. Ningún destino empieza por `/index.php`, así que no hay bucles. No se
+tocan `/`, `/admin`, `/api`, los assets ni las páginas legales (`/admin` sigue con su 307
+propio a `/admin/login`).
+
+| URL antigua | Código | Destino |
+|---|---|---|
+| `/index.php?option=com_sppagebuilder&view=page&id=104` | 301 | `/` |
+| `/index.php?option=com_sppagebuilder&view=page&id=98` | 301 | `/#nosotros` |
+| `/index.php?option=com_sppagebuilder&view=page&id=99` | 301 | `/#servicios` |
+| `/index.php?option=com_sppagebuilder&view=page&id=100` | 301 | `/#proyectos` |
+| `/index.php?option=com_sppagebuilder&view=page&id=107` | 301 | `/#proyectos` |
+| `/index.php?option=com_sppagebuilder&view=page&id=103` | 301 | `/#contacto` |
+| `/index.php/contacto` | 301 | `/#contacto` |
+| `/index.php?option=com_content&view=article&id=62` (y variantes con `catid`/`Itemid`) | 301 | `/politica-de-privacidad` |
+| Cualquier otra `/index.php` o `/index.php/...` | 301 | `/` |
+| `/administrator` y `/administrator/...` | 404 | sin `Location` |
+
+Verificado con 18 pruebas vitest (`src/lib/joomla-redirects.server.test.ts`) y con `curl -I`
+contra el build de producción (`node .output/server/index.mjs`, preset `node-server`): las
+nueve reglas devuelven 301 con el `Location` esperado (incluidas variantes con parámetros
+reordenados y extra); `/administrator`, `/administrator/` y `/administrator/index.php` dan
+404 sin `Location`; `/`, `/admin/login`, `/api/contacto`, los assets y las tres páginas
+legales conservan su respuesta (`/admin` mantiene su 307 de la app).
+
 ### Panel `/admin` (fases 4-6, 18-19-11-2026)
 
 Rutas: `/admin/login` (`admin.login.tsx`), `/admin` (lista de cotizaciones, `admin.index.tsx`),
