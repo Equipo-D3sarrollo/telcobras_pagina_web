@@ -31,6 +31,7 @@ import { Route as ApiAdminUsuariosRouteImport } from './routes/api.admin.usuario
 import { Route as ApiAdminCotizacionesIdRouteImport } from './routes/api.admin.cotizaciones.$id'
 import { Route as ApiAdminCotizacionesNuevaRouteImport } from './routes/api.admin.cotizaciones.nueva'
 import { Route as ApiAdminUsuariosIdRouteImport } from './routes/api.admin.usuarios.$id'
+import { Route as ApiAdminCotizacionesIdAvisoRouteImport } from './routes/api.admin.cotizaciones.$id.aviso'
 import { Route as ApiAdminCotizacionesIdPapeleraRouteImport } from './routes/api.admin.cotizaciones.$id.papelera'
 
 const IndexRoute = IndexRouteImport.update({
@@ -144,6 +145,12 @@ const ApiAdminUsuariosIdRoute = ApiAdminUsuariosIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => ApiAdminUsuariosRoute,
 } as any)
+const ApiAdminCotizacionesIdAvisoRoute =
+  ApiAdminCotizacionesIdAvisoRouteImport.update({
+    id: '/aviso',
+    path: '/aviso',
+    getParentRoute: () => ApiAdminCotizacionesIdRoute,
+  } as any)
 const ApiAdminCotizacionesIdPapeleraRoute =
   ApiAdminCotizacionesIdPapeleraRouteImport.update({
     id: '/papelera',
@@ -174,6 +181,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/cotizaciones/$id': typeof ApiAdminCotizacionesIdRouteWithChildren
   '/api/admin/cotizaciones/nueva': typeof ApiAdminCotizacionesNuevaRoute
   '/api/admin/usuarios/$id': typeof ApiAdminUsuariosIdRoute
+  '/api/admin/cotizaciones/$id/aviso': typeof ApiAdminCotizacionesIdAvisoRoute
   '/api/admin/cotizaciones/$id/papelera': typeof ApiAdminCotizacionesIdPapeleraRoute
 }
 export interface FileRoutesByTo {
@@ -199,6 +207,7 @@ export interface FileRoutesByTo {
   '/api/admin/cotizaciones/$id': typeof ApiAdminCotizacionesIdRouteWithChildren
   '/api/admin/cotizaciones/nueva': typeof ApiAdminCotizacionesNuevaRoute
   '/api/admin/usuarios/$id': typeof ApiAdminUsuariosIdRoute
+  '/api/admin/cotizaciones/$id/aviso': typeof ApiAdminCotizacionesIdAvisoRoute
   '/api/admin/cotizaciones/$id/papelera': typeof ApiAdminCotizacionesIdPapeleraRoute
 }
 export interface FileRoutesById {
@@ -225,6 +234,7 @@ export interface FileRoutesById {
   '/api/admin/cotizaciones/$id': typeof ApiAdminCotizacionesIdRouteWithChildren
   '/api/admin/cotizaciones/nueva': typeof ApiAdminCotizacionesNuevaRoute
   '/api/admin/usuarios/$id': typeof ApiAdminUsuariosIdRoute
+  '/api/admin/cotizaciones/$id/aviso': typeof ApiAdminCotizacionesIdAvisoRoute
   '/api/admin/cotizaciones/$id/papelera': typeof ApiAdminCotizacionesIdPapeleraRoute
 }
 export interface FileRouteTypes {
@@ -252,6 +262,7 @@ export interface FileRouteTypes {
     | '/api/admin/cotizaciones/$id'
     | '/api/admin/cotizaciones/nueva'
     | '/api/admin/usuarios/$id'
+    | '/api/admin/cotizaciones/$id/aviso'
     | '/api/admin/cotizaciones/$id/papelera'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -277,6 +288,7 @@ export interface FileRouteTypes {
     | '/api/admin/cotizaciones/$id'
     | '/api/admin/cotizaciones/nueva'
     | '/api/admin/usuarios/$id'
+    | '/api/admin/cotizaciones/$id/aviso'
     | '/api/admin/cotizaciones/$id/papelera'
   id:
     | '__root__'
@@ -302,6 +314,7 @@ export interface FileRouteTypes {
     | '/api/admin/cotizaciones/$id'
     | '/api/admin/cotizaciones/nueva'
     | '/api/admin/usuarios/$id'
+    | '/api/admin/cotizaciones/$id/aviso'
     | '/api/admin/cotizaciones/$id/papelera'
   fileRoutesById: FileRoutesById
 }
@@ -485,6 +498,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminUsuariosIdRouteImport
       parentRoute: typeof ApiAdminUsuariosRoute
     }
+    '/api/admin/cotizaciones/$id/aviso': {
+      id: '/api/admin/cotizaciones/$id/aviso'
+      path: '/aviso'
+      fullPath: '/api/admin/cotizaciones/$id/aviso'
+      preLoaderRoute: typeof ApiAdminCotizacionesIdAvisoRouteImport
+      parentRoute: typeof ApiAdminCotizacionesIdRoute
+    }
     '/api/admin/cotizaciones/$id/papelera': {
       id: '/api/admin/cotizaciones/$id/papelera'
       path: '/papelera'
@@ -507,11 +527,13 @@ const ApiAdminUsuariosRouteWithChildren =
   ApiAdminUsuariosRoute._addFileChildren(ApiAdminUsuariosRouteChildren)
 
 interface ApiAdminCotizacionesIdRouteChildren {
+  ApiAdminCotizacionesIdAvisoRoute: typeof ApiAdminCotizacionesIdAvisoRoute
   ApiAdminCotizacionesIdPapeleraRoute: typeof ApiAdminCotizacionesIdPapeleraRoute
 }
 
 const ApiAdminCotizacionesIdRouteChildren: ApiAdminCotizacionesIdRouteChildren =
   {
+    ApiAdminCotizacionesIdAvisoRoute: ApiAdminCotizacionesIdAvisoRoute,
     ApiAdminCotizacionesIdPapeleraRoute: ApiAdminCotizacionesIdPapeleraRoute,
   }
 

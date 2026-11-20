@@ -317,6 +317,7 @@ export type DetalleCotizacion = {
   responsable_id: number | null;
   responsable: string | null;
   notas: string;
+  aviso_correo_enviado: boolean;
   creado_en: string;
   actualizado_en: string;
   historial: EntradaHistorial[];

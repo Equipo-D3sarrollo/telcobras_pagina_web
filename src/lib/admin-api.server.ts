@@ -12,7 +12,7 @@ const mutationLimiter = createRateLimiter({
 
 /** Operaciones sensibles con límite propio, además del genérico de escrituras. */
 export type AdminAccionLimitada =
-  "crear_usuario" | "reiniciar_password" | "cambiar_password" | "exportar";
+  "crear_usuario" | "reiniciar_password" | "cambiar_password" | "exportar" | "reenviar_aviso";
 
 const LIMITE_ACCION_MS = 15 * 60 * 1000;
 const MENSAJE_LIMITE = "Demasiadas solicitudes. Intenta de nuevo en unos minutos.";
@@ -37,6 +37,12 @@ const accionLimiters: Record<AdminAccionLimitada, ReturnType<typeof createRateLi
   }),
   // Exportar CSV: 10 cada 15 min, por IP y por usuario (además del límite genérico).
   exportar: createRateLimiter({
+    windowMs: LIMITE_ACCION_MS,
+    maxRequests: 10,
+    maxEntries: 10000,
+  }),
+  // Reenviar el aviso a contabilidad: 10 cada 15 min, por IP y por usuario.
+  reenviar_aviso: createRateLimiter({
     windowMs: LIMITE_ACCION_MS,
     maxRequests: 10,
     maxEntries: 10000,

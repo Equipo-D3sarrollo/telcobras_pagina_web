@@ -200,6 +200,22 @@ async function auditar(
   );
 }
 
+/** Registra el reenvío manual del aviso: sin datos personales en el detalle. */
+export async function registrarAvisoReenviado(
+  user: AdminUser,
+  id: number,
+  ip: string | null,
+): Promise<void> {
+  await auditar(
+    (sql, values) => getPool().execute(sql, values),
+    user.id,
+    "editar",
+    id,
+    "aviso por correo reenviado",
+    ip,
+  );
+}
+
 async function leerHistorial(id: number): Promise<EntradaHistorial[]> {
   const [rows] = await getPool().execute<RowDataPacket[]>(
     `SELECT a.creado_en, a.accion, a.detalle, u.nombre AS usuario
@@ -225,7 +241,7 @@ export async function obtenerDetalle(
   const [rows] = await pool.execute<RowDataPacket[]>(
     `SELECT c.id, c.nombre, c.empresa, c.cargo, c.correo, c.telefono, c.servicio, c.mensaje,
             c.consentimiento_fecha, c.origen, c.idioma, c.estado, c.responsable_id, c.notas,
-            c.creado_en, c.actualizado_en, u.nombre AS responsable
+            c.aviso_correo_enviado, c.creado_en, c.actualizado_en, u.nombre AS responsable
        FROM cotizaciones c LEFT JOIN usuarios u ON u.id = c.responsable_id
       WHERE c.id = ? AND c.eliminado_en IS NULL LIMIT 1`,
     [id],
@@ -271,6 +287,7 @@ export async function obtenerDetalle(
     responsable_id: row["responsable_id"] ?? null,
     responsable: row["responsable"] ?? null,
     notas: row["notas"] ?? "",
+    aviso_correo_enviado: Number(row["aviso_correo_enviado"]) === 1,
     creado_en: new Date(row["creado_en"]).toISOString(),
     actualizado_en: new Date(row["actualizado_en"]).toISOString(),
     historial,

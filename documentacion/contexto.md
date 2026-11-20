@@ -11,8 +11,11 @@ conocidos. Debe actualizarse cuando cambien la arquitectura o las capacidades de
 > («Auditoría 26-10-2026»). La revisión anterior (22-10-2026) cubrió el pipeline de
 > CSS/Tailwind, el build de Nitro/Cloudflare y el estado de Git; ver secciones 7 y 9.
 >
-> Última funcionalidad (**19-11-2026**): fase 6 del panel — papelera, exportación CSV e
-> historial completo (sección 12). Sin migración de base; `npm test` pasa 136 pruebas.
+> Última funcionalidad (**19-11-2026**): fase 7/C — paquete de publicación en cPanel,
+> script para crear la primera cuenta sin terminal y guía de despliegue (sección 12), además de
+> las fases 3 y 6 del panel (aviso por correo, papelera, exportación CSV e historial; sección 12)
+> y las redirecciones 301 del Joomla (sección 5). Sin migración de base (la columna
+> `aviso_correo_enviado` ya está en el esquema); `npm test` pasa 167 pruebas en 15 archivos.
 
 ## 1. Instrucciones para quien continúe el proyecto
 
@@ -208,6 +211,8 @@ npm run build:dev               # build con modo development
 npm run preview                 # node .output/server/index.mjs (carga .env.local si existe; puerto: PORT, por defecto 3000)
 npm test                        # vitest: pruebas de src/lib/*.server.test.ts y rate-limit.test.ts
 npm run usuario:crear           # crea una cuenta del panel /admin (interactivo; ver sección 12)
+npm run usuario:sql             # imprime el INSERT de la cuenta inicial para phpMyAdmin (sin BD)
+npm run empaquetar              # build + ZIP deploy/telcobras-web-cpanel.zip para cPanel
 npm run lint                    # eslint .
 npm run format                  # prettier --write .
 npm run secrets:scan            # gitleaks sobre todo el historial
@@ -225,8 +230,9 @@ el artefacto de despliegue.
 repite el escaneo en `.github/workflows/gitleaks.yml`.
 
 `npm test` (vitest, `vitest.config.ts`, pool `vmThreads` por un fallo de los pools por defecto
-con Node 26) corre `src/lib/**/*.server.test.ts`: **136 pruebas en 12 archivos** tras la fase 6
-(capa MySQL del formulario, admin, seguridad, límites y fase 6). Los demás `*.test.ts(x)` del
+con Node 26) corre `src/lib/**/*.server.test.ts`: **167 pruebas en 15 archivos** tras la fase 7
+(capa MySQL del formulario, aviso por correo, admin, seguridad, límites, redirecciones Joomla,
+fase 6 y generación del INSERT de la cuenta inicial). Los demás `*.test.ts(x)` del
 proyecto siguen vacíos. Para el resto usar lint, build, `tsc --noEmit` y comprobaciones
 manuales/navegador.
 
@@ -238,11 +244,20 @@ manuales/navegador.
 ├── .githooks/pre-commit            # Hook local: gitleaks sobre archivos staged
 ├── .gitattributes                  # EOL LF para hooks, CI y configuración
 ├── .gitleaks.toml                  # Reglas de gitleaks + allowlist de artefactos
+├── deploy/
+│   └── telcobras-web-cpanel.zip    # Paquete generado (ignorado por Git; no se versiona)
 ├── documentacion/
-│   └── contexto.md                 # Esta guía de traspaso
+│   ├── contexto.md                 # Esta guía de traspaso
+│   ├── GUIA_PUBLICACION_CPANEL.md  # Guía paso a paso de publicación en cPanel (fase 7)
+│   └── db/                         # Esquema SQL y migraciones
 ├── e2e/                            # Placeholder de Playwright (spec vacío)
 ├── public/                         # Recursos estáticos servidos desde /
 ├── scripts/
+│   ├── app.cjs                     # Plantilla de app.js (CommonJS) incluida en el ZIP
+│   ├── empaquetar.mjs              # Build + ZIP para cPanel
+│   ├── crear-usuario.mjs           # Crea cuenta en MySQL (terminal con DB_*)
+│   ├── crear-usuario-sql.mjs       # Imprime el INSERT para phpMyAdmin (sin BD)
+│   ├── usuario-input.mjs           # Preguntas/validaciones compartidas
 │   └── install-hooks.mjs           # Activa core.hooksPath en npm install
 ├── src/
 │   ├── components/                 # Secciones y controles de la interfaz
@@ -287,7 +302,8 @@ con excepciones para `*.example`, aunque hoy no existe un `.env.example` version
   (`IntersectionObserver` con `rootMargin: "600px 0px"`).
 - `src/routes/api.contacto.ts`: endpoint de contacto usado por el formulario. Valida
   honeypot, longitudes de campos, estructura de payload, Turnstile y limitación de tasa
-  por IP antes de persistir en MySQL (`src/lib/cotizaciones.server.ts`).
+  por IP antes de persistir en MySQL (`src/lib/cotizaciones.server.ts`), que después
+  programa el aviso por correo (`src/lib/cotizaciones-mail.server.ts`).
 - `src/routes/api.chat.ts`: integración con Make/WhatsApp y respuesta del chatbot.
 - `src/lib/translations.ts`: catálogos ES/EN para UI, SEO, formulario y chatbot.
 - `src/lib/accessibility-preferences.ts`: configuración de idioma/tema/tamaño y
@@ -480,14 +496,45 @@ con excepciones para `*.example`, aunque hoy no existe un `.env.example` version
   (`https://telcobras.com/<ruta>`), por lo que el SEO técnico es homogéneo en las cuatro
   URLs públicas del sitemap.
 
+### Redirecciones del sitio Joomla (19-11-2026)
+
+`src/lib/joomla-redirects.ts`, invocado desde `src/server.ts` antes del router, resuelve las
+URLs del Joomla sustituido. Solo intercepta `/index.php*` y `/administrator*`. La query se
+compara por nombre de parámetro: el orden y los parámetros extra (`Itemid`, `lang`, `catid`,
+...) son indiferentes. Ningún destino empieza por `/index.php`, así que no hay bucles. No se
+tocan `/`, `/admin`, `/api`, los assets ni las páginas legales (`/admin` sigue con su 307
+propio a `/admin/login`).
+
+| URL antigua | Código | Destino |
+|---|---|---|
+| `/index.php?option=com_sppagebuilder&view=page&id=104` | 301 | `/` |
+| `/index.php?option=com_sppagebuilder&view=page&id=98` | 301 | `/#nosotros` |
+| `/index.php?option=com_sppagebuilder&view=page&id=99` | 301 | `/#servicios` |
+| `/index.php?option=com_sppagebuilder&view=page&id=100` | 301 | `/#proyectos` |
+| `/index.php?option=com_sppagebuilder&view=page&id=107` | 301 | `/#proyectos` |
+| `/index.php?option=com_sppagebuilder&view=page&id=103` | 301 | `/#contacto` |
+| `/index.php/contacto` | 301 | `/#contacto` |
+| `/index.php?option=com_content&view=article&id=62` (y variantes con `catid`/`Itemid`) | 301 | `/politica-de-privacidad` |
+| Cualquier otra `/index.php` o `/index.php/...` | 301 | `/` |
+| `/administrator` y `/administrator/...` | 404 | sin `Location` |
+
+Verificado con 18 pruebas vitest (`src/lib/joomla-redirects.server.test.ts`) y con `curl -I`
+contra el build de producción (`node .output/server/index.mjs`, preset `node-server`): las
+nueve reglas devuelven 301 con el `Location` esperado (incluidas variantes con parámetros
+reordenados y extra); `/administrator`, `/administrator/` y `/administrator/index.php` dan
+404 sin `Location`; `/`, `/admin/login`, `/api/contacto`, los assets y las tres páginas
+legales conservan su respuesta (`/admin` mantiene su 307 de la app).
+
 ### Panel `/admin` (fases 4-6, 18-19-11-2026)
 
 Rutas: `/admin/login` (`admin.login.tsx`), `/admin` (lista de cotizaciones, `admin.index.tsx`),
-`/admin/cotizaciones/$id` (detalle) y `/admin/cotizaciones/nueva` (`admin.cotizaciones.*.tsx`),
+`/admin/cotizaciones/$id` (detalle, con «Aviso por correo: enviado / pendiente» y el botón de
+administrador «Reenviar aviso») y `/admin/cotizaciones/nueva` (`admin.cotizaciones.*.tsx`),
 `/admin/papelera` y `/admin/historial` (fase 6), `/admin/usuarios` y `/admin/mi-cuenta` (fase 5B);
 `POST /api/admin/login`, `POST /api/admin/logout`, `POST /api/admin/cotizaciones/$id`,
-`POST /api/admin/cotizaciones/nueva`, `POST /api/admin/cotizaciones/$id/papelera` y
-`POST /api/admin/exportar` (`api.admin.*.ts`). Detalle de seguridad en «Login del panel» y de la
+`POST /api/admin/cotizaciones/nueva`, `POST /api/admin/cotizaciones/$id/papelera`,
+`POST /api/admin/cotizaciones/$id/aviso` (fase 3) y `POST /api/admin/exportar`
+(`api.admin.*.ts`). Detalle de seguridad en «Login del panel» y de la
 gestión en «Gestión de cotizaciones» (sección 12); papelera, exportación e historial en la sección
 12. Todas las rutas administrativas se comprueban también en el servidor.
 
@@ -1166,6 +1213,16 @@ exitosa y repetible con el módulo Webhook response configurado correctamente.
 >   `.env.local`). `VITE_TURNSTILE_SITE_KEY` se incrusta **al compilar**: debe existir
 >   cuando se ejecuta `npm run build`.
 
+> **Paquete de publicación (fase 7, 19-11-2026):** `npm run empaquetar` ejecuta el build y
+> genera `deploy/telcobras-web-cpanel.zip` (ignorado por Git) con `.output/` completo, un
+> `app.js` CommonJS que carga `.output/server/index.mjs` con `import()` dinámico y respeta el
+> `PORT` que asigna Passenger, y un `package.json` mínimo sin dependencias que instalar
+> (`.output/server/node_modules/tslib` es la única dependencia traceada y va incluida).
+> **Node mínimo comprobado en producción: 20.19.0** (arranca el ZIP con 20.19.0; con 20.18.0
+> no; recomendable 22.x LTS). `TRUST_PROXY=1` es obligatorio en cPanel y **no** se configuran
+> `PORT` ni `NITRO_PORT`. La guía completa está en
+> `documentacion/GUIA_PUBLICACION_CPANEL.md` (sección 12).
+
 - `vite.config.ts` importa el wrapper `@leadconnector/vite-tanstack-config`; este
   wrapper ya instala plugins TanStack Start, React, Tailwind, alias, Nitro y otros.
   No duplicar plugins manualmente. El wrapper añade `@tailwindcss/vite` siempre; el
@@ -1422,7 +1479,8 @@ ese dominio (hoy `telcobras.com` sirve otro sitio, ver pendiente 17).
 - Preferencias de accesibilidad persistidas/validadas y aplicadas en SSR; catálogos
   tipados ES/EN para el contenido principal, el formulario, el chatbot y los errores raíz.
 - Formulario conectado al endpoint `/api/contacto`, con persistencia de solicitudes en
-  MySQL (`cotizaciones` + `auditoria`) mediante credenciales de servidor (antes Supabase).
+  MySQL (`cotizaciones` + `auditoria`) mediante credenciales de servidor (antes Supabase) y
+  aviso por correo asíncrono a contabilidad solo para las solicitudes del formulario web.
 - Protección anti-abuso del formulario: Cloudflare Turnstile, honeypot, validación de
   longitudes y limitación de tasa por IP (5 envíos / 10 minutos).
 - Higiene de errores: respuestas públicas genéricas (`contacto_unavailable`, `internal_error`)
@@ -1599,9 +1657,8 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
 9. **Codificación de README:** `README.md` decodifica como UTF-8, pero contiene 24 bytes
     NUL. Revisar y guardar el documento como UTF-8 limpio; no copiar/re-guardar con una
     codificación ambigua.
-10. **Lockfiles:** están versionados `package-lock.json` y `bun.lock`, mientras que los
-    comandos documentados usan npm. Elegir cuál es la fuente canónica y mantener o retirar
-    el otro mediante una decisión coordinada para evitar instalaciones divergentes.
+10. **Lockfiles — resuelto (19-11-2026):** `package-lock.json` es la fuente canónica (npm);
+    `bun.lock` se eliminó porque ningún script, CI ni documento usa bun. Ver sección 12.
 11. **Formulario:** los enlaces «Términos de Servicio» y «SLA y garantías» del footer ya
     apuntan con `<Link>` a `/terminos-de-servicio` y `/sla`, que ya muestran el
     contenido completo (aprobado por gerencia el 18-11-2026, ver pendiente 7).
@@ -1643,17 +1700,17 @@ ES/EN, SSR correcto y tablas sin desborde a 360 px.
 18. **Ruta base del CSS:** los assets se referencian como `/assets/...`. Si el deploy
     final vive bajo un subpath (por ejemplo `https://dominio/app/`), configurar `base`
     en Vite o servir la app en la raíz; hoy no hay `base` configurado.
-19. **`.env.example` — creado (27-10-2026):** contiene los nombres (sin valores) y un
-    comentario de las 6 variables que lee el código: `SUPABASE_URL`,
-    `SUPABASE_SERVICE_ROLE_KEY`, `MAKE_CHAT_WEBHOOK_URL`, `TURNSTILE_SECRET_KEY`,
-    `VITE_TURNSTILE_SITE_KEY` y `TURNSTILE_ALLOWED_HOSTNAMES`.
+19. **`.env.example` — creado (27-10-2026), actualizado (19-11-2026):** contiene los nombres
+    (sin valores) y un comentario de las variables que lee el código: las 5 de MySQL,
+    `MAKE_CHAT_WEBHOOK_URL`, `TURNSTILE_SECRET_KEY`, `VITE_TURNSTILE_SITE_KEY` y
+    `TURNSTILE_ALLOWED_HOSTNAMES`. Ya no aparecen `SUPABASE_URL` ni
+    `SUPABASE_SERVICE_ROLE_KEY`.
 20. **Dependencias y CVE-2026-102989 (corregido el 26-10-2026):** el XSS reflejado en
     respuestas de server functions de TanStack Start (GHSA-qx66-fv34-fjm8; afecta a
     `@tanstack/react-start` <1.168.60 y `@tanstack/start-server-core` <1.169.39) está
     corregido con versiones exactas: `@tanstack/react-start@1.168.60`,
     `@tanstack/react-router@1.170.41`, `@tanstack/router-plugin@1.168.42` y
-    `@tanstack/start-server-core@1.169.39` (transitiva). `package-lock.json` y
-    `bun.lock` coinciden.
+    `@tanstack/start-server-core@1.169.39` (transitiva), reflejado en `package-lock.json`.
     **Plugin de AI Studio en beta:** `@leadconnector/vite-tanstack-config` está fijado en
     **`0.3.3-beta.0`**. La versión estable `0.3.2` modifica en desarrollo
     `start-server-core/dist/esm/server-functions-handler.js` buscando la línea
@@ -2018,12 +2075,64 @@ comprobado que `mysql2`, `createPool` y `DB_*` no aparecen en ningún JS de `.ou
   `503 { "error": "contacto_unavailable" }` y el log solo muestra `code: 'ECONNREFUSED'` y el
   errno, sin datos del formulario. Las filas de prueba se eliminaron (el contador
   `AUTO_INCREMENT` de `cotizaciones` y `auditoria` ya avanzó: la primera solicitud real tendrá id 2).
-- **Supabase — en desuso, pendiente de migración (fase 7):** la ruta ya no importa
-  `@supabase/supabase-js` ni lee `SUPABASE_*`. Se conservan, sin tocar, la dependencia
-  `@supabase/supabase-js`, las variables `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY`
-  (documentadas en `.env.example` como en desuso) y la tabla `solicitudes_contacto` con las
-  solicitudes anteriores; el valor `migracion_supabase` de `cotizaciones.origen` está previsto
-  para importarlas. No se borró nada.
+- Supabase descartado el 19-11-2026; el proyecto debe eliminarse en Supabase (responsable: Diego)
+- **Lockfiles (19-11-2026):** se eliminó `bun.lock` y su entrada en `.prettierignore`: ningún
+  script, workflow de CI ni documento usa bun, y los comandos del proyecto usan npm con
+  `package-lock.json`, que es la fuente canónica.
+
+### Aviso por correo de cotizaciones nuevas (fase 3, 19-11-2026)
+
+`nodemailer` (JS puro, sin dependencias nativas: compatible con cPanel/Node.js) notifica a
+contabilidad cuando el **formulario web** guarda una solicitud. No aplica a cotizaciones
+creadas a mano en el panel: `insertCotizacion()` sigue siendo el núcleo de la transacción y
+`guardarCotizacionConAviso()` (`src/lib/cotizaciones.server.ts`) solo añade el aviso después
+de que la transacción termine.
+
+Archivos: `src/lib/cotizaciones-mail.server.ts` (configuración, mensaje, envío, marcado y
+lectura de datos), `src/routes/api.admin.cotizaciones.$id.aviso.ts` (reenvío),
+`src/lib/admin-api.server.ts` (límite propio), `src/lib/cotizaciones-admin.server.ts`
+(auditoría) y `src/routes/admin.cotizaciones.$id.tsx` (estado y botón).
+
+- **Configuración:** `SMTP_HOST`, `SMTP_PORT` (465), `SMTP_SECURE` (true), `SMTP_USER`,
+  `SMTP_PASSWORD`, `MAIL_FROM`, `MAIL_TO_COTIZACIONES` y `PUBLIC_SITE_URL`. Todos en
+  `.env.example` sin secretos reales. Si falta cualquiera de las obligatorias, no se envía
+  nada, se registra **una** advertencia por proceso sin datos ni credenciales
+  (`[cotizaciones/mail] SMTP sin configurar…`) y el formulario sigue respondiendo igual.
+- **Flujo:** `api.contacto.ts` → `guardarCotizacionConAviso()` → guardar en MySQL →
+  `programarAvisoCotizacion()`. El envío se lanza sin `await` (fire-and-forget), con
+  `connectionTimeout`, `greetingTimeout` y `socketTimeout` de **15 s** más un `Promise.race`
+  de 15 s: la respuesta al cliente no espera al SMTP. El transporte se puede inyectar en
+  pruebas, igual que en `guardarCotizacionConAviso`.
+- **Columna:** solo si SMTP responde bien se ejecuta
+  `UPDATE cotizaciones SET aviso_correo_enviado = 1 WHERE id = ?`. Si falla el envío o no
+  hay configuración, la columna queda en `0` y se registra únicamente el código de error
+  (`{ code }`), sin datos personales ni credenciales. La columna ya existe en
+  `documentacion/db/telcobras_cotizaciones.sql`: **no hace falta migración**.
+- **Contenido:** asunto `Nueva solicitud de cotización #id`; texto y HTML simple con la
+  marca; fecha en hora Colombia (`America/Bogota`, `es-CO`), servicio, empresa, nombre del
+  contacto y enlace `PUBLIC_SITE_URL/admin/cotizaciones/id`. **No** incluye teléfono, correo
+  del contacto, mensaje ni notas. El HTML escapa `& < > " '` y la cabecera del asunto
+  elimina saltos de línea y caracteres de control (sin `no-control-regex` en ESLint).
+- **Panel:** el detalle muestra «Aviso por correo: enviado / pendiente». Solo administradores
+  ven «Reenviar aviso» para cotizaciones con origen `formulario_web`. El endpoint
+  `POST /api/admin/cotizaciones/:id/aviso` exige sesión, rol de administrador, mismo Origin
+  y el límite genérico de escrituras más uno propio de **10 cada 15 min** por IP y usuario.
+  Si el reenvío funciona, registra en `auditoria` la acción `editar` con el detalle exacto
+  `aviso por correo reenviado` (sin datos personales).
+- **Pruebas:** `src/lib/cotizaciones-mail.server.test.ts` (10 pruebas) usa un transporte
+  simulado y cubre guardar-antes-de-enviar, no bloqueo, marcado, fallo sin romper el
+  formulario, ausencia de configuración, contenido sin datos sensibles, escapado HTML,
+  asunto sin saltos, origen manual y lectura de datos para reenvío. Demo local con
+  `jsonTransport` de nodemailer y datos ficticios: el correo generado muestra
+  `Fecha: 19/11/2026, 3:30 p. m.` (UTC 20:30 → Colombia 15:30) y el enlace al panel.
+
+| Verificación (19-11-2026) | Resultado |
+|---|---|
+| `npx tsc --noEmit` | ✅ sin errores |
+| `npm run lint` | ✅ 0 errores; 6 advertencias preexistentes de fast-refresh en `src/components/ui/` |
+| `npm run build` | ✅ cliente + servidor en `.output/` (preset `node-server`); `nodemailer` en `.output/server/_libs/nodemailer.mjs` |
+| `npm test` | ✅ 14 archivos / 164 pruebas |
+| Demo local `jsonTransport` | ✅ correo completo generado con datos ficticios, sin red ni SMTP real |
 
 ### Login del panel `/admin` (fase 4, 18-11-2026)
 
@@ -2287,8 +2396,6 @@ Solo en servidor (nunca con prefijo `VITE_` ni en el cliente):
 - `DB_HOST`, `DB_PORT` (opcional, 3306), `DB_NAME`, `DB_USER`, `DB_PASSWORD`: conexión a
   MySQL (ver arriba). `.env.example` trae valores de ejemplo. Obligatorias: sin ellas el
   formulario responde 503.
-- `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY`: **en desuso** (pendiente migración, fase 7);
-  la ruta ya no las usa.
 - `TRUST_PROXY`: `1` o `true` cuando hay un proxy de confianza delante (**en cPanel debe ir
   `TRUST_PROXY=1`**); vacío por defecto. Ver «IP del cliente» en la sección 9.
 - `MAKE_CHAT_WEBHOOK_URL`: webhook HTTPS de Make para `/api/chat` (ver sección 8).
@@ -2300,6 +2407,11 @@ Solo en servidor (nunca con prefijo `VITE_` ni en el cliente):
   separados por comas (p. ej. `telcobras.com,www.telcobras.com`). Si falta en
   producción, `api.contacto.ts` responde `503` (fail-closed); en desarrollo se añaden
   `localhost` y `127.0.0.1`.
+- `SMTP_HOST`, `SMTP_PORT` (465), `SMTP_SECURE` (true), `SMTP_USER`, `SMTP_PASSWORD`,
+  `MAIL_FROM`, `MAIL_TO_COTIZACIONES` y `PUBLIC_SITE_URL`: aviso por correo de la fase 3
+  (sección 12). **Opcionales**: sin ellos no se envía nada, se registra una sola advertencia
+  y el formulario sigue funcionando. Nunca poner la contraseña real en `.env.example` ni en
+  documentación.
 
 Pública de compilación:
 
@@ -2315,6 +2427,61 @@ variables con un comentario (sin valores).
 No crear un endpoint público para listar todas las solicitudes sin autenticación y
 autorización. Evitar registrar datos personales completos en logs.
 
+### Publicación en cPanel y primera cuenta (fase 7, 19-11-2026)
+
+Archivos nuevos: `scripts/empaquetar.mjs`, `scripts/app.cjs`,
+`scripts/crear-usuario-sql.mjs`, `scripts/usuario-input.mjs`,
+`src/lib/usuario-validacion.ts`, `src/lib/usuario-sql.server.ts`,
+`src/lib/usuario-sql.server.test.ts` y `documentacion/GUIA_PUBLICACION_CPANEL.md`.
+`scripts/crear-usuario.mjs` se refactorizó para usar las mismas preguntas y validaciones.
+
+- **Paquete:** `npm run empaquetar` invoca Vite con el Node del script (sin depender de `npm`
+  en el PATH ni del flag `shell` obsoleto), comprueba `.output/server/index.mjs` y
+  `.output/public/`, y escribe el ZIP con `zlib` de Node (sin dependencias nuevas). Contiene
+  237 archivos y ~17,5 MB. `deploy/*.zip` está en `.gitignore`: el ZIP se sube por el
+  administrador de archivos de cPanel, nunca a Git. No hay que ejecutar `npm install` en el
+  destino: `.output/server/node_modules/` incluye `tslib` (única dependencia traceada) y no
+  queda ninguna otra sin incluir.
+- **Arranque:** `app.js` (CommonJS) usa `import()` dinámico sobre
+  `.output/server/index.mjs` y **no** sobrescribe `process.env.PORT`: Nitro lo lee
+  directamente (`process.env.NITRO_PORT ?? process.env.PORT`, 3000 por defecto). Así Passenger
+  asigna el puerto. Mínimo verificado: Node 20.19.0 (20.18.0 no arranca); recomendación 22.x
+  LTS. `npm run preview` sigue siendo útil en local (requiere Node ≥ 22.9).
+- **Cuenta inicial sin terminal:** `npm run usuario:sql` (`node scripts/crear-usuario-sql.mjs`)
+  pide nombre, correo, rol y contraseña oculta dos veces (mínimo 12) con
+  `src/lib/usuario-validacion.ts`, genera el hash con la **misma** función scrypt del login
+  (`src/lib/password.server.ts`) e imprime solo un `INSERT INTO usuarios (...)` listo para
+  phpMyAdmin, con `debe_cambiar_password = 1`. No conecta a MySQL, no guarda archivos y la
+  contraseña en claro nunca se imprime. `escaparSql()` escapa barras, comillas y saltos para
+  MySQL en modo estándar. Alternativa con acceso a la base: `npm run usuario:crear`.
+- **Pruebas del INSERT:** `src/lib/usuario-sql.server.test.ts` (3 pruebas) comprueba que el
+  SQL es válido, que los cuatro literales se leen de ida y vuelta (incluidas comillas, barras
+  y saltos), que el hash verifica con la contraseña y no con otra, que la contraseña no aparece
+  en el SQL y que las validaciones son compartidas.
+- **Prueba local del paquete (19-11-2026):** se descomprimió el ZIP en
+  `%TEMP%/opencode/deploy-test-telcobras` (fuera del repo) y se arrancó con `node app.js`:
+  con Node 26 en `PORT=3101`, `/` → 200, `/admin/login` → 200, `GET /api/contacto` → 405 y
+  `/index.php?option=com_sppagebuilder&view=page&id=99` → 301 a `/#servicios` con cabeceras de
+  seguridad; con `node@20.19.0` en `PORT=3102`, 200/200/405; con `node@20.18.0` en 3103 no
+  arrancó (`curl` → `000`). La carpeta temporal y los procesos se eliminaron después.
+- **Guía:** `documentacion/GUIA_PUBLICACION_CPANEL.md` cubre a)–j): datos previos, base y
+  permisos, cuenta inicial, Setup Node.js App y todas las variables (marcando las secretas),
+  `VITE_TURNSTILE_SITE_KEY` solo al compilar, HTTPS/www sin bucles, Turnstile, subdominio de
+  prueba, cambio de Joomla con backup y plan de vuelta atrás, checklist post-publicación y
+  backups/logs/reinicio. `TURNSTILE_ALLOWED_HOSTNAMES=telcobras.com,www.telcobras.com`.
+
+| Verificación final (19-11-2026) | Resultado |
+|---|---|
+| `npx tsc --noEmit` | ✅ sin errores |
+| `npm run lint` | ✅ 0 errores; 6 advertencias preexistentes de fast-refresh en `src/components/ui/` |
+| `npm run build` | ✅ cliente + servidor en `.output/` (preset `node-server`) |
+| `npm test` | ✅ 15 archivos / 167 pruebas |
+| `npm run empaquetar` | ✅ ZIP generado sin `DEP0190`; 237 archivos, 17,5 MB |
+| ZIP fuera del repo, Node 26 | ✅ `/` 200, `/admin/login` 200, `GET /api/contacto` 405, Joomla 301 |
+| ZIP con Node 20.19.0 | ✅ 200 / 200 / 405 |
+| ZIP con Node 20.18.0 | ✅ descartado (no arranca) |
+| Commits locales A, B, C | ✅ sin push (mensajes exactos; ver sección 1) |
+
 ## 13. Guía de navegación rápida para otra IA
 
 | Si la tarea trata de... | Empezar por... |
@@ -2328,6 +2495,7 @@ autorización. Evitar registrar datos personales completos en logs.
 | Chat visual, sesión, foco o errores en UI | `src/components/FloatingChatbot.tsx` |
 | Contrato y proxy de Make | `src/routes/api.chat.ts` y `README.md` |
 | Formulario, mapa, datos de contacto y footer | `src/components/ContactAndFooter.tsx` |
+| Aviso por correo de cotizaciones, SMTP o reenvío | `src/lib/cotizaciones-mail.server.ts` |
 | Widget y validación de Turnstile | `src/components/TurnstileWidget.tsx`, `src/routes/api.contacto.ts` |
 | Páginas legales y enlaces del footer | `src/routes/politica-de-privacidad.tsx`, `src/routes/terminos-de-servicio.tsx`, `src/routes/sla.tsx`, `src/components/LegalDocument.tsx` |
 | Textos de Términos y SLA (valores del SLA en `SLA_VALUES`) | `src/lib/terms-content.ts`, `src/lib/sla-content.ts` |
@@ -2339,6 +2507,8 @@ autorización. Evitar registrar datos personales completos en logs.
 | Estilos globales, Tailwind v4, tokens y animaciones | `src/styles.css` y `src/routes/__root.tsx` |
 | CSS: import, `<link>` y hash del build | `src/routes/__root.tsx:14` y `.output/public/assets/styles-*.css` |
 | Despliegue: artefacto, assets y wrangler | `.output/` y `.wrangler/deploy/config.json` |
+| Publicación en cPanel, ZIP, `app.js` y Node mínimo | `scripts/empaquetar.mjs`, `scripts/app.cjs`, `documentacion/GUIA_PUBLICACION_CPANEL.md` |
+| Primera cuenta sin terminal (INSERT para phpMyAdmin) | `npm run usuario:sql`, `scripts/crear-usuario-sql.mjs`, `src/lib/usuario-sql.server.ts` |
 | Papelera, exportar CSV e historial del panel | `cotizaciones-admin.server.ts`, `admin.papelera.tsx`, `admin.historial.tsx`, `api.admin.exportar.ts` |
 | Pruebas (vitest) | `vitest.config.ts`, `src/lib/*.server.test.ts` |
 | Destino Cloudflare, plugins y entrada SSR | `vite.config.ts` y `src/server.ts` |

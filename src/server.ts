@@ -3,6 +3,7 @@ import "./lib/error-capture";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 import { readAccessibilityPreferencesCookie } from "./lib/accessibility-preferences";
+import { joomlaResponse } from "./lib/joomla-redirects";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -158,7 +159,12 @@ async function handleRequest(request: Request, env: unknown, ctx: unknown): Prom
 
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
+    const requestUrl = new URL(request.url);
+    // Las URLs del sitio Joomla se resuelven antes del router; el resto sigue igual.
+    const legacyResponse = joomlaResponse(requestUrl);
+    if (legacyResponse) return withSecurityHeaders(legacyResponse, requestUrl);
+
     const response = await handleRequest(request, env, ctx);
-    return withSecurityHeaders(response, new URL(request.url));
+    return withSecurityHeaders(response, requestUrl);
   },
 };

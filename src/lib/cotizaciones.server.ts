@@ -1,5 +1,6 @@
 import type { ResultSetHeader } from "mysql2/promise";
 import { getPool } from "./db.server";
+import { programarAvisoCotizacion, type TransporteCorreo } from "./cotizaciones-mail.server";
 
 /** Solo servidor. Todas las consultas usan marcadores `?` (consultas preparadas). */
 
@@ -75,4 +76,27 @@ export async function insertCotizacion(
   } finally {
     connection.release();
   }
+}
+
+/**
+ * Flujo del formulario web: guardar primero y solo después programar el aviso a contabilidad.
+ * El envío es asíncrono, así que no retrasa la respuesta al cliente.
+ */
+export async function guardarCotizacionConAviso(
+  datos: NuevaCotizacion,
+  transporte?: TransporteCorreo,
+): Promise<number> {
+  const id = await insertCotizacion(datos, { origen: "formulario_web" });
+  programarAvisoCotizacion(
+    id,
+    {
+      creado_en: new Date().toISOString(),
+      servicio: datos.servicio,
+      empresa: datos.empresa,
+      nombre: datos.nombre,
+      origen: "formulario_web",
+    },
+    transporte,
+  );
+  return id;
 }
